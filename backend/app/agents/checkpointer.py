@@ -41,7 +41,12 @@ async def get_checkpointer() -> AsyncPostgresSaver:
         if _checkpointer is not None:
             return _checkpointer
 
-        db_url = settings.database_url.replace("+asyncpg", "")
+        # asyncpg usa `?ssl=`; psycopg (usado aqui pelo LangGraph) usa `?sslmode=`.
+        db_url = (
+            settings.database_url
+            .replace("+asyncpg", "")
+            .replace("ssl=", "sslmode=")
+        )
         _pool = AsyncConnectionPool(conninfo=db_url, max_size=10, open=False)
         await _pool.open()
         _checkpointer = AsyncPostgresSaver(_pool)
