@@ -72,7 +72,7 @@ application.include_router(billing.router, prefix="/api/billing", tags=["billing
 application.include_router(health.router, tags=["health"])
 application.include_router(imagens.router, prefix="/api", tags=["imagens"])
 
-if FRONTEND_DIR.is_dir() and settings.ambiente == "desenvolvimento":
+if FRONTEND_DIR.is_dir():
     application.mount("/_next", StaticFiles(directory=str(FRONTEND_DIR / "_next")), name="next-static")
 
     _DYNAMIC_SEGMENTS = [
