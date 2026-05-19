@@ -59,8 +59,10 @@ class SecurityHeadersMiddleware:
                 headers.append((b"referrer-policy", b"strict-origin-when-cross-origin"))
                 headers.append((b"permissions-policy", b"camera=(), microphone=(), geolocation=()"))
                 headers.append((b"x-csp-nonce", nonce.encode()))
-                if settings.ambiente != "desenvolvimento":
-                    csp = (
+                # /api/* retorna JSON. Frontend Next.js (export estatico) tem
+                # scripts/styles inline sem nonce — precisa CSP mais permissivo.
+                if path.startswith("/api/"):
+                    csp_api = (
                         b"frame-ancestors 'none'; "
                         b"default-src 'self'; "
                         b"script-src 'self' 'nonce-" + nonce.encode() + b"' 'strict-dynamic'; "
@@ -69,18 +71,18 @@ class SecurityHeadersMiddleware:
                         b"connect-src 'self'; "
                         b"font-src 'self' data:"
                     )
-                    headers.append((b"content-security-policy", csp))
+                    headers.append((b"content-security-policy", csp_api))
                 else:
-                    csp_report = (
+                    csp_html = (
                         b"frame-ancestors 'none'; "
                         b"default-src 'self'; "
-                        b"script-src 'self' 'nonce-" + nonce.encode() + b"' 'strict-dynamic'; "
-                        b"style-src 'self' 'nonce-" + nonce.encode() + b"'; "
-                        b"img-src 'self' data: https:; "
+                        b"script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+                        b"style-src 'self' 'unsafe-inline'; "
+                        b"img-src 'self' data: https: blob:; "
                         b"connect-src 'self'; "
                         b"font-src 'self' data:"
                     )
-                    headers.append((b"content-security-policy-report-only", csp_report))
+                    headers.append((b"content-security-policy", csp_html))
                 if path.startswith("/api/"):
                     headers.append((b"cache-control", b"no-store, no-cache, must-revalidate, max-age=0"))
                 has_ct = any(h[0].lower() == b"content-type" for h in headers)
