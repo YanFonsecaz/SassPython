@@ -1,0 +1,137 @@
+# Render Infrastructure as Code
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Apos push pro GitHub, criar o Blueprint apontando para este arquivo.
+# Secrets (sync: false) precisam ser preenchidos manualmente no dashboard.
+
+databases:
+  - name: seo-saas-postgres
+    plan: basic-256mb
+    databaseName: seo_saas
+    user: seo_saas
+    postgresMajorVersion: 16
+
+envVarGroups:
+  - name: seo-saas-shared
+    envVars:
+      - key: AMBIENTE
+        value: producao
+      - key: LOG_LEVEL
+        value: INFO
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_ACCESS_TOKEN_EXPIRES
+        value: "900"
+      - key: JWT_REFRESH_TOKEN_EXPIRES
+        value: "604800"
+      - key: LLM_PROVIDER
+        value: openai
+      - key: LLM_MODEL
+        value: gpt-4o-mini
+      - key: INSERIDOR_LLM_MODEL
+        value: gpt-4.1
+      - key: RERANKER_LLM_MODEL
+        value: gpt-4.1
+      - key: REVISOR_LLM_MODEL
+        value: gpt-4.1
+      - key: ENRIQUECEDOR_LLM_MODEL
+        value: gpt-4.1
+      - key: EMBEDDING_MODEL
+        value: text-embedding-3-small
+      - key: EMBEDDING_DIMENSIONS
+        value: "1024"
+      - key: IMAGEM_MODEL
+        value: gpt-image-1
+      - key: WORKFLOW_TIMEOUT_SEGUNDOS
+        value: "600"
+      - key: WORKFLOW_DISTRIBUIR_INLINKS_TIMEOUT
+        value: "1800"
+      - key: ARQ_MAX_JOBS
+        value: "20"
+      - key: ARQ_JOB_TIMEOUT
+        value: "2400"
+      - key: HIBP_FAIL_MODE
+        value: open
+      - key: GOOGLE_TRENDS_ENABLED
+        value: "false"
+      - key: UPLOADS_DIR
+        value: /app/uploads
+      - key: LANGSMITH_PROJECT
+        value: seo-saas
+      # Secrets (preencher manualmente no dashboard)
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ZHIPUAI_API_KEY
+        sync: false
+      - key: SERPAPI_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: LANGSMITH_API_KEY
+        sync: false
+
+services:
+  - type: keyvalue
+    name: seo-saas-redis
+    plan: free
+    ipAllowList: []
+
+  - type: web
+    name: seo-saas-api
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    disk:
+      name: uploads
+      mountPath: /app/uploads
+      sizeGB: 5
+    envVars:
+      - fromGroup: seo-saas-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: seo-saas-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: seo-saas-redis
+          property: connectionString
+
+  - type: worker
+    name: seo-saas-worker
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    dockerCommand: python -m arq app.worker.WorkerSettings
+    autoDeploy: true
+    disk:
+      name: uploads-worker
+      mountPath: /app/uploads
+      sizeGB: 5
+    envVars:
+      - fromGroup: seo-saas-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: seo-saas-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: seo-saas-redis
+          property: connectionString
