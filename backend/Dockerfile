@@ -31,7 +31,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY backend/ /app/
 RUN pip install --no-cache-dir .
 
-COPY --from=frontend-builder /fe/out /app/frontend/out
+# Coloca em /frontend/out porque o backend usa
+# Path(__file__).resolve().parent.parent.parent/"frontend"/"out"
+# que dentro do container resolve para `/frontend/out`.
+COPY --from=frontend-builder /fe/out /frontend/out
 
 RUN chmod +x /app/start.sh && mkdir -p /app/uploads/imagens
 
