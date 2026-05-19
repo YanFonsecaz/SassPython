@@ -1,33 +1,87 @@
-# Render Infrastructure as Code
-# Docs: https://render.com/docs/blueprint-spec
+# Render Blueprint — TIER FREE (testes/demo)
+# Limitacoes conhecidas:
+#  - Sem Background Worker: ARQ roda como subprocess do web service (start.sh)
+#  - Sem Disco persistente: /app/uploads e ephemeral (imagens somem)
+#  - Postgres free: 1GB, expira em 90 dias
+#  - Web free: spin-down apos 15min sem trafego, 512MB RAM
 #
-# Apos push pro GitHub, criar o Blueprint apontando para este arquivo.
-# Secrets (sync: false) precisam ser preenchidos manualmente no dashboard.
+# Pra subir pra producao real, trocar plans para starter+ e descomentar o
+# servico `worker` e o bloco `disk`.
 
 databases:
   - name: seo-saas-postgres
-    plan: basic-256mb
+    plan: free
     databaseName: seo_saas
     user: seo_saas
     postgresMajorVersion: 16
 
-envVarGroups:
-  - name: seo-saas-shared
+services:
+  - type: keyvalue
+    name: seo-saas-redis
+    plan: free
+    region: oregon
+    ipAllowList: []
+
+  - type: web
+    name: seo-saas-api
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
     envVars:
+      # --- Ambiente ---
       - key: AMBIENTE
         value: producao
       - key: LOG_LEVEL
         value: INFO
+
+      # --- Conexoes (auto-injetadas do Postgres e KV) ---
+      - key: DATABASE_URL
+        fromDatabase:
+          name: seo-saas-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: seo-saas-redis
+          property: connectionString
+
+      # --- Secrets gerados automaticamente ---
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        generateValue: true
+
+      # --- JWT ---
       - key: JWT_ALGORITHM
         value: HS256
       - key: JWT_ACCESS_TOKEN_EXPIRES
         value: "900"
       - key: JWT_REFRESH_TOKEN_EXPIRES
         value: "604800"
+
+      # --- URLs (preencher apos primeiro deploy gerar o hostname) ---
+      - key: FRONTEND_URL
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+
+      # --- LLM ---
       - key: LLM_PROVIDER
         value: openai
       - key: LLM_MODEL
         value: gpt-4o-mini
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ZHIPUAI_API_KEY
+        sync: false
       - key: INSERIDOR_LLM_MODEL
         value: gpt-4.1
       - key: RERANKER_LLM_MODEL
@@ -42,96 +96,38 @@ envVarGroups:
         value: "1024"
       - key: IMAGEM_MODEL
         value: gpt-image-1
+
+      # --- Pesquisa externa ---
+      - key: SERPAPI_KEY
+        sync: false
+      - key: GOOGLE_TRENDS_ENABLED
+        value: "false"
+
+      # --- Workflows ---
       - key: WORKFLOW_TIMEOUT_SEGUNDOS
         value: "600"
       - key: WORKFLOW_DISTRIBUIR_INLINKS_TIMEOUT
         value: "1800"
+
+      # --- ARQ (rodando no mesmo container do web) ---
+      # No free de 512MB precisamos limitar muito pra nao OOM.
       - key: ARQ_MAX_JOBS
-        value: "20"
+        value: "3"
       - key: ARQ_JOB_TIMEOUT
         value: "2400"
+
+      # --- Seguranca ---
       - key: HIBP_FAIL_MODE
         value: open
-      - key: GOOGLE_TRENDS_ENABLED
-        value: "false"
-      - key: UPLOADS_DIR
-        value: /app/uploads
-      - key: LANGSMITH_PROJECT
-        value: seo-saas
-      # Secrets (preencher manualmente no dashboard)
-      - key: SECRET_KEY
-        generateValue: true
-      - key: JWT_SECRET_KEY
-        generateValue: true
-      - key: ENCRYPTION_KEY
-        generateValue: true
-      - key: FRONTEND_URL
-        sync: false
-      - key: APP_URL
-        sync: false
-      - key: CORS_ORIGINS
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: ZHIPUAI_API_KEY
-        sync: false
-      - key: SERPAPI_KEY
-        sync: false
+
+      # --- Observabilidade (opcional) ---
       - key: SENTRY_DSN
         sync: false
       - key: LANGSMITH_API_KEY
         sync: false
+      - key: LANGSMITH_PROJECT
+        value: seo-saas
 
-services:
-  - type: keyvalue
-    name: seo-saas-redis
-    plan: free
-    ipAllowList: []
-
-  - type: web
-    name: seo-saas-api
-    runtime: docker
-    plan: starter
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: .
-    healthCheckPath: /health
-    autoDeploy: true
-    disk:
-      name: uploads
-      mountPath: /app/uploads
-      sizeGB: 5
-    envVars:
-      - fromGroup: seo-saas-shared
-      - key: DATABASE_URL
-        fromDatabase:
-          name: seo-saas-postgres
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: seo-saas-redis
-          property: connectionString
-
-  - type: worker
-    name: seo-saas-worker
-    runtime: docker
-    plan: starter
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: .
-    dockerCommand: python -m arq app.worker.WorkerSettings
-    autoDeploy: true
-    disk:
-      name: uploads-worker
-      mountPath: /app/uploads
-      sizeGB: 5
-    envVars:
-      - fromGroup: seo-saas-shared
-      - key: DATABASE_URL
-        fromDatabase:
-          name: seo-saas-postgres
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: seo-saas-redis
-          property: connectionString
+      # --- Uploads ephemeral (free nao tem disk) ---
+      - key: UPLOADS_DIR
+        value: /app/uploads

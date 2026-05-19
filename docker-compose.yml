@@ -68,24 +68,25 @@ services:
         condition: service_healthy
     # Default CMD do Dockerfile (/app/start.sh) ja roda alembic + uvicorn.
 
-  worker:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    container_name: seo_saas_worker
-    restart: unless-stopped
-    env_file:
-      - backend/.env
-    volumes:
-      - uploads_data:/app/uploads
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      backend:
-        condition: service_started
-    command: ["python", "-m", "arq", "app.worker.WorkerSettings"]
+# Em prod paga (Render starter+) o worker vira servico separado.
+# No free, o ARQ roda como subprocess dentro do servico `backend` (ver start.sh).
+# Para testar local com worker separado, descomentar abaixo.
+#  worker:
+#    build:
+#      context: .
+#      dockerfile: backend/Dockerfile
+#    container_name: seo_saas_worker
+#    restart: unless-stopped
+#    env_file:
+#      - backend/.env
+#    volumes:
+#      - uploads_data:/app/uploads
+#    depends_on:
+#      postgres:
+#        condition: service_healthy
+#      redis:
+#        condition: service_healthy
+#    command: ["python", "-m", "arq", "app.worker.WorkerSettings"]
 
 volumes:
   postgres_data:
