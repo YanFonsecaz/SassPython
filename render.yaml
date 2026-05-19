@@ -1,19 +1,12 @@
 # Render Blueprint — TIER FREE (testes/demo)
-# Limitacoes conhecidas:
-#  - Sem Background Worker: ARQ roda como subprocess do web service (start.sh)
-#  - Sem Disco persistente: /app/uploads e ephemeral (imagens somem)
-#  - Postgres free: 1GB, expira em 90 dias
-#  - Web free: spin-down apos 15min sem trafego, 512MB RAM
+# Postgres: Supabase (externo, free, nao expira) — DATABASE_URL preenchida manualmente.
+# Redis/KV: Render free (25MB).
+# Web: Render free Docker (512MB RAM, spin-down apos 15min).
+# Worker: roda como subprocess do web (start.sh) ja que free nao tem Background Worker.
+# Uploads: /app/uploads ephemeral (sem Disk no free).
 #
-# Pra subir pra producao real, trocar plans para starter+ e descomentar o
-# servico `worker` e o bloco `disk`.
-
-databases:
-  - name: seo-saas-postgres
-    plan: free
-    databaseName: seo_saas
-    user: seo_saas
-    postgresMajorVersion: 16
+# Para producao: trocar plans para starter+, mover worker para servico separado,
+# adicionar bloco `disk` no web e worker.
 
 services:
   - type: keyvalue
@@ -38,11 +31,16 @@ services:
       - key: LOG_LEVEL
         value: INFO
 
-      # --- Conexoes (auto-injetadas do Postgres e KV) ---
+      # --- Banco (Supabase) ---
+      # Pegar em Supabase Dashboard > Settings > Database > Connection string > URI
+      # Formato esperado:
+      #   postgresql+asyncpg://postgres.<projeto>:<senha>@<host>:5432/postgres
+      # ATENCAO: trocar `postgresql://` por `postgresql+asyncpg://` no inicio.
+      # Usar a connection string da "Session pooler" (porta 5432) ou direct connection.
       - key: DATABASE_URL
-        fromDatabase:
-          name: seo-saas-postgres
-          property: connectionString
+        sync: false
+
+      # --- Redis (Render KV interno) ---
       - key: REDIS_URL
         fromService:
           type: keyvalue
