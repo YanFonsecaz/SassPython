@@ -47,7 +47,13 @@ async def get_checkpointer() -> AsyncPostgresSaver:
             .replace("+asyncpg", "")
             .replace("ssl=", "sslmode=")
         )
-        _pool = AsyncConnectionPool(conninfo=db_url, max_size=10, open=False)
+        # autocommit=True e necessario para CREATE INDEX CONCURRENTLY no setup()
+        _pool = AsyncConnectionPool(
+            conninfo=db_url,
+            max_size=10,
+            open=False,
+            kwargs={"autocommit": True},
+        )
         await _pool.open()
         _checkpointer = AsyncPostgresSaver(_pool)
         if not _setup_done:
