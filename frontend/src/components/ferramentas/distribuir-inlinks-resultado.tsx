@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -43,21 +43,37 @@ function CandidataAccordion({ candidata, urlAlvo }: { candidata: CandidataResult
   }
 
   function renderTrecho(trecho: string) {
-    const ini = trecho.indexOf("«");
-    const fim = trecho.indexOf("»", ini + 1);
-    if (ini < 0 || fim < 0) return <span>{trecho}</span>;
-    const antes = trecho.slice(0, ini);
-    const ancora = trecho.slice(ini + 1, fim);
-    const depois = trecho.slice(fim + 1);
-    return (
-      <span>
-        {antes}
-        <mark className="rounded bg-brand/20 px-1 py-0.5 font-medium text-brand-dark">
-          {ancora}
-        </mark>
-        {depois}
-      </span>
-    );
+    // Suporta «ancora», [ancora](url) e **bold** no mesmo texto.
+    const partes: ReactNode[] = [];
+    const regex = /«([^»]+)»|\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+?)\*\*/g;
+    let cursor = 0;
+    let key = 0;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(trecho)) !== null) {
+      if (match.index > cursor) {
+        partes.push(trecho.slice(cursor, match.index));
+      }
+      const ancoraChevron = match[1];
+      const ancoraLink = match[2];
+      const negrito = match[4];
+      if (ancoraChevron || ancoraLink) {
+        partes.push(
+          <mark
+            key={key++}
+            className="rounded bg-brand/20 px-1 py-0.5 font-medium text-brand-dark"
+          >
+            {ancoraChevron ?? ancoraLink}
+          </mark>
+        );
+      } else if (negrito) {
+        partes.push(<strong key={key++}>{negrito}</strong>);
+      }
+      cursor = match.index + match[0].length;
+    }
+    if (cursor < trecho.length) {
+      partes.push(trecho.slice(cursor));
+    }
+    return <span>{partes}</span>;
   }
 
   return (
