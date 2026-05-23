@@ -15,6 +15,8 @@ from app.core.embeddings import cosine_seguro, gerar_embeddings_batch
 
 logger = logging.getLogger(__name__)
 
+_MD_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+
 _MIN_DISTANCE_WORDS_BASE = 100
 _MAX_CONECTOR_WORDS = 3
 _TOP_N_PARAGRAFOS = 5
@@ -111,12 +113,59 @@ class InlinkInserido:
     ancora_preferida_usada: bool = False
 
 
+async def _gerar_cta_fallback(
+    paragrafos: list[str],
+    paragrafos_embeddings: list[Any],
+    candidato: dict[str, Any],
+    ancoras_preferidas: list[str],
+    usuario_id: str,
+) -> dict[str, Any] | None:
+    consulta = _texto_destino(candidato)[:1500]
+    emb_consulta_lst = await gerar_embeddings_batch([consulta], usuario_id)
+    emb_consulta = emb_consulta_lst[0] if emb_consulta_lst else None
+    if emb_consulta is None:
+        return None
+
+    scored: list[tuple[int, str, float]] = []
+    for i, (p, emb_p) in enumerate(zip(paragrafos, paragrafos_embeddings, strict=False)):
+        if emb_p is None or not _paragrafo_elegivel(p):
+            continue
+        if "leia também:" in p.lower() or p.strip().endswith(">"):
+            continue
+        cosine = cosine_seguro(emb_consulta, emb_p)
+        scored.append((i, p, float(cosine)))
+
+    if not scored:
+        return None
+
+    scored.sort(key=lambda x: x[2], reverse=True)
+    p_idx, paragrafo, cos = scored[0]
+    if cos < 0.55:
+        return None
+
+    ancora = ancoras_preferidas[0]
+    return {
+        "url_destino": candidato["url"],
+        "paragrafo_idx": p_idx,
+        "anchor_text": ancora,
+        "trecho_original": "",
+        "_modo_cta": True,
+        "_ancora_cta": ancora,
+        "justificativa": (
+            f"Nenhum parágrafo continha variante da âncora preferida. "
+            f"CTA adicionado no fim do parágrafo {p_idx} (cosine={cos:.2f})."
+        ),
+    }
+
+
 async def inserir_inlinks(
     pilar_markdown: str,
     candidatos: list[dict[str, Any]],
     usuario_id: str,
     max_inlinks: int = 8,
     ancoras_preferidas: list[str] | None = None,
+    permitir_cta_fallback: bool = True,
+    objetivo_linkagem: str | None = None,
 ) -> tuple[str, list[InlinkInserido]]:
     if not pilar_markdown.strip() or not candidatos:
         return pilar_markdown, []
@@ -150,6 +199,7 @@ async def inserir_inlinks(
         proposta = await _propor_insercao_para_candidato(
             c, contexto_paragrafos, usuario_id,
             ancoras_preferidas=ancoras_preferidas,
+            objetivo_linkagem=objetivo_linkagem,
         )
         if not proposta:
             propostas_por_candidato.append((c, None))
@@ -207,6 +257,17 @@ async def inserir_inlinks(
             proposta["forcar_sugestao_manual"] = True
             proposta["motivo_sugestao"] = "Âncora genérica — não menciona termo específico do destino."
         todas_insercoes.append(proposta)
+
+    if (
+        ancoras_preferidas
+        and permitir_cta_fallback
+        and not any(p for _, p in propostas_por_candidato if p and not p.get("forcar_sugestao_manual"))
+    ):
+        cta_proposta = await _gerar_cta_fallback(
+            paragrafos, paragrafos_embeddings, candidatos_top[0], ancoras_preferidas, usuario_id,
+        )
+        if cta_proposta:
+            todas_insercoes.append(cta_proposta)
 
     min_dist = _calcular_min_distance(pilar_markdown, max_inlinks)
     logger.info(
@@ -293,7 +354,16 @@ def _ancora_preferida_match(texto: str, ancoras: list[str]) -> str | None:
 def _ancora_preferida_boost(paragrafo: str, ancoras: list[str]) -> float:
     if not ancoras or not paragrafo:
         return 0.0
-    return 0.30 if _ancora_preferida_match(paragrafo, ancoras) else 0.0
+    return 0.60 if _ancora_preferida_match(paragrafo, ancoras) else 0.0
+
+
+def _link_existente_em(paragrafo: str, offset: int) -> str | None:
+    if not paragrafo or offset < 0:
+        return None
+    for m in _MD_LINK_RE.finditer(paragrafo):
+        if m.start() <= offset < m.end():
+            return m.group(2)
+    return None
 
 
 async def _selecionar_paragrafos_relevantes(
@@ -327,13 +397,18 @@ async def _selecionar_paragrafos_relevantes(
         scored.append((i, p, float(cosine) + boost + ap_boost, boost))
 
     scored.sort(key=lambda x: x[2], reverse=True)
-    n_kw_match = sum(1 for _, _, _, b in scored[:top_n] if b > 0)
+    top = scored[:top_n]
+
+    if ancoras_preferidas:
+        top.sort(key=lambda x: _ancora_preferida_match(x[1], ancoras_preferidas) is not None, reverse=True)
+
+    n_kw_match = sum(1 for _, _, _, b in top if b > 0)
     logger.info(
         "Inseridor: top-%d parágrafos para %s — %d com keyword match (termos=%s)",
         top_n, candidato.get("url", "?")[-60:], n_kw_match,
         ", ".join(termos_kw[:5]),
     )
-    return [(i, p) for i, p, _, _ in scored[:top_n]]
+    return [(i, p) for i, p, _, _ in top]
 
 
 async def _propor_insercao_para_candidato(
@@ -341,9 +416,10 @@ async def _propor_insercao_para_candidato(
     contexto_paragrafos: list[tuple[int, str]],
     usuario_id: str,
     ancoras_preferidas: list[str] | None = None,
+    objetivo_linkagem: str | None = None,
 ) -> dict[str, Any] | None:
     agente = _InseridorAgent(usuario_id)
-    prompt = _build_prompt_focado(candidato, contexto_paragrafos, ancoras_preferidas=ancoras_preferidas)
+    prompt = _build_prompt_focado(candidato, contexto_paragrafos, ancoras_preferidas=ancoras_preferidas, objetivo_linkagem=objetivo_linkagem)
     logger.info(
         "Inseridor: prompt para %s (%d chars, %d parágrafos)\n%s\n---END PROMPT---",
         candidato.get("url", "?"),
@@ -396,6 +472,20 @@ async def _propor_insercao_para_candidato(
     parsed["paragrafo_idx"] = idx_global
     parsed["url_destino"] = candidato["url"]
 
+    if ancoras_preferidas and parsed:
+        paragrafo_escolhido = contexto_paragrafos[idx_local][1]
+        ancora_no_paragrafo = _ancora_preferida_match(paragrafo_escolhido, ancoras_preferidas)
+        anchor_llm = (parsed.get("anchor_text") or "").strip()
+        if ancora_no_paragrafo and not _ancora_preferida_match(anchor_llm, ancoras_preferidas):
+            parsed["anchor_text"] = ancora_no_paragrafo
+            if ancora_no_paragrafo.lower() in paragrafo_escolhido.lower():
+                parsed["trecho_original"] = ancora_no_paragrafo
+            parsed["palavra_chave_destino"] = ancora_no_paragrafo
+            logger.info(
+                "Inseridor: forcando anchor_text para ancora preferida '%s' (LLM havia escolhido '%s')",
+                ancora_no_paragrafo, anchor_llm,
+            )
+
     motivo_kw = await _validar_palavra_chave_destino(parsed, candidato, paragrafo_completo, usuario_id, ancoras_preferidas=ancoras_preferidas)
     if motivo_kw:
         logger.info(
@@ -412,6 +502,7 @@ def _build_prompt_focado(
     candidato: dict[str, Any],
     contexto: list[tuple[int, str]],
     ancoras_preferidas: list[str] | None = None,
+    objetivo_linkagem: str | None = None,
 ) -> str:
     blocos = ""
     for local_idx, (_, texto) in enumerate(contexto):
@@ -427,10 +518,45 @@ def _build_prompt_focado(
     if ancoras_preferidas:
         linhas = "\n".join(f'- "{a}"' for a in ancoras_preferidas)
         ancoras_block = f"""
-ANCORAS PREFERIDAS (use uma destas quando o paragrafo permitir naturalmente):
+ANCORAS PREFERIDAS (PRIORIDADE MAXIMA):
 {linhas}
 
-REGRA: se algum paragrafo contém uma destas âncoras (literal ou flexionada), USE-A como `anchor_text`. Mantenha `trecho_original` copiado literalmente do parágrafo. Se NENHUM parágrafo contém variação de uma âncora preferida, escolha normalmente das palavras-chave do destino.
+REGRA ZERO (sobrepoe todas as outras): se QUALQUER paragrafo contem uma destas ancoras
+(literal, flexionada, ou cobertura por todas as palavras), VOCE DEVE:
+1. Escolher esse paragrafo (mesmo se outro pareca mais natural).
+2. Usar a ancora preferida LITERAL como `anchor_text` (sem truncar).
+3. Copiar `trecho_original` do paragrafo de forma que CONTENHA a ancora.
+4. Reportar `palavra_chave_destino` como a propria ancora preferida.
+
+So aplique as 7 regras abaixo quando NENHUM paragrafo contem variante de
+uma ancora preferida.
+
+EXEMPLO 0 — ancora preferida no paragrafo (PRIORIDADE):
+
+ANCORAS PREFERIDAS: ["livros para mulheres cristas"]
+Paragrafo L0: "... livros para mulheres cristas representam mais de 40% do nosso catalogo ..."
+URL destino: /categoria-produto/livros/mulheres/
+
+Resposta CORRETA:
+{{"paragrafo_idx": 0, "trecho_original": "livros para mulheres cristas representam",
+  "anchor_text": "livros para mulheres cristas",
+  "palavra_chave_destino": "livros para mulheres cristas",
+  "justificativa": "Trecho contem ancora preferida literal."}}
+
+Resposta INCORRETA (truncou ancora preferida):
+{{"anchor_text": "livros", "palavra_chave_destino": "livros", ...}}
+"""
+
+    objetivo_block = ""
+    if objetivo_linkagem:
+        objetivo_block = f"""
+OBJETIVO ESTRATEGICO DA LINKAGEM:
+{objetivo_linkagem}
+
+Use esse objetivo como filtro de qualidade: prefira ancoras e trechos
+alinhados a essa intencao. Se o objetivo mencionar "conversao" ou
+"categoria de produto", priorize ancoras com substantivos especificos
+do nicho comercial (nao termos vagos como "tema" ou "papel").
 """
 
     return f"""Você é um especialista em SEO. Recebe parágrafos candidatos e UMA URL de destino.
@@ -441,7 +567,7 @@ URL DESTINO:
 - Título: {candidato.get('titulo', '')}
 - Palavras-chave do destino: {kws_str}
 - Resumo: {candidato.get('resumo', '')[:200]}
-{ancoras_block}
+{objetivo_block}{ancoras_block}
 PARÁGRAFOS DISPONÍVEIS:
 {blocos}
 
@@ -544,6 +670,16 @@ async def _validar_palavra_chave_destino(
     if kw_norm in _STOPWORDS_GENERICAS:
         return f"Termo '{kw_raw}' é muito genérico para servir de âncora específica."
 
+    if ancoras_preferidas:
+        anchor = (parsed.get("anchor_text") or "").strip()
+        trecho = (parsed.get("trecho_original") or "").strip()
+        if (
+            _ancora_preferida_match(kw_raw, ancoras_preferidas)
+            or _ancora_preferida_match(anchor, ancoras_preferidas)
+            or _ancora_preferida_match(trecho, ancoras_preferidas)
+        ):
+            return None
+
     titulo = candidato.get("titulo", "") or ""
     resumo = candidato.get("resumo", "") or ""
     palavras_chave = candidato.get("palavras_chave", []) or []
@@ -565,9 +701,6 @@ async def _validar_palavra_chave_destino(
             f"Termo '{kw_raw}' não está nas palavras-chave do destino. "
             f"Inseridor deveria escolher um da lista: {amostra}."
         )
-
-    if ancoras_preferidas and _ancora_preferida_match(kw_raw, ancoras_preferidas):
-        return None
 
     termos_validos = _termos_validos_destino(candidato, kw_raw)
     if not termos_validos:
@@ -643,6 +776,27 @@ def _aplicar_insercoes(
             sugestoes.append({**ins, "motivo_sugestao": ins.get("motivo_sugestao")})
             continue
 
+        if ins.get("_modo_cta"):
+            cta_p_idx = ins.get("paragrafo_idx", -1)
+            if cta_p_idx < 0 or cta_p_idx >= len(paragrafos):
+                continue
+            ancora_cta = ins.get("_ancora_cta", "")
+            cta_md = f"\n\n> Leia também: [{ancora_cta}]({ins['url_destino']})"
+            global_offset = sum(len(p) + 2 for p in paragrafos[:cta_p_idx + 1]) - 2
+            validas.append({
+                "url": ins["url_destino"],
+                "paragrafo_idx": cta_p_idx,
+                "global_offset": global_offset,
+                "trecho_original": "",
+                "anchor_text": ancora_cta,
+                "conector_antes": cta_md,
+                "conector_depois": "",
+                "justificativa": ins.get("justificativa", ""),
+                "candidato": c,
+                "_modo_cta": True,
+            })
+            continue
+
         p_idx = ins.get("paragrafo_idx", -1)
         if p_idx < 0 or p_idx >= len(paragrafos):
             continue
@@ -672,6 +826,27 @@ def _aplicar_insercoes(
                 continue
             p_idx, local_offset = fallback
             paragrafo = paragrafos[p_idx]
+
+        url_existente = _link_existente_em(paragrafo, local_offset)
+        if url_existente:
+            from app.core.scraper import _normalizar_url
+            url_alvo_norm = _normalizar_url(url)
+            url_existente_norm = _normalizar_url(url_existente)
+            if url_alvo_norm == url_existente_norm:
+                sugestoes.append({
+                    **ins,
+                    "motivo_sugestao": "Trecho ja e link para a URL alvo. Nenhuma acao necessaria.",
+                })
+                continue
+            else:
+                sugestoes.append({
+                    **ins,
+                    "motivo_sugestao": (
+                        f"Trecho '{trecho_original[:50]}' já é link para outra URL ({url_existente[:60]}). "
+                        f"Avalie manualmente se substituir traz ganho estratégico."
+                    ),
+                })
+                continue
 
         conector_antes = _truncate_conector(ins.get("conector_antes", "")).strip()
         conector_depois = _truncate_conector(ins.get("conector_depois", "")).strip()
@@ -719,6 +894,13 @@ def _aplicar_insercoes(
     texto = pilar_markdown
 
     for v in validas:
+        if v.get("_modo_cta"):
+            offset = v["global_offset"]
+            ca = v["conector_antes"]
+            texto = texto[:offset] + ca + texto[offset:]
+            v["link_md_len"] = len(ca)
+            continue
+
         offset = v["global_offset"]
         trecho_len = len(v["trecho_original"])
 

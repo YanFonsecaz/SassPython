@@ -127,6 +127,8 @@ export interface DistribuirInlinksRequest {
   max_inlinks_por_candidata?: number;
   rel_attr?: string;
   ancoras_preferidas?: string[];
+  objetivo_linkagem?: string;
+  permitir_cta_fallback?: boolean;
 }
 
 export interface CustoDistribuirInlinksResponse {

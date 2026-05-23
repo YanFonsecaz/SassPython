@@ -49,6 +49,8 @@ export function FormularioDistribuirInlinks() {
   const [relAttr, setRelAttr] = useState("noopener");
   const [ancorasPreferidas, setAncorasPreferidas] = useState<string[]>([]);
   const [novaAncora, setNovaAncora] = useState("");
+  const [objetivoLinkagem, setObjetivoLinkagem] = useState("");
+  const [permitirCtaFallback, setPermitirCtaFallback] = useState(true);
   const [custoEstimado, setCustoEstimado] = useState<CustoDistribuirInlinksResponse | null>(null);
 
   useEffect(() => {
@@ -173,6 +175,8 @@ export function FormularioDistribuirInlinks() {
         threshold_score: thresholdScore,
         rel_attr: relAttr,
         ancoras_preferidas: ancorasPreferidas,
+        objetivo_linkagem: objetivoLinkagem.trim() || undefined,
+        permitir_cta_fallback: permitirCtaFallback,
       };
 
       const resultado = await api.post<ExecucaoCriada>(
@@ -246,7 +250,7 @@ export function FormularioDistribuirInlinks() {
         {step === 0 && (
           <div className="space-y-5 animate-fade-in">
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              URL que vai receber os links internos
+              URL alvo a ser linkada nas paginas satelites
             </p>
             <div className="space-y-2">
               <Label htmlFor="url-alvo" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -314,6 +318,26 @@ export function FormularioDistribuirInlinks() {
               <p className="text-xs text-muted-foreground">
                 Se nenhuma ancora preferida couber naturalmente no texto, a ferramenta escolhe sozinha.
               </p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="objetivo" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Objetivo da linkagem (opcional)
+                </Label>
+                <span title="Direcionamento estrategico que a ferramenta usa para escolher ancoras alinhadas ao seu objetivo. Ex.: 'foco em conversao para categoria de produto', 'fortalecimento semantico'.">
+                  <InfoIcon className="size-3 text-muted-foreground/60" />
+                </span>
+              </div>
+              <Textarea
+                id="objetivo"
+                placeholder="ex.: foco em conversao para categoria de produto"
+                maxLength={300}
+                value={objetivoLinkagem}
+                onChange={(e) => { setObjetivoLinkagem(e.target.value); }}
+                disabled={enviando}
+                rows={2}
+              />
             </div>
           </div>
         )}
@@ -487,6 +511,20 @@ export function FormularioDistribuirInlinks() {
                 </select>
               </div>
             </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="permitir-cta"
+                checked={permitirCtaFallback}
+                onChange={(e) => setPermitirCtaFallback(e.target.checked)}
+                disabled={enviando}
+                className="size-4 rounded border-input accent-brand"
+              />
+              <Label htmlFor="permitir-cta" className="text-xs text-muted-foreground cursor-pointer">
+                Permitir CTA &quot;Leia tambem&quot; quando ancora nao cabe naturalmente
+              </Label>
+            </div>
           </div>
         )}
 
@@ -504,6 +542,8 @@ export function FormularioDistribuirInlinks() {
                   ["Ancoras preferidas", ancorasPreferidas.length
                     ? ancorasPreferidas.join(", ")
                     : "—"],
+                  ["Objetivo", objetivoLinkagem.trim() || "—"],
+                  ["CTA fallback", permitirCtaFallback ? "ativo" : "desligado"],
                 ].map(([label, value]) => (
                   <div key={label} className="flex justify-between gap-4">
                     <span className="text-muted-foreground shrink-0">{label}</span>

@@ -8,6 +8,18 @@ class DistribuirInlinksRequest(BaseModel):
     max_inlinks_por_candidata: int = Field(default=1, ge=1, le=3)
     rel_attr: str = Field(default="noopener")
     ancoras_preferidas: list[str] = Field(default_factory=list, max_length=10)
+    permitir_cta_fallback: bool = Field(default=True)
+    objetivo_linkagem: str | None = Field(default=None, max_length=300)
+
+    @field_validator("objetivo_linkagem")
+    @classmethod
+    def validar_objetivo(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        s = v.strip()
+        if not s:
+            return None
+        return s
 
     @field_validator("ancoras_preferidas")
     @classmethod

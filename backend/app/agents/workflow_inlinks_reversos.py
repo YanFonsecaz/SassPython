@@ -239,6 +239,8 @@ class EstadoDistribuir(TypedDict):
     max_inlinks_por_candidata: int
     rel_attr: str
     ancoras_preferidas: list[str]
+    permitir_cta_fallback: bool
+    objetivo_linkagem: str | None
 
     alvo_resultado: dict[str, Any]
     alvo_modo: str
@@ -758,6 +760,8 @@ async def node_inserir_em_cada(estado: EstadoDistribuir) -> dict[str, Any]:
     estado.get("rel_attr", "noopener")
     threshold = estado.get("threshold_score", 0.6)
     ancoras_pref: list[str] = estado.get("ancoras_preferidas", [])
+    permitir_cta: bool = estado.get("permitir_cta_fallback", True)
+    objetivo_link: str | None = estado.get("objetivo_linkagem")
 
     resultados: list[dict[str, Any]] = []
 
@@ -829,6 +833,8 @@ async def node_inserir_em_cada(estado: EstadoDistribuir) -> dict[str, Any]:
                 markdown_modificado, inseridos = await inserir_inlinks(
                     conteudo_md, [candidato_alvo], uid, max_inlinks=max_inlinks,
                     ancoras_preferidas=ancoras_pref or None,
+                    permitir_cta_fallback=permitir_cta,
+                    objetivo_linkagem=objetivo_link,
                 )
             except Exception as e:
                 logger.error("%s inserir_candidata falhou %s: %s", _log_prefix(eid), url, e)
@@ -1086,6 +1092,8 @@ async def executar_workflow_distribuir_inlinks(execucao_id: str, ctx: dict[str, 
             "max_inlinks_por_candidata": entrada.get("max_inlinks_por_candidata", 1),
             "rel_attr": entrada.get("rel_attr", "noopener"),
             "ancoras_preferidas": entrada.get("ancoras_preferidas", []),
+            "permitir_cta_fallback": entrada.get("permitir_cta_fallback", True),
+            "objetivo_linkagem": entrada.get("objetivo_linkagem"),
         }
 
         timeout = getattr(settings, "workflow_distribuir_inlinks_timeout", 1800)
