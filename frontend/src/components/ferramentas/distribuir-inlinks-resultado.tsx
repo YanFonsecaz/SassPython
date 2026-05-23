@@ -126,6 +126,11 @@ function CandidataAccordion({ candidata, urlAlvo }: { candidata: CandidataResult
               <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 <MapPinIcon className="size-3" />
                 Ancora: &ldquo;{candidata.anchor_text}&rdquo;
+                {candidata.ancora_preferida_usada && (
+                  <Badge className="bg-success/10 text-success border-success/30">
+                    Ancora preferida
+                  </Badge>
+                )}
                 {candidata.paragrafo_idx != null && (
                   <span className="font-normal normal-case tracking-normal">
                     {" "}· paragrafo {candidata.paragrafo_idx + 1}

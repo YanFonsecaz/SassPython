@@ -238,6 +238,7 @@ class EstadoDistribuir(TypedDict):
     threshold_score: float
     max_inlinks_por_candidata: int
     rel_attr: str
+    ancoras_preferidas: list[str]
 
     alvo_resultado: dict[str, Any]
     alvo_modo: str
@@ -756,6 +757,7 @@ async def node_inserir_em_cada(estado: EstadoDistribuir) -> dict[str, Any]:
     max_inlinks = estado.get("max_inlinks_por_candidata", 1)
     estado.get("rel_attr", "noopener")
     threshold = estado.get("threshold_score", 0.6)
+    ancoras_pref: list[str] = estado.get("ancoras_preferidas", [])
 
     resultados: list[dict[str, Any]] = []
 
@@ -825,7 +827,8 @@ async def node_inserir_em_cada(estado: EstadoDistribuir) -> dict[str, Any]:
         async with semaforo:
             try:
                 markdown_modificado, inseridos = await inserir_inlinks(
-                    conteudo_md, [candidato_alvo], uid, max_inlinks=max_inlinks
+                    conteudo_md, [candidato_alvo], uid, max_inlinks=max_inlinks,
+                    ancoras_preferidas=ancoras_pref or None,
                 )
             except Exception as e:
                 logger.error("%s inserir_candidata falhou %s: %s", _log_prefix(eid), url, e)
@@ -876,6 +879,7 @@ async def node_inserir_em_cada(estado: EstadoDistribuir) -> dict[str, Any]:
                 "motivo_rejeicao": il.motivo_rejeicao,
                 "trecho_contexto": il.trecho_contexto,
                 "categoria_match": il.categoria_match,
+                "ancora_preferida_usada": il.ancora_preferida_usada,
             })
 
     tasks = [_inserir_candidata(i, c) for i, c in enumerate(candidatas_viaveis)]
@@ -992,6 +996,7 @@ async def node_persistir(estado: EstadoDistribuir) -> dict[str, Any]:
                 "markdown_modificado": c.get("markdown_modificado"),
                 "trecho_contexto": c.get("trecho_contexto"),
                 "categoria_match": c.get("categoria_match"),
+                "ancora_preferida_usada": c.get("ancora_preferida_usada"),
             }
             for c in candidatas
         ],
@@ -1080,6 +1085,7 @@ async def executar_workflow_distribuir_inlinks(execucao_id: str, ctx: dict[str, 
             "threshold_score": entrada.get("threshold_score", 0.6),
             "max_inlinks_por_candidata": entrada.get("max_inlinks_por_candidata", 1),
             "rel_attr": entrada.get("rel_attr", "noopener"),
+            "ancoras_preferidas": entrada.get("ancoras_preferidas", []),
         }
 
         timeout = getattr(settings, "workflow_distribuir_inlinks_timeout", 1800)

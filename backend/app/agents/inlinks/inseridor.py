@@ -108,6 +108,7 @@ class InlinkInserido:
     trecho_original: str | None = None
     conector_antes: str | None = None
     conector_depois: str | None = None
+    ancora_preferida_usada: bool = False
 
 
 async def inserir_inlinks(
@@ -115,6 +116,7 @@ async def inserir_inlinks(
     candidatos: list[dict[str, Any]],
     usuario_id: str,
     max_inlinks: int = 8,
+    ancoras_preferidas: list[str] | None = None,
 ) -> tuple[str, list[InlinkInserido]]:
     if not pilar_markdown.strip() or not candidatos:
         return pilar_markdown, []
@@ -138,6 +140,7 @@ async def inserir_inlinks(
             c,
             paragrafos_embeddings,
             usuario_id,
+            ancoras_preferidas=ancoras_preferidas,
         )
         if not contexto_paragrafos:
             logger.info("Inseridor: candidato %s sem parágrafos elegíveis", c.get("url"))
@@ -145,7 +148,8 @@ async def inserir_inlinks(
             continue
 
         proposta = await _propor_insercao_para_candidato(
-            c, contexto_paragrafos, usuario_id
+            c, contexto_paragrafos, usuario_id,
+            ancoras_preferidas=ancoras_preferidas,
         )
         if not proposta:
             propostas_por_candidato.append((c, None))
@@ -212,6 +216,7 @@ async def inserir_inlinks(
     return _aplicar_insercoes(
         pilar_markdown, paragrafos, candidatos_top, todas_insercoes,
         min_distance_words=min_dist,
+        ancoras_preferidas=ancoras_preferidas,
     )
 
 
@@ -270,12 +275,34 @@ def _keyword_boost(paragrafo: str, termos: list[str]) -> float:
     return min(0.25, 0.08 * matches)
 
 
+def _ancora_preferida_match(texto: str, ancoras: list[str]) -> str | None:
+    if not texto or not ancoras:
+        return None
+    texto_norm = _strip_accents(texto.lower())
+    for ancora in ancoras:
+        ancora_norm = _strip_accents(ancora.lower())
+        if ancora_norm in texto_norm:
+            return ancora
+        palavras = ancora_norm.split()
+        if len(palavras) > 1:
+            if all(p in texto_norm for p in palavras):
+                return ancora
+    return None
+
+
+def _ancora_preferida_boost(paragrafo: str, ancoras: list[str]) -> float:
+    if not ancoras or not paragrafo:
+        return 0.0
+    return 0.30 if _ancora_preferida_match(paragrafo, ancoras) else 0.0
+
+
 async def _selecionar_paragrafos_relevantes(
     paragrafos: list[str],
     candidato: dict[str, Any],
     paragrafos_embeddings: list[Any],
     usuario_id: str,
     top_n: int = _TOP_N_PARAGRAFOS,
+    ancoras_preferidas: list[str] | None = None,
 ) -> list[tuple[int, str]]:
     consulta = _texto_destino(candidato)[:1500]
     emb_consulta_lst = await gerar_embeddings_batch([consulta], usuario_id)
@@ -296,7 +323,8 @@ async def _selecionar_paragrafos_relevantes(
             continue
         cosine = cosine_seguro(emb_consulta, emb_p)
         boost = _keyword_boost(p, termos_kw)
-        scored.append((i, p, float(cosine) + boost, boost))
+        ap_boost = _ancora_preferida_boost(p, ancoras_preferidas) if ancoras_preferidas else 0.0
+        scored.append((i, p, float(cosine) + boost + ap_boost, boost))
 
     scored.sort(key=lambda x: x[2], reverse=True)
     n_kw_match = sum(1 for _, _, _, b in scored[:top_n] if b > 0)
@@ -312,9 +340,10 @@ async def _propor_insercao_para_candidato(
     candidato: dict[str, Any],
     contexto_paragrafos: list[tuple[int, str]],
     usuario_id: str,
+    ancoras_preferidas: list[str] | None = None,
 ) -> dict[str, Any] | None:
     agente = _InseridorAgent(usuario_id)
-    prompt = _build_prompt_focado(candidato, contexto_paragrafos)
+    prompt = _build_prompt_focado(candidato, contexto_paragrafos, ancoras_preferidas=ancoras_preferidas)
     logger.info(
         "Inseridor: prompt para %s (%d chars, %d parágrafos)\n%s\n---END PROMPT---",
         candidato.get("url", "?"),
@@ -367,7 +396,7 @@ async def _propor_insercao_para_candidato(
     parsed["paragrafo_idx"] = idx_global
     parsed["url_destino"] = candidato["url"]
 
-    motivo_kw = await _validar_palavra_chave_destino(parsed, candidato, paragrafo_completo, usuario_id)
+    motivo_kw = await _validar_palavra_chave_destino(parsed, candidato, paragrafo_completo, usuario_id, ancoras_preferidas=ancoras_preferidas)
     if motivo_kw:
         logger.info(
             "Inseridor: palavra_chave_destino falhou para %s: %s",
@@ -380,7 +409,9 @@ async def _propor_insercao_para_candidato(
 
 
 def _build_prompt_focado(
-    candidato: dict[str, Any], contexto: list[tuple[int, str]]
+    candidato: dict[str, Any],
+    contexto: list[tuple[int, str]],
+    ancoras_preferidas: list[str] | None = None,
 ) -> str:
     blocos = ""
     for local_idx, (_, texto) in enumerate(contexto):
@@ -392,6 +423,16 @@ def _build_prompt_focado(
     else:
         kws_str = str(palavras_destino)
 
+    ancoras_block = ""
+    if ancoras_preferidas:
+        linhas = "\n".join(f'- "{a}"' for a in ancoras_preferidas)
+        ancoras_block = f"""
+ANCORAS PREFERIDAS (use uma destas quando o paragrafo permitir naturalmente):
+{linhas}
+
+REGRA: se algum paragrafo contém uma destas âncoras (literal ou flexionada), USE-A como `anchor_text`. Mantenha `trecho_original` copiado literalmente do parágrafo. Se NENHUM parágrafo contém variação de uma âncora preferida, escolha normalmente das palavras-chave do destino.
+"""
+
     return f"""Você é um especialista em SEO. Recebe parágrafos candidatos e UMA URL de destino.
 Sua tarefa: escolher UM parágrafo e UM trecho contínuo desse parágrafo para virar âncora do link.
 
@@ -400,7 +441,7 @@ URL DESTINO:
 - Título: {candidato.get('titulo', '')}
 - Palavras-chave do destino: {kws_str}
 - Resumo: {candidato.get('resumo', '')[:200]}
-
+{ancoras_block}
 PARÁGRAFOS DISPONÍVEIS:
 {blocos}
 
@@ -493,6 +534,7 @@ async def _validar_palavra_chave_destino(
     candidato: dict[str, Any],
     paragrafo_completo: str,
     usuario_id: str,
+    ancoras_preferidas: list[str] | None = None,
 ) -> str | None:
     kw_raw = (parsed.get("palavra_chave_destino") or "").strip()
     if not kw_raw or len(kw_raw) < 2:
@@ -523,6 +565,9 @@ async def _validar_palavra_chave_destino(
             f"Termo '{kw_raw}' não está nas palavras-chave do destino. "
             f"Inseridor deveria escolher um da lista: {amostra}."
         )
+
+    if ancoras_preferidas and _ancora_preferida_match(kw_raw, ancoras_preferidas):
+        return None
 
     termos_validos = _termos_validos_destino(candidato, kw_raw)
     if not termos_validos:
@@ -580,6 +625,7 @@ def _aplicar_insercoes(
     candidatos: list[dict[str, Any]],
     insercoes_raw: list[dict[str, Any]],
     min_distance_words: int = _MIN_DISTANCE_WORDS_BASE,
+    ancoras_preferidas: list[str] | None = None,
 ) -> tuple[str, list[InlinkInserido]]:
     candidatos_by_url = {c.get("url"): c for c in candidatos}
 
@@ -710,6 +756,10 @@ def _aplicar_insercoes(
             trecho_original=v["trecho_original"],
             conector_antes=v["conector_antes"] or None,
             conector_depois=v["conector_depois"] or None,
+            ancora_preferida_usada=bool(
+                ancoras_preferidas
+                and _ancora_preferida_match(v["anchor_text"], ancoras_preferidas)
+            ),
         ))
 
     for s in sugestoes:

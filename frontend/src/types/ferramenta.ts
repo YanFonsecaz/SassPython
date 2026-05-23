@@ -126,6 +126,7 @@ export interface DistribuirInlinksRequest {
   threshold_score?: number;
   max_inlinks_por_candidata?: number;
   rel_attr?: string;
+  ancoras_preferidas?: string[];
 }
 
 export interface CustoDistribuirInlinksResponse {
@@ -151,6 +152,7 @@ export interface CandidataResultado {
   motivo?: string | null;
   trecho_contexto?: string | null;
   categoria_match?: string | null;
+  ancora_preferida_usada?: boolean | null;
 }
 
 export interface ResultadoDistribuirInlinks {

@@ -7,6 +7,25 @@ class DistribuirInlinksRequest(BaseModel):
     threshold_score: float = Field(default=0.6, ge=0.0, le=1.0)
     max_inlinks_por_candidata: int = Field(default=1, ge=1, le=3)
     rel_attr: str = Field(default="noopener")
+    ancoras_preferidas: list[str] = Field(default_factory=list, max_length=10)
+
+    @field_validator("ancoras_preferidas")
+    @classmethod
+    def validar_ancoras(cls, v: list[str]) -> list[str]:
+        normalizadas: list[str] = []
+        vistos: set[str] = set()
+        for raw in v:
+            s = (raw or "").strip()
+            if not s:
+                continue
+            if len(s) < 2 or len(s) > 50:
+                raise ValueError("Cada ancora deve ter entre 2 e 50 caracteres")
+            chave = s.lower()
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            normalizadas.append(s)
+        return normalizadas
 
     @field_validator("url_alvo")
     @classmethod

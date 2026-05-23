@@ -17,7 +17,9 @@ import {
   ClipboardPasteIcon,
   SettingsIcon,
   InfoIcon,
+  XIcon,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import type {
   DistribuirInlinksRequest,
   ExecucaoCriada,
@@ -45,6 +47,8 @@ export function FormularioDistribuirInlinks() {
   const [maxInlinksPorCandidata, setMaxInlinksPorCandidata] = useState(1);
   const [thresholdScore, setThresholdScore] = useState(0.6);
   const [relAttr, setRelAttr] = useState("noopener");
+  const [ancorasPreferidas, setAncorasPreferidas] = useState<string[]>([]);
+  const [novaAncora, setNovaAncora] = useState("");
   const [custoEstimado, setCustoEstimado] = useState<CustoDistribuirInlinksResponse | null>(null);
 
   useEffect(() => {
@@ -134,6 +138,29 @@ export function FormularioDistribuirInlinks() {
     setCandidatasUrls((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function addAncora() {
+    const a = novaAncora.trim();
+    if (!a || a.length < 2 || a.length > 50) {
+      setErro("Ancora deve ter entre 2 e 50 caracteres");
+      return;
+    }
+    if (ancorasPreferidas.some((x) => x.toLowerCase() === a.toLowerCase())) {
+      setErro("Ancora ja adicionada");
+      return;
+    }
+    if (ancorasPreferidas.length >= 10) {
+      setErro("Maximo 10 ancoras preferidas");
+      return;
+    }
+    setAncorasPreferidas((prev) => [...prev, a]);
+    setNovaAncora("");
+    setErro("");
+  }
+
+  function removeAncora(idx: number) {
+    setAncorasPreferidas((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   async function handleSubmit() {
     setErro("");
     setEnviando(true);
@@ -145,6 +172,7 @@ export function FormularioDistribuirInlinks() {
         max_inlinks_por_candidata: maxInlinksPorCandidata,
         threshold_score: thresholdScore,
         rel_attr: relAttr,
+        ancoras_preferidas: ancorasPreferidas,
       };
 
       const resultado = await api.post<ExecucaoCriada>(
@@ -232,6 +260,60 @@ export function FormularioDistribuirInlinks() {
                 onChange={(e) => { setUrlAlvo(e.target.value); setErro(""); }}
                 disabled={enviando}
               />
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="ancora" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Ancoras preferidas (opcional)
+                </Label>
+                <span title="Termos que voce quer ver como ancora dos links. A ferramenta usa quando o paragrafo permite naturalmente; se nao couber, cai pro comportamento padrao. Maximo 10.">
+                  <InfoIcon className="size-3 text-muted-foreground/60" />
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  id="ancora"
+                  placeholder="ex.: reposicao de calcio"
+                  maxLength={50}
+                  value={novaAncora}
+                  onChange={(e) => { setNovaAncora(e.target.value); setErro(""); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAncora(); } }}
+                  disabled={enviando}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addAncora}
+                  disabled={enviando || !novaAncora.trim()}
+                >
+                  Adicionar
+                </Button>
+              </div>
+              {ancorasPreferidas.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {ancorasPreferidas.map((a, i) => (
+                    <Badge
+                      key={`${a}-${i}`}
+                      className="bg-brand/10 text-brand-dark border border-brand/30 gap-1.5"
+                    >
+                      {a}
+                      <button
+                        type="button"
+                        onClick={() => removeAncora(i)}
+                        className="hover:text-destructive"
+                        disabled={enviando}
+                        aria-label={`Remover ${a}`}
+                      >
+                        <XIcon className="size-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Se nenhuma ancora preferida couber naturalmente no texto, a ferramenta escolhe sozinha.
+              </p>
             </div>
           </div>
         )}
@@ -419,6 +501,9 @@ export function FormularioDistribuirInlinks() {
                   ["Links por candidata", String(maxInlinksPorCandidata)],
                   ["Score minimo", String(thresholdScore)],
                   ["Rel", relAttr],
+                  ["Ancoras preferidas", ancorasPreferidas.length
+                    ? ancorasPreferidas.join(", ")
+                    : "—"],
                 ].map(([label, value]) => (
                   <div key={label} className="flex justify-between gap-4">
                     <span className="text-muted-foreground shrink-0">{label}</span>
