@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -34,6 +34,7 @@ function labelFerramenta(f: string): string {
     case "gerar_artigo": return "Gerar artigo";
     case "inlinks_automaticos": return "Inlinks automaticos";
     case "distribuir_inlinks": return "Distribuir inlinks";
+    case "core_web_vitals": return "Core Web Vitals";
     default: return f;
   }
 }
@@ -42,6 +43,7 @@ function mensagemSucessoFerramenta(f: string): string {
   switch (f) {
     case "distribuir_inlinks": return "Distribuicao concluida com sucesso";
     case "inlinks_automaticos": return "Inlinks aplicados com sucesso";
+    case "core_web_vitals": return "Analise CWV concluida com sucesso";
     default: return "Artigo concluido com sucesso";
   }
 }
@@ -94,6 +96,7 @@ function SkeletonCarregando() {
 
 export function ExecucaoDetalheConteudo() {
   const pathname = usePathname();
+  const router = useRouter();
   const id = pathname.split("/").pop() || "";
 
   const {
@@ -145,6 +148,17 @@ export function ExecucaoDetalheConteudo() {
     }
     loadDetalhe();
   }, [id, execucao?.status]);
+
+  // CWV: o resultado é renderizado no dashboard dedicado /core-web-vitals/url/{analise_id}.
+  // Redireciona automaticamente quando análise está pronta.
+  useEffect(() => {
+    if (execucao?.ferramenta !== "core_web_vitals") return;
+    if (execucao.status !== "concluida" && execucao.status !== "falhou") return;
+    const analiseIds = (detalhe?.resultado_json?.analise_ids ?? []) as string[];
+    if (analiseIds.length > 0) {
+      router.replace(`/ferramentas/core-web-vitals/url/${analiseIds[0]}`);
+    }
+  }, [execucao?.ferramenta, execucao?.status, detalhe?.resultado_json, router]);
 
   async function handleAprovar() {
     setEnviando(true);
@@ -271,10 +285,17 @@ export function ExecucaoDetalheConteudo() {
         </div>
       )}
 
-      {execucao.status === "concluida" && (
+      {execucao.status === "concluida" && execucao.ferramenta !== "core_web_vitals" && (
         <div className="rounded-xl border border-success/30 bg-success/5 px-4 py-3 flex items-center gap-2.5">
           <CircleCheckIcon className="size-5 text-success" />
           <p className="text-sm font-medium text-success">{mensagemSucessoFerramenta(execucao.ferramenta)}</p>
+        </div>
+      )}
+
+      {execucao.status === "concluida" && execucao.ferramenta === "core_web_vitals" && (
+        <div className="rounded-xl border bg-muted/30 p-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+          <span className="animate-spin inline-block size-4 border-2 border-current border-t-transparent rounded-full" />
+          Abrindo dashboard CWV...
         </div>
       )}
 
