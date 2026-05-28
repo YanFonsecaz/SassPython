@@ -40,6 +40,7 @@ async def test_liberar_reserva_clamps_negative():
     from app.services.credito_service import liberar_reserva
 
     mock_db = MagicMock()
+    mock_db.flush = AsyncMock()
 
     mock_conta = MagicMock()
     mock_conta.saldo_reservado = 2

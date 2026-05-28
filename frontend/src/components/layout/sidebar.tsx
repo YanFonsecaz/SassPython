@@ -17,6 +17,7 @@ import {
   MenuIcon,
   XIcon,
   SparklesIcon,
+  GaugeIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/ferramentas", label: "Dashboard", icon: LayoutDashboardIcon },
   { href: "/ferramentas/gerar-artigo", label: "Gerar Artigo", icon: PenToolIcon },
   { href: "/ferramentas/inlinks", label: "Inlinks", icon: Link2Icon },
+  { href: "/ferramentas/core-web-vitals", label: "Core Web Vitals", icon: GaugeIcon },
   { href: "/ferramentas/historico", label: "Histórico", icon: ClockIcon },
   { href: "/clientes", label: "Clientes", icon: UsersIcon },
   { href: "/creditos", label: "Créditos", icon: CreditCardIcon },

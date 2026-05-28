@@ -84,7 +84,6 @@ def test_setup_logging():
 
 def test_get_client_ip_v4():
     from starlette.requests import Request
-    from starlette.types import ASGIReceive, Scope
 
     scope = {
         "type": "http",

@@ -24,6 +24,10 @@ CUSTO_BASE_DISTRIBUIR_INLINKS = 15
 CUSTO_POR_CANDIDATA_DISTRIBUIR = 1
 CUSTO_MAX_DISTRIBUIR_INLINKS = 115
 
+CUSTO_BASE_CWV = 15
+CUSTO_POR_URL_CWV = 1
+CUSTO_MAX_CWV = 50
+
 CUSTOS_TABELA = [
     {"acao": "gerar_artigo_base", "custo_creditos": CUSTO_BASE, "chamadas_llm_estimadas": 5},
     {"acao": "revisao_automatica", "custo_creditos": CUSTO_REVISAO, "chamadas_llm_estimadas": 2},
@@ -34,6 +38,8 @@ CUSTOS_TABELA = [
     {"acao": "inlinks_por_url", "custo_creditos": CUSTO_POR_URL_INLINKS, "chamadas_llm_estimadas": 0},
     {"acao": "distribuir_inlinks_base", "custo_creditos": CUSTO_BASE_DISTRIBUIR_INLINKS, "chamadas_llm_estimadas": 3},
     {"acao": "distribuir_inlinks_por_candidata", "custo_creditos": CUSTO_POR_CANDIDATA_DISTRIBUIR, "chamadas_llm_estimadas": 0},
+    {"acao": "cwv_base", "custo_creditos": CUSTO_BASE_CWV, "chamadas_llm_estimadas": 0},
+    {"acao": "cwv_por_url", "custo_creditos": CUSTO_POR_URL_CWV, "chamadas_llm_estimadas": 0},
 ]
 
 
@@ -43,6 +49,10 @@ def calcular_custo_inlinks(n_processadas: int) -> int:
 
 def calcular_custo_distribuir_inlinks(n_candidatas: int) -> int:
     return min(CUSTO_BASE_DISTRIBUIR_INLINKS + n_candidatas * CUSTO_POR_CANDIDATA_DISTRIBUIR, CUSTO_MAX_DISTRIBUIR_INLINKS)
+
+
+def calcular_custo_cwv(n_urls: int) -> int:
+    return min(CUSTO_BASE_CWV + n_urls * CUSTO_POR_URL_CWV, CUSTO_MAX_CWV)
 
 
 async def criar_execucao(
@@ -202,10 +212,12 @@ async def calcular_custo_final(execucao: ExecucaoFerramenta) -> int:
 def _obter_reserva_estimada(ferramenta: str, execucao: ExecucaoFerramenta) -> int:
     if ferramenta == "gerar_artigo":
         return CUSTO_MINIMO
-    if ferramenta == "inlinks":
+    if ferramenta in ("inlinks", "inlinks_automaticos"):
         return CUSTO_BASE_INLINKS
     if ferramenta == "distribuir_inlinks":
         return CUSTO_BASE_DISTRIBUIR_INLINKS
+    if ferramenta == "core_web_vitals":
+        return CUSTO_BASE_CWV
     return 0
 
 

@@ -1,0 +1,58 @@
+{
+  "lighthouseResult": {
+    "finalUrl": "https://nextjs-app.com/produtos/123",
+    "userAgent": "Chrome/120",
+    "categories": {
+      "performance": {"score": 0.92}
+    },
+    "audits": {
+      "largest-contentful-paint": {
+        "id": "largest-contentful-paint",
+        "title": "Largest Contentful Paint element",
+        "score": 0.9,
+        "numericValue": 1800,
+        "scoreDisplayMode": "numeric"
+      },
+      "cumulative-layout-shift": {
+        "id": "cumulative-layout-shift",
+        "title": "Cumulative Layout Shift",
+        "score": 1.0,
+        "numericValue": 0.01,
+        "scoreDisplayMode": "numeric"
+      },
+      "first-contentful-paint": {
+        "id": "first-contentful-paint",
+        "title": "First Contentful Paint",
+        "score": 1.0,
+        "numericValue": 600,
+        "scoreDisplayMode": "numeric"
+      },
+      "server-response-time": {
+        "id": "server-response-time",
+        "title": "Server Response Time",
+        "score": 1.0,
+        "numericValue": 50,
+        "scoreDisplayMode": "numeric"
+      },
+      "total-blocking-time": {
+        "id": "total-blocking-time",
+        "title": "Total Blocking Time",
+        "score": 0.95,
+        "numericValue": 80,
+        "scoreDisplayMode": "numeric"
+      },
+      "network-requests": {
+        "id": "network-requests",
+        "title": "Network Requests",
+        "score": null,
+        "scoreDisplayMode": "informative",
+        "details": {
+          "items": [
+            {"url": "https://nextjs-app.com/_next/static/chunks/main.js"}
+          ]
+        }
+      }
+    },
+    "stackPacks": [{"id": "next", "title": "Next.js"}]
+  }
+}

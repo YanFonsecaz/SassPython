@@ -8,16 +8,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.requests import Request
 from starlette.responses import FileResponse, RedirectResponse
+from starlette.staticfiles import StaticFiles as StarletteStaticFiles
+from starlette.types import Receive, Scope, Send
 
 from app.config import settings
 from app.core.middleware import CSRFMiddleware, SecurityHeadersMiddleware
 from app.routers import (
+    admin_cwv,
     auth,
     auth_mfa_dispositivos,
     billing,
     clientes,
     creditos,
     ferramentas,
+    ferramentas_cwv,
     ferramentas_inlinks,
     ferramentas_inlinks_reversos,
     health,
@@ -26,6 +30,19 @@ from app.routers import (
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "out"
 logger = logging.getLogger(__name__)
+
+
+class CachedStaticFiles(StarletteStaticFiles):
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        path = scope.get("path", "")
+        if scope["type"] == "http" and path.startswith("/_next/static/"):
+            scope = dict(scope)
+            scope["headers"] = [
+                (k, v) if k.lower() != b"cache-control"
+                else (b"cache-control", b"public, max-age=31536000, immutable")
+                for k, v in scope.get("headers", [])
+            ]
+        await super().__call__(scope, receive, send)
 
 
 @asynccontextmanager
@@ -67,17 +84,22 @@ application.include_router(clientes.router, prefix="/api/clientes", tags=["clien
 application.include_router(ferramentas.router, prefix="/api/ferramentas", tags=["ferramentas"])
 application.include_router(ferramentas_inlinks.router, prefix="/api/ferramentas", tags=["ferramentas"])
 application.include_router(ferramentas_inlinks_reversos.router, prefix="/api/ferramentas", tags=["ferramentas"])
+application.include_router(ferramentas_cwv.router, prefix="/api/ferramentas", tags=["ferramentas"])
+application.include_router(admin_cwv.router, prefix="/api", tags=["admin"])
 application.include_router(creditos.router, prefix="/api/creditos", tags=["creditos"])
 application.include_router(billing.router, prefix="/api/billing", tags=["billing"])
 application.include_router(health.router, tags=["health"])
 application.include_router(imagens.router, prefix="/api", tags=["imagens"])
 
 if FRONTEND_DIR.is_dir():
-    application.mount("/_next", StaticFiles(directory=str(FRONTEND_DIR / "_next")), name="next-static")
+    application.mount("/_next", CachedStaticFiles(directory=str(FRONTEND_DIR / "_next")), name="next-static")
 
     _DYNAMIC_SEGMENTS = [
         (re.compile(r"^ferramentas/historico/[\w-]+$"), "ferramentas/historico/placeholder.html"),
         (re.compile(r"^clientes/[\w-]+$"), "clientes/placeholder.html"),
+        (re.compile(r"^ferramentas/core-web-vitals/execucao/[\w-]+$"), "ferramentas/core-web-vitals/execucao/placeholder.html"),
+        (re.compile(r"^ferramentas/core-web-vitals/historico/[\w-]+$"), "ferramentas/core-web-vitals/historico/placeholder.html"),
+        (re.compile(r"^ferramentas/core-web-vitals/url/[\w-]+$"), "ferramentas/core-web-vitals/url/placeholder.html"),
     ]
 
     @application.api_route("/{full_path:path}", methods=["GET", "HEAD"])

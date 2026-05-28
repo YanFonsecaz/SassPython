@@ -1,0 +1,76 @@
+{
+  "lighthouseResult": {
+    "finalUrl": "https://example.com/produto/lento",
+    "userAgent": "Chrome/120 Mozilla/5.0",
+    "categories": {
+      "performance": {"score": 0.32}
+    },
+    "audits": {
+      "largest-contentful-paint": {
+        "id": "largest-contentful-paint",
+        "title": "Largest Contentful Paint element",
+        "score": 0.1,
+        "numericValue": 8200,
+        "scoreDisplayMode": "numeric",
+        "displayValue": "8.2 s",
+        "details": {
+          "items": [
+            {
+              "node": {"selector": "#hero-image > img"},
+              "url": "https://example.com/img/hero-banner.jpg"
+            }
+          ]
+        }
+      },
+      "cumulative-layout-shift": {
+        "id": "cumulative-layout-shift",
+        "title": "Cumulative Layout Shift",
+        "score": 0.3,
+        "numericValue": 0.42,
+        "scoreDisplayMode": "numeric",
+        "displayValue": "0.42"
+      },
+      "unsized-images": {
+        "id": "unsized-images",
+        "title": "Images without explicit width and height",
+        "score": 0,
+        "numericValue": 0,
+        "scoreDisplayMode": "numeric",
+        "details": {
+          "items": [
+            {"url": "https://example.com/img/no-size.png"}
+          ]
+        }
+      },
+      "total-blocking-time": {
+        "id": "total-blocking-time",
+        "title": "Total Blocking Time",
+        "score": 0.2,
+        "numericValue": 1200,
+        "scoreDisplayMode": "numeric"
+      },
+      "interaction-to-next-paint": {
+        "id": "interaction-to-next-paint",
+        "title": "Interaction to Next Paint",
+        "score": 0.15,
+        "numericValue": 650,
+        "scoreDisplayMode": "numeric"
+      },
+      "first-contentful-paint": {
+        "id": "first-contentful-paint",
+        "title": "First Contentful Paint",
+        "score": 0.5,
+        "numericValue": 3200,
+        "scoreDisplayMode": "numeric"
+      },
+      "server-response-time": {
+        "id": "server-response-time",
+        "title": "Server Response Time",
+        "score": 0.6,
+        "numericValue": 600,
+        "scoreDisplayMode": "numeric"
+      }
+    },
+    "stackPacks": []
+  }
+}

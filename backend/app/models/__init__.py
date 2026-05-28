@@ -3,6 +3,8 @@ from app.models.cliente import Cliente
 from app.models.compra import Compra
 from app.models.conta_credito import ContaCredito
 from app.models.conteudo_vetor import ConteudoVetor
+from app.models.cwv_analise import CwvAnalise
+from app.models.cwv_problema import CwvProblema
 from app.models.execucao_ferramenta import ExecucaoFerramenta
 from app.models.historico_senha import HistoricoSenha
 from app.models.mfa_dispositivo import MfaDispositivo
@@ -21,6 +23,8 @@ __all__ = [
     "Compra",
     "ContaCredito",
     "ConteudoVetor",
+    "CwvAnalise",
+    "CwvProblema",
     "ExecucaoFerramenta",
     "HistoricoSenha",
     "MfaDispositivo",

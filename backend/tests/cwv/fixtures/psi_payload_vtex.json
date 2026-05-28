@@ -1,0 +1,59 @@
+{
+  "lighthouseResult": {
+    "finalUrl": "https://loja.com/p/camiseta-123",
+    "userAgent": "Chrome/120",
+    "categories": {
+      "performance": {"score": 0.45}
+    },
+    "audits": {
+      "largest-contentful-paint": {
+        "id": "largest-contentful-paint",
+        "title": "Largest Contentful Paint element",
+        "score": 0.2,
+        "numericValue": 6100,
+        "scoreDisplayMode": "numeric"
+      },
+      "cumulative-layout-shift": {
+        "id": "cumulative-layout-shift",
+        "title": "Cumulative Layout Shift",
+        "score": 0.5,
+        "numericValue": 0.2,
+        "scoreDisplayMode": "numeric"
+      },
+      "first-contentful-paint": {
+        "id": "first-contentful-paint",
+        "title": "First Contentful Paint",
+        "score": 0.6,
+        "numericValue": 2400,
+        "scoreDisplayMode": "numeric"
+      },
+      "server-response-time": {
+        "id": "server-response-time",
+        "title": "Server Response Time",
+        "score": 0.7,
+        "numericValue": 400,
+        "scoreDisplayMode": "numeric"
+      },
+      "total-blocking-time": {
+        "id": "total-blocking-time",
+        "title": "Total Blocking Time",
+        "score": 0.5,
+        "numericValue": 600,
+        "scoreDisplayMode": "numeric"
+      },
+      "network-requests": {
+        "id": "network-requests",
+        "title": "Network Requests",
+        "score": null,
+        "scoreDisplayMode": "informative",
+        "details": {
+          "items": [
+            {"url": "https://lojax.vtexassets.com/arquivos/ids/123456/banner.jpg"},
+            {"url": "https://loja.com/vtex/storefront/app.js"}
+          ]
+        }
+      }
+    },
+    "stackPacks": []
+  }
+}

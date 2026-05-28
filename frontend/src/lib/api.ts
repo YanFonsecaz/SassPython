@@ -177,6 +177,9 @@ export const api = {
   put: <T>(caminho: string, body?: unknown, opcoes?: RequestOptions) =>
     request<T>(caminho, { ...opcoes, method: "PUT", body }),
 
+  patch: <T>(caminho: string, body?: unknown, opcoes?: RequestOptions) =>
+    request<T>(caminho, { ...opcoes, method: "PATCH", body }),
+
   delete: <T>(caminho: string, body?: unknown, opcoes?: RequestOptions) =>
     request<T>(caminho, { ...opcoes, method: "DELETE", body }),
 };

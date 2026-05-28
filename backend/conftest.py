@@ -88,8 +88,8 @@ async def auth_headers(test_user):
     )
     return {"Authorization": f"Bearer {access_token}"}
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def enable_db_access(test_db):
     """Fixture para injetar o banco de teste automaticamente"""
-    # Esta fixture é aplicada automaticamente a todos os testes que pedem test_db
+    # Removido autouse=True — testes que precisam de DB devem solicitar esta fixture
     pass

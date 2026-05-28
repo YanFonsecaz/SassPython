@@ -1,0 +1,1734 @@
+- codigo: lcp-imagem-grande
+  titulo: "Imagem do LCP muito grande"
+  severidade: 5
+  metricas_afetadas: [LCP]
+  audits_lighthouse:
+    - largest-contentful-paint-element
+    - uses-optimized-images
+    - modern-image-formats
+  descricao: |
+    O maior elemento visível na primeira dobra (LCP) está demorando para carregar porque a imagem
+    tem tamanho excessivo. Isso atrasa diretamente a métrica LCP, que mede quando o usuário vê
+    o conteúdo principal da página.
+  solucoes:
+    geral: |
+      1. **Converter para formato moderno** (WebP ou AVIF) — economia típica de 30-50% no tamanho
+      2. **Servir em tamanho responsivo** com `srcset` e `sizes`
+      3. **Adicionar `fetchpriority="high"`** na tag `<img>` do LCP
+      4. **Pré-carregar com `<link rel="preload">`** se a imagem está sempre presente
+    vtex: |
+      No VTEX IO:
+      1. Use o componente `<img-vtex>` (não `<img>` puro) — gera srcset automaticamente
+      2. Configure `width`/`height` explícitos no bloco `image` do site editor
+      3. Adicione `priority="true"` no bloco que renderiza o LCP (ex: `image#hero`)
+      4. Habilite no admin: **Loja → CMS → Configurações de Performance → Otimização de imagens**
+    wordpress: |
+      1. Instale **EWWW Image Optimizer** ou **ShortPixel** — converte para WebP automaticamente
+      2. Adicione plugin de cache (WP Rocket, LiteSpeed Cache) com lazy load desativado pra LCP
+      3. No tema, edite `header.php` para adicionar `<link rel="preload" as="image" href="...">` da imagem do banner
+      4. Se usar Elementor/Divi, marque a imagem hero como "prioridade alta" nas configurações da seção
+    nextjs: |
+      1. Substitua `<img>` por `next/image` com `priority`:
+         ```tsx
+         import Image from 'next/image'
+         <Image src="/hero.jpg" alt="..." width={1200} height={600} priority />
+         ```
+      2. Configure `next.config.js` com `images.formats: ['image/avif', 'image/webp']`
+      3. Para imagens externas, adicione domínio em `images.remotePatterns`
+    shopify: |
+      1. Use a tag Liquid `{{ image | image_url: width: 1200 | image_tag: loading: 'eager', fetchpriority: 'high' }}`
+      2. Habilite **Online Store → Themes → Settings → Image optimization**
+      3. No `theme.liquid`, adicione `<link rel="preload" as="image" href="{{ ... }}">` para a imagem hero
+  links_referencia:
+    - titulo: "web.dev — Optimize LCP"
+      url: "https://web.dev/articles/optimize-lcp"
+    - titulo: "web.dev — Modern image formats"
+      url: "https://web.dev/articles/uses-webp-images"
+
+- codigo: lcp-imagem-sem-dimensoes
+  titulo: "Imagens sem dimensões declaradas"
+  severidade: 4
+  metricas_afetadas: [LCP, CLS]
+  audits_lighthouse:
+    - unsized-images
+  descricao: |
+    Imagens estão sem os atributos `width` e `height` explícitos. O browser não consegue reservar o espaço
+    correto antes do carregamento, causando layout shifts e atrasando a renderização do LCP.
+  solucoes:
+    geral: |
+      1. Sempre declare `width` e `height` nas tags `<img>`
+      2. Use CSS `aspect-ratio` como alternativa quando as dimensões são variáveis
+      3. Para imagens responsivas, use `srcset` + `sizes` junto com `width`/`height`
+    vtex: |
+      No VTEX IO, os componentes `<img-vtex>` e blocos de imagem no site editor suportam
+      dimensões explícitas. Configure `width` e `height` nas props do componente.
+    wordpress: |
+      1. Ative "Adicionar dimensões às imagens" em **Configurações → Mídia**
+      2. Se usar Gutenberg, as dimensões são adicionadas automaticamente
+      3. Para imagens customizadas no tema, sempre inclua `width` e `height`
+    nextjs: |
+      O componente `next/image` requer `width` e `height` obrigatoriamente:
+      ```tsx
+      <Image src="/foto.jpg" alt="..." width={800} height={600} />
+      ```
+    shopify: |
+      As tags Liquid de imagem (`image_url` + `image_tag`) adicionam dimensões automaticamente
+      quando `width` é passado como parâmetro.
+
+- codigo: lcp-imagem-lazy-load
+  titulo: "Imagem do LCP com lazy load"
+  severidade: 5
+  metricas_afetadas: [LCP]
+  audits_lighthouse:
+    - lcp-lazy-loaded
+  descricao: |
+    A imagem que é o LCP da página está com lazy load ativado. Isso significa que o browser
+    não começa a baixar a imagem até que ela esteja prestes a entrar na viewport, atrasando
+    a métrica LCP em segundos.
+  solucoes:
+    geral: |
+      1. Remova `loading="lazy"` da imagem do LCP
+      2. Adicione `fetchpriority="high"` na tag `<img>` do LCP
+      3. Pré-carregue com `<link rel="preload" as="image" href="..." fetchpriority="high">`
+    vtex: |
+      No VTEX IO, verifique se o bloco de imagem hero tem `loading="eager"` e `priority="true"`.
+      Bloco `image#hero` no site editor: configure `displayMode` como `default`.
+    wordpress: |
+      1. No WP Rocket: em "Lazy Load", adicione a imagem hero na lista de exclusões
+      2. No tema, certifique-se que a primeira imagem visível NÃO tem `loading="lazy"`
+    nextjs: |
+      Use `priority` prop no `next/image` para a imagem do LCP:
+      ```tsx
+      <Image src="/hero.jpg" priority width={1200} height={600} />
+      ```
+    shopify: |
+      Use `loading: 'eager'` e `fetchpriority: 'high'` na tag Liquid da imagem hero:
+      ```liquid
+      {{ image | image_url: width: 1200 | image_tag: loading: 'eager', fetchpriority: 'high' }}
+      ```
+
+- codigo: lcp-preload-faltando
+  titulo: "Pré-carregamento de recursos críticos ausente"
+  severidade: 4
+  metricas_afetadas: [LCP, FCP]
+  audits_lighthouse:
+    - uses-rel-preload
+  descricao: |
+    Recursos essenciais para a renderização (imagens LCP, fontes, CSS crítico) não estão
+    sendo pré-carregados. O browser só descobre esses recursos ao parsear o HTML, adicionando
+    atraso desnecessário.
+  solucoes:
+    geral: |
+      1. Adicione `<link rel="preload" as="image" href="...">` para a imagem do LCP
+      2. Adicione `<link rel="preload" as="font" href="..." crossorigin>` para fontes customizadas
+      3. Adicione `<link rel="preload" as="style" href="...">` para CSS crítico
+      4. Prefira `fetchpriority="high"` em vez de preload para recursos render-blocking
+    vtex: |
+      No VTEX IO, o preload de fontes e imagens é gerenciado pelo framework.
+      Verifique se as fontes customizadas estão declaradas no tema.
+    wordpress: |
+      Adicione no `header.php` do tema:
+      ```html
+      <link rel="preload" as="image" href="<?php echo get_template_directory_uri(); ?>/images/hero.jpg">
+      <link rel="preload" as="font" href="<?php echo get_template_directory_uri(); ?>/fonts/custom.woff2" crossorigin>
+      ```
+    nextjs: |
+      No Next.js 13+, use `next/font` para fontes (preload automático) e `priority` em `next/image`.
+    shopify: |
+      Adicione no `theme.liquid` dentro do `<head>`:
+      ```liquid
+      <link rel="preload" as="font" href="{{ 'font.woff2' | asset_url }}" crossorigin>
+      ```
+
+- codigo: lcp-fonte-bloqueante
+  titulo: "Fontes bloqueando renderização"
+  severidade: 4
+  metricas_afetadas: [LCP, FCP, CLS]
+  audits_lighthouse:
+    - font-display
+    - preload-fonts
+  descricao: |
+    Fontes customizadas estão bloqueando a renderização do texto. O browser precisa baixar
+    a fonte inteira antes de exibir o texto, atrasando LCP e FCP, e causando CLS quando
+    a fonte carregada substitui o fallback.
+  solucoes:
+    geral: |
+      1. Use `font-display: swap` na declaração `@font-face`
+      2. Pré-carregue a fonte com `<link rel="preload" as="font" crossorigin>`
+      3. Use subsetting de fontes (só caracteres necessários)
+      4. Considere WOFF2 como único formato (menor tamanho)
+    vtex: |
+      No VTEX IO, fontes são gerenciadas pelo tema. Verifique se o CSS do tema
+      usa `font-display: swap` e se as fontes WOFF2 estão otimizadas.
+    wordpress: |
+      1. Se usar Google Fonts, adicione `&display=swap` no URL da fonte
+      2. No tema, verifique se `@font-face` tem `font-display: swap`
+      3. Plugins como "Optimize Fonts" podem ajudar com subsetting
+    nextjs: |
+      Use `next/font/google` ou `next/font/local` — preload e `font-display: swap` são automáticos:
+      ```tsx
+      import { Inter } from 'next/font/google'
+      const inter = Inter({ subsets: ['latin'] })
+      ```
+    shopify: |
+      As fontes do tema são gerenciadas pelo Shopify. Verifique o `theme.css`
+      para garantir `font-display: swap` nas declarações `@font-face`.
+
+- codigo: lcp-ttfb-alto
+  titulo: "Tempo de resposta do servidor (TTFB) alto"
+  severidade: 4
+  metricas_afetadas: [LCP, FCP, TTFB]
+  audits_lighthouse:
+    - server-response-time
+  descricao: |
+    O servidor está demorando muito para responder à primeira requisição. Isso atrasa todas
+    as outras métricas (LCP, FCP, INP) porque tudo começa depois do HTML inicial chegar.
+  solucoes:
+    geral: |
+      1. Use CDN na frente do servidor (Cloudflare, AWS CloudFront)
+      2. Ative cache no servidor para páginas dinâmicas
+      3. Otimize queries no banco de dados e use conexões persistidas
+      4. Considere edge computing para renderização
+    vtex: |
+      No VTEX IO, o TTFB é gerenciado pela infraestrutura da VTEX. Verifique:
+      1. Cache de borda está habilitado
+      2. Apps customizados não estão adicionando latência no render
+    wordpress: |
+      1. Use plugin de cache (WP Rocket, LiteSpeed Cache, W3 Total Cache)
+      2. Ative page caching + GZIP compression
+      3. Otimize o banco MySQL (WP-Optimize, index tuning)
+      4. Use hosting com PHP 8.x e HTTP/2
+    nextjs: |
+      1. Use ISR (Incremental Static Regeneration) para páginas dinâmicas
+      2. Habilite `output: 'standalone'` e deploy em edge
+      3. Otimize `getServerSideProps` para usar cache
+    shopify: |
+      O Shopify gerencia TTFB automaticamente. Verifique:
+      1. Apps de terceiros que possam estar adicionando render-blocking
+      2. Use Shopify CDN (já habilitado por padrão)
+
+- codigo: lcp-script-no-head
+  titulo: "Scripts bloqueando renderização no <head>"
+  severidade: 4
+  metricas_afetadas: [LCP, FCP, INP]
+  audits_lighthouse:
+    - render-blocking-resources
+  descricao: |
+    Scripts externos (analytics, chat widgets, A/B testing) no `<head>` da página estão
+    bloqueando a renderização. O parser HTML para ao encontrar um `<script>` sem `async`
+    ou `defer`, atrasando LCP e FCP.
+  solucoes:
+    geral: |
+      1. Mova scripts para o final do `<body>` ou adicione `defer`
+      2. Use `async` para scripts que não dependem do DOM
+      3. Inline scripts críticos menores que 1KB
+      4. Considere usar Partytown para scripts de terceiros
+    vtex: |
+      No VTEX IO, scripts de apps são injetados pelo framework. Revise os apps
+      instalados e remova os que não são essenciais.
+    wordpress: |
+      1. No WP Rocket: ative "Delay JavaScript Execution"
+      2. Mova scripts do Google Analytics/Tag Manager para usar `async`
+      3. Use plugin "Async JavaScript" para adicionar `defer` automaticamente
+    nextjs: |
+      Use `next/script` com `strategy="lazyOnload"` para scripts de terceiros:
+      ```tsx
+      <Script src="https://analytics.js" strategy="lazyOnload" />
+      ```
+    shopify: |
+      1. Use o `content_for_header` nativo (já otimizado)
+      2. Carregue scripts de terceiros com `defer`
+      3. Revise apps instalados e remova os desnecessários
+
+- codigo: lcp-css-bloqueante
+  titulo: "CSS não utilizado bloqueando renderização"
+  severidade: 3
+  metricas_afetadas: [LCP, FCP]
+  audits_lighthouse:
+    - unminified-css
+    - unused-css-rules
+  descricao: |
+    Arquivos CSS contêm regras não utilizadas na página atual, aumentando o tamanho
+    do download e o tempo de parseamento CSS, atrasando a primeira renderização.
+  solucoes:
+    geral: |
+      1. Use PurgeCSS ou ferramenta similar para remover CSS não utilizado
+      2. Minifique CSS em produção
+      3. Considere CSS Modules ou CSS-in-JS para escopo automático
+      4. Separe CSS crítico (inline) do CSS restante (carregamento lazy)
+    vtex: |
+      O VTEX IO faz tree-shaking de CSS automaticamente. Verifique se estilos
+      customizados não estão inflando o bundle.
+    wordpress: |
+      1. Use Autoptimize para minificar e concatenar CSS
+      2. Ative "Optimize CSS Delivery" no WP Rocket
+      3. Remova CSS de plugins que não são utilizados
+    nextjs: |
+      O Next.js faz tree-shaking automático. Verifique imports globais
+      desnecessários e use CSS Modules ou Tailwind CSS.
+    shopify: |
+      Use ferramentas como "Theme Check" para identificar CSS não utilizado.
+      Minifique o tema com plugins de otimização.
+
+- codigo: cls-imagem-sem-dimensoes-cls
+  titulo: "Imagens causando Layout Shift (CLS)"
+  severidade: 5
+  metricas_afetadas: [CLS]
+  audits_lighthouse:
+    - layout-shifts
+    - cumulative-layout-shift
+  descricao: |
+    Imagens sem dimensões explícitas estão causando deslocamentos de layout quando carregam.
+    O browser reserva um espaço padrão pequeno e depois redimensiona quando a imagem chega,
+    empurrando o conteúdo para baixo.
+  solucoes:
+    geral: |
+      1. Sempre declare `width` e `height` em todas as tags `<img>`
+      2. Use CSS `aspect-ratio` para manter proporção
+      3. Reserve espaço com padding-top trick para imagens responsivas
+    vtex: |
+      No VTEX IO, configure dimensões nos blocos de imagem do site editor.
+      O componente `image` aceita `width` e `height`.
+    wordpress: |
+      1. Ative "Definir dimensões da imagem" no Gutenberg
+      2. Use `add_image_size()` com tamanhos definidos
+      3. Plugins como Smush adicionam dimensões automaticamente
+    nextjs: |
+      O componente `next/image` com `width`/`height` resolve automaticamente.
+    shopify: |
+      As tags Liquid `image_tag` incluem dimensões quando `width` é especificado.
+
+- codigo: cls-fonte-web-flash
+  titulo: "Flash de texto com troca de fonte (FOUT)"
+  severidade: 4
+  metricas_afetadas: [CLS]
+  audits_lighthouse:
+    - font-display
+  descricao: |
+    Quando a fonte customizada carrega, o texto é re-renderizado com a nova fonte,
+    mudando o tamanho e o espaçamento entre caracteres e causando layout shift.
+  solucoes:
+    geral: |
+      1. Use `font-display: swap` com fallback font de tamanho similar
+      2. Use `size-adjust` no `@font-face` para igualar tamanhos
+      3. Pré-carregue fontes com `<link rel="preload">`
+    vtex: |
+      Verifique se as fontes do tema VTEX estão com `font-display: swap`
+      e se o fallback font tem tamanho próximo.
+    wordpress: |
+      1. Adicione `font-display: swap` no CSS do tema
+      2. No Google Fonts, adicione `&display=swap` no URL
+      3. Use fontes de fallback com tamanho similar
+    nextjs: |
+      `next/font` já configura `font-display: swap` automaticamente.
+    shopify: |
+      Edite o `theme.css` para adicionar `font-display: swap` nas declarações `@font-face`.
+
+- codigo: cls-ad-injetado
+  titulo: "Anúncios injetados causando Layout Shift"
+  severidade: 3
+  metricas_afetadas: [CLS]
+  audits_lighthouse:
+    - non-composited-animations
+  descricao: |
+    Anúncios (Google AdSense,taboola, etc.) são injetados dinamicamente na página e
+    causam deslocamentos de layout quando o slot é preenchido.
+  solucoes:
+    geral: |
+      1. Reserve espaço fixo para os slots de anúncios com CSS
+      2. Use o atributo `data-ad-slot` com container dimensionado
+      3. Evite anúncios acima da dobra (above the fold)
+    vtex: |
+      No VTEX IO, use componentes de anúncio que reservam espaço.
+      Configure os slots via admin e garanta dimensões fixas.
+    wordpress: |
+      1. Use plugins de ads com "sticky ads" que reservam espaço
+      2. Defina `min-height` e `min-width` no container do anúncio
+      3. Evite inserir ads no header/hero
+    nextjs: |
+      Use componentes de ad que reservam espaço com CSS:
+      ```tsx
+      <div style={{ minHeight: 250, minWidth: 300 }}>
+        <AdSlot />
+      </div>
+      ```
+    shopify: |
+      No `theme.liquid`, reserve espaço para ads com CSS fixo.
+      Use seções customizadas para posicionar ads com dimensões definidas.
+
+- codigo: cls-iframe-sem-dimensoes
+  titulo: "Iframes sem dimensões causando Layout Shift"
+  severidade: 4
+  metricas_afetadas: [CLS]
+  audits_lighthouse:
+    - layout-shift-elements
+  descricao: |
+    Iframes (embeds de vídeo, widgets, calculadoras) sem dimensões explícitas causam
+    grandes deslocamentos de layout quando carregam.
+  solucoes:
+    geral: |
+      1. Sempre declare `width` e `height` nos iframes
+      2. Use a técnica do padding-top (aspect ratio) para iframes responsivos
+      3. Considere lazy loading para iframes que não estão na primeira dobra
+    vtex: |
+      No VTEX IO, se usar iframes de vídeo, envolva-os em container
+      com aspect-ratio definido.
+    wordpress: |
+      1. Use o embed responsivo nativo do WordPress
+      2. Adicione CSS de aspect-ratio no tema para embeds
+    nextjs: |
+      Use `next/dynamic` para carregar iframes pesados lazy:
+      ```tsx
+      const VideoEmbed = dynamic(() => import('./VideoEmbed'), { ssr: false })
+      ```
+    shopify: |
+      Use CSS aspect-ratio para iframes de vídeo no tema:
+      ```css
+      .video-wrapper { aspect-ratio: 16/9; width: 100%; }
+      ```
+
+- codigo: cls-conteudo-injetado-dinamicamente
+  titulo: "Conteúdo injetado dinamicamente causando Layout Shift"
+  severidade: 4
+  metricas_afetadas: [CLS]
+  audits_lighthouse:
+    - layout-shift-elements
+  descricao: |
+    Conteúdo (banners, promoções, notificações) é injetado via JavaScript após o
+    carregamento inicial, empurrando o conteúdo existente para baixo.
+  solucoes:
+    geral: |
+      1. Reserve espaço para conteúdo dinâmico com `min-height`
+      2. Use position absolute/fixed para overlays em vez de inline
+      3. Carregue conteúdo dinâmico após o LCP
+    vtex: |
+      No VTEX IO, use banners com altura fixa e posicione promoções
+      como overlays em vez de inline.
+    wordpress: |
+      1. Use header com altura fixa para barras de anúncio
+      2. Notificações de cookies: position sticky bottom (não inline)
+      3. Popup de newsletter: position fixed (não inline)
+    nextjs: |
+      Use `useEffect` para conteúdo que não afeta layout.
+      Reserve espaço com placeholder.
+    shopify: |
+      Use seções com altura fixa para banners promocionais.
+      Cookie bars devem ser position fixed.
+
+- codigo: cls-animacao-sem-transform
+  titulo: "Animações sem composição GPU causando Layout Shift"
+  severidade: 3
+  metricas_afetadas: [CLS, INP]
+  audits_lighthouse:
+    - non-composited-animations
+  descricao: |
+    Animações que modificam propriedades como `top`, `left`, `width`, `height` forçam
+    o browser a recalcular layout em cada frame, causando jank e CLS.
+  solucoes:
+    geral: |
+      1. Use `transform: translateX/Y()` em vez de `top/left/right/bottom`
+      2. Use `opacity` para fade in/out
+      3. Adicione `will-change: transform` em elementos animados
+      4. Prefira `requestAnimationFrame` para animações JS
+    vtex: |
+      Verifique animações CSS no tema VTEX. Substitua animações
+      que modificam `margin`/`padding` por `transform`.
+    wordpress: |
+      1. Revise animações de sliders e carrosséis no tema
+      2. Use `transform` para transições em vez de `margin-left`
+    nextjs: |
+      Use CSS transitions com `transform`:
+      ```css
+      .slide { transition: transform 0.3s ease; }
+      .slide:hover { transform: translateX(10px); }
+      ```
+    shopify: |
+      Revise animações do tema. Substitua animações que modificam layout
+      por animações composite-only (`transform`, `opacity`).
+
+- codigo: js-bundle-grande
+  titulo: "Bundle JavaScript excessivamente grande"
+  severidade: 4
+  metricas_afetadas: [INP, TBT]
+  audits_lighthouse:
+    - total-byte-weight
+    - unused-javascript
+  descricao: |
+    O bundle JavaScript da página é muito grande. Isso aumenta o tempo de parse e execução,
+    piorando TBT e INP. Muito do JavaScript carregado pode não ser utilizado na página.
+  solucoes:
+    geral: |
+      1. Faça code splitting por rota (dynamic imports)
+      2. Remova JavaScript não utilizado (tree shaking)
+      3. Minifique e comprima (gzip/brotli)
+      4. Use dynamic import para features não essenciais
+    vtex: |
+      No VTEX IO, revise os apps instalados e remova os desnecessários.
+      Apps pesados podem ser carregados lazy.
+    wordpress: |
+      1. Use WP Rocket para minificar e concatenar JS
+      2. Adie carregamento de JS não crítico com "Delay JS"
+      3. Remova jQuery se não é essencial
+      4. Use plugins de otimização (Autoptimize)
+    nextjs: |
+      1. Use `next/dynamic` para code splitting:
+         ```tsx
+         const HeavyComponent = dynamic(() => import('./Heavy'), { ssr: false })
+         ```
+      2. Verifique o bundle analyzer: `npx @next/bundle-analyzer`
+    shopify: |
+      1. Revise apps de terceiros e remova os que não são essenciais
+      2. Use `defer` em scripts não críticos
+      3. Minifique JS no tema
+
+- codigo: js-bloqueante-thirdparty
+  titulo: "Scripts de terceiros bloqueando a thread principal"
+  severidade: 5
+  metricas_afetadas: [INP, TBT, LCP]
+  audits_lighthouse:
+    - third-party-summary
+    - third-party-facades
+  descricao: |
+    Scripts de terceiros (analytics, chat, widgets) estão consumindo tempo significativo
+    da thread principal, bloqueando interações e piorando TBT e INP.
+  solucoes:
+    geral: |
+      1. Use Partytown ou facade pattern para isolar scripts de terceiros
+      2. Carregue scripts não essenciais com `async` ou `defer`
+      3. Considere web workers para processamento pesado
+      4. Remova scripts de terceiros que não são essenciais
+    vtex: |
+      Revise apps VTEX de terceiros. Desabilite os que não são
+      essenciais e carregue os restantes lazy.
+    wordpress: |
+      1. Use WP Rocket "Delay JavaScript Execution"
+      2. Mova GTM para rodar depois do LCP
+      3. Remova scripts de plugins desnecessários
+    nextjs: |
+      Use `next/script` com `strategy="lazyOnload"`:
+      ```tsx
+      <Script src="https://chat-widget.js" strategy="lazyOnload" />
+      ```
+    shopify: |
+      1. Revise apps instalados e remova os não essenciais
+      2. Use `defer` ou carregue scripts após o conteúdo principal
+      3. Monitore impacto de cada app no Web Vitals
+
+- codigo: js-long-task
+  titulo: "Long tasks bloqueando a thread principal"
+  severidade: 4
+  metricas_afetadas: [INP, TBT]
+  audits_lighthouse:
+    - long-tasks
+    - mainthread-work-breakdown
+  descricao: |
+    Tarefas longas (>50ms) na thread principal estão impedindo o browser de responder
+    a interações do usuário. Isso afeta diretamente INP e TBT.
+  solucoes:
+    geral: |
+      1. Quebre tarefas longas em chunks menores com `requestIdleCallback`
+      2. Use Web Workers para processamento pesado
+      3. Minimize work no event handlers (use debounce/throttle)
+      4. Use `scheduler.yield()` para ceder a thread principal
+    vtex: |
+      Verifique apps customizados que fazem processamento pesado.
+      Apps que manipulam DOM extensivamente devem ser otimizados.
+    wordpress: |
+      1. Otimize event handlers em plugins de formulário e busca
+      2. Use debounce em inputs de busca/autocomplete
+      3. Minifique e otimize JavaScript do tema
+    nextjs: |
+      1. Use React.lazy para componentes pesados
+      2. Use `startTransition` para updates não urgentes
+      3. Evite useEffect com trabalho pesado no mount
+    shopify: |
+      1. Minimize JavaScript customizado no tema
+      2. Use event delegation em vez de listeners individuais
+      3. Debounce event handlers de scroll e resize
+
+- codigo: js-execucao-pesada-no-load
+  titulo: "Execução pesada durante o carregamento"
+  severidade: 4
+  metricas_afetadas: [INP, TBT, LCP]
+  audits_lighthouse:
+    - bootup-time
+  descricao: |
+    Muito trabalho de execução JavaScript acontece durante o carregamento da página.
+    Isso bloqueia a renderização e a interatividade por um período prolongado.
+  solucoes:
+    geral: |
+      1. Adie inicialização de features não críticas
+      2. Use `requestIdleCallback` para tarefas de baixa prioridade
+      3. Carregue polyfills sob demanda
+      4. Reduza o uso de bibliotecas pesadas (moment.js → date-fns)
+    vtex: |
+      Revise o bootstrap de apps customizados. Adie a inicialização
+      de features que não são visíveis na primeira dobra.
+    wordpress: |
+      1. Adie carregamento de JavaScript com WP Rocket
+      2. Use polyfills apenas quando necessário
+      3. Substitua bibliotecas pesadas por alternativas leves
+    nextjs: |
+      1. Use `next/dynamic` com `ssr: false` para componentes pesados
+      2. Minimize work em `_app.tsx` e layouts
+    shopify: |
+      1. Minimize JavaScript no carregamento inicial
+      2. Carregue features de busca/recomendação lazy
+      3. Use event delegation para elementos dinâmicos
+
+- codigo: dom-muito-grande
+  titulo: "DOM excessivamente grande"
+  severidade: 3
+  metricas_afetadas: [INP, TBT]
+  audits_lighthouse:
+    - dom-size
+  descricao: |
+    A página tem um DOM muito grande (mais de 1500 nós). Isso aumenta o custo de
+    renderização e querys no DOM, piorando TBT e INP.
+  solucoes:
+    geral: |
+      1. Implemente paginação/infinite scroll com virtualização
+      2. Remova nós DOM ocultos ou duplicados
+      3. Use `content-visibility: auto` para seções abaixo da dobra
+      4. Simplifique widgets e componentes complexos
+    vtex: |
+      No VTEX IO, verifique listas de produtos com muitos itens.
+      Use paginação e lazy rendering.
+    wordpress: |
+      1. Limite posts por página em configurações de leitura
+      2. Remova shortcodes que geram HTML excessivo
+      3. Use plugins de lazy load para imagens e widgets
+    nextjs: |
+      1. Use virtualização (react-window, react-virtuoso) para listas longas
+      2. Implemente `loading="lazy"` em imagens abaixo da dobra
+    shopify: |
+      1. Limite o número de produtos por página
+      2. Use `content-visibility: auto` para seções fora da viewport
+      3. Minimize HTML gerado por snippets do tema
+
+- codigo: event-handler-pesado
+  titulo: "Event handlers consumindo muito tempo"
+  severidade: 4
+  metricas_afetadas: [INP, TBT]
+  audits_lighthouse:
+    - total-blocking-time
+  descricao: |
+    Event handlers (click, scroll, input) estão executando código pesado que bloqueia
+    a thread principal, causando INP alto. O usuário percebe atraso ao interagir.
+  solucoes:
+    geral: |
+      1. Use debounce para handlers de scroll e resize
+      2. Mova trabalho pesado para Web Workers
+      3. Use `requestIdleCallback` para processamento não urgente
+      4. Evite layouts forçados (ler `offsetHeight` após modificar DOM)
+    vtex: |
+      Revise event handlers customizados em apps VTEX.
+      Use debounce e evite layout thrashing.
+    wordpress: |
+      1. Debounce handlers de busca/autocomplete
+      2. Otimize plugins de formulário que executam validação pesada
+      3. Use passive event listeners para scroll
+    nextjs: |
+      1. Use `useDeferredValue` para inputs com processamento pesado
+      2. Use `useTransition` para updates não urgentes
+    shopify: |
+      1. Debounce event handlers no tema
+      2. Use passive listeners para scroll e touch
+      3. Otimize validação de formulários
+
+- codigo: polyfill-desnecessario
+  titulo: "Polyfills desnecessários sendo carregados"
+  severidade: 3
+  metricas_afetadas: [TBT, FCP]
+  audits_lighthouse:
+    - legacy-javascript
+  descricao: |
+    Polyfills para APIs modernas estão sendo carregados, mas o browser do usuário
+    já suporta essas funcionalidades nativamente. Isso adiciona bytes e tempo de parse.
+  solucoes:
+    geral: |
+      1. Use `@babel/preset-env` com `useBuiltIns: 'usage'` e `corejs: 3`
+      2. Remova polyfills manuais de APIs com ampla suporte
+      3. Use browserslist com targets atualizados
+    vtex: |
+      O VTEX IO gerencia polyfills automaticamente. Verifique se não há
+      polyfills duplicados em apps customizados.
+    wordpress: |
+      1. Atualize o `browserslist` do tema
+      2. Remova polyfills do jQuery se não usa jQuery 1.x
+      3. Use plugins de otimização que removem polyfills desnecessários
+    nextjs: |
+      O Next.js gerencia polyfills automaticamente. Verifique imports
+      manuais de polyfills em libs antigas.
+    shopify: |
+      Revise polyfills no tema. Remova polyfills de APIs
+      que são suportadas por todos os browsers modernos.
+
+- codigo: fcp-render-blocking
+  titulo: "Recursos bloqueando primeira renderização"
+  severidade: 4
+  metricas_afetadas: [FCP, LCP]
+  audits_lighthouse:
+    - render-blocking-resources
+  descricao: |
+    Recursos CSS e JavaScript estão bloqueando a primeira renderização da página.
+    O browser não pode mostrar nada até que esses recursos sejam baixados e processados.
+  solucoes:
+    geral: |
+      1. Inline CSS crítico (< 15KB) no `<head>`
+      2. Use `media` attribute em links CSS não essenciais
+      3. Use `defer` ou `async` em scripts
+      4. Elimine CSS não utilizado
+    vtex: |
+      O VTEX IO otimiza recursos críticos automaticamente.
+      Verifique se apps não adicionam render-blocking resources.
+    wordpress: |
+      1. WP Rocket: "Optimize CSS Delivery" + "Delay JS Execution"
+      2. Combine e minifique CSS com Autoptimize
+      3. Remova CSS de plugins desnecessários
+    nextjs: |
+      O Next.js faz SSR e code splitting automáticos. Verifique
+      imports globais que possam bloquear renderização.
+    shopify: |
+      1. Minifique CSS com ferramentas de otimização de tema
+      2. Use `media="print" onload="this.media='all'"` para CSS não crítico
+      3. Remova assets de apps desinstalados
+
+- codigo: fcp-critical-path-longo
+  titulo: "Caminho crítico de carregamento longo"
+  severidade: 3
+  metricas_afetadas: [FCP, LCP]
+  audits_lighthouse:
+    - critical-request-chains
+  descricao: |
+    Muitas requisições sequenciais são necessárias antes da primeira renderização.
+    Cada dependência na cadeia adiciona latência ao FCP.
+  solucoes:
+    geral: |
+      1. Reduza o número de recursos render-blocking
+      2. Combine CSS files em um único arquivo
+      3. Use HTTP/2 server push para recursos críticos
+      4. Inline recursos muito pequenos (< 1KB)
+    vtex: |
+      O VTEX IO otimiza o critical path automaticamente.
+      Verifique a latência de apps customizados.
+    wordpress: |
+      1. Combine CSS com Autoptimize
+      2. Reduza fontes externas (self-host se possível)
+      3. Use preload para recursos na cadeia crítica
+    nextjs: |
+      1. Use `next/font` (self-hosted, sem requisição externa)
+      2. Inline CSS crítico com styled-components ou CSS Modules
+      3. Prefira imagens otimizadas via `next/image`
+    shopify: |
+      1. Self-hoste fontes em vez de usar CDN externo
+      2. Combine CSS do tema
+      3. Reduza dependências de apps de terceiros
+
+- codigo: ttfb-sem-cache-cdn
+  titulo: "Respostas estáticas sem cache adequado"
+  severidade: 4
+  metricas_afetadas: [TTFB, LCP]
+  audits_lighthouse:
+    - uses-long-cache-ttl
+  descricao: |
+    Recursos estáticos (CSS, JS, imagens, fontes) não têm headers de cache longos.
+    Isso força o browser a revalidar em cada visita, aumentando TTFB para retornos.
+  solucoes:
+    geral: |
+      1. Configure `Cache-Control: max-age=31536000, immutable` para assets com hash no nome
+      2. Use `Cache-Control: max-age=3600` para HTML
+      3. Adicione `ETag` ou `Last-Modified` para revalidação eficiente
+    vtex: |
+      O VTEX IO gerencia cache automaticamente via CDN. Verifique
+      se não há headers de cache conflitantes em apps customizados.
+    wordpress: |
+      1. Configure cache no `.htaccess` ou via plugin
+      2. WP Rocket: ative "Enable browser caching"
+      3. Use CDN Cloudflare para cache de borda
+    nextjs: |
+      O Next.js adiciona hash nos nomes de arquivo automaticamente.
+      Configure `Cache-Control` no `next.config.js` se necessário.
+    shopify: |
+      O Shopify gerencia cache via CDN automaticamente.
+      Verifique headers customizados no `theme.liquid`.
+
+- codigo: ttfb-redirect-chain
+  titulo: "Cadeia de redirecionamentos longa"
+  severidade: 3
+  metricas_afetadas: [TTFB, LCP]
+  audits_lighthouse:
+    - redirects
+  descricao: |
+    A URL passa por múltiplos redirecionamentos antes de chegar ao conteúdo final.
+    Cada redirecionamento adiciona um roundtrip HTTP, atrasando TTFB e LCP.
+  solucoes:
+    geral: |
+      1. Elimine redirecionamentos desnecessários (HTTP → HTTPS, www → non-www)
+      2. Use redirecionamentos 301 permanentes em vez de 302 temporários
+      3. Atualize links internos para apontar direto para a URL final
+    vtex: |
+      Verifique redirecionamentos no admin VTEX. Configure
+      redirects permanentes e evite cadeias.
+    wordpress: |
+      1. Corrija URLs no banco (use plugin "Better Search Replace")
+      2. Configure redirects permanentes no `.htaccess`
+      3. Atualize links internos do conteúdo
+    nextjs: |
+      1. Use `next.config.js` `redirects` com `permanent: true`
+      2. Evite redirects em middleware desnecessários
+      3. Atualize links internos
+    shopify: |
+      1. Configure redirects permanentes no admin Shopify
+      2. Atualize links em menus e conteúdo
+      3. Use um único domínio canônico
+
+- codigo: ttfb-compress-faltando
+  titulo: "Compressão de texto ausente"
+  severidade: 4
+  metricas_afetadas: [TTFB, LCP, FCP]
+  audits_lighthouse:
+    - uses-text-compression
+  descricao: |
+    Respostas HTML, CSS e JavaScript não estão sendo comprimidas (Gzip/Brotli).
+    Isso aumenta significativamente o tamanho do download e o tempo de transferência.
+  solucoes:
+    geral: |
+      1. Ative compressão Gzip no servidor web
+      2. Prefira Brotli sobre Gzip quando o browser suporta
+      3. Comprima recursos estáticos na build (não on-the-fly)
+    vtex: |
+      A VTEX gerencia compressão automaticamente via CDN.
+      Verifique se não há responses sem compressão de apps customizados.
+    wordpress: |
+      1. Ative Gzip no `.htaccess` ou via hosting
+      2. WP Rocket: ative "Enable Brotli compression" (se disponível)
+      3. Cloudflare: ative "Auto Minify" e "Brotli"
+    nextjs: |
+      O Next.js com `compression` middleware ou hosting com Brotli.
+      Vercel habilita compressão automaticamente.
+    shopify: |
+      O Shopify usa Cloudflare CDN com compressão automática.
+      Verifique se não há recursos customizados sem compressão.
+
+- codigo: https-mixed-content
+  titulo: "Conteúdo misto (HTTP em página HTTPS)"
+  severidade: 5
+  metricas_afetadas: [TTFB, LCP, FCP]
+  audits_lighthouse:
+    - is-on-https
+  descricao: |
+    A página está servida via HTTPS mas carrega recursos via HTTP. O browser bloqueia
+    ou faz downgrade desses recursos, causando falhas de carregamento.
+  solucoes:
+    geral: |
+      1. Atualize todas as URLs internas para HTTPS
+      2. Use protocol-relative URLs (`//example.com/...`)
+      3. Adicione header `Content-Security-Policy: upgrade-insecure-requests`
+    vtex: |
+      No VTEX IO, verifique se URLs de imagens e scripts em apps
+      customizados usam HTTPS.
+    wordpress: |
+      1. Configure WordPress Address e Site Address com HTTPS
+      2. Use plugin "Really Simple SSL"
+      3. Atualize URLs no banco com "Better Search Replace"
+    nextjs: |
+      Todas as URLs devem usar HTTPS. Verifique imports de
+      scripts externos e APIs.
+    shopify: |
+      O Shopify força HTTPS automaticamente. Verifique se recursos
+      em `theme.liquid` usam `{{ 'file' | asset_url }}` (HTTPS automaticamente).
+
+- codigo: viewport-faltando
+  titulo: "Meta viewport ausente ou incorreto"
+  severidade: 5
+  metricas_afetadas: [LCP, CLS, FCP]
+  audits_lighthouse:
+    - viewport
+  descricao: |
+    A meta tag viewport está ausente ou configurada incorretamente. Sem viewport,
+    o browser renderiza a página como em desktop, causando zoom e layout inadequado em mobile.
+  solucoes:
+    geral: |
+      Adicione no `<head>`:
+      ```html
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      ```
+    vtex: |
+      O VTEX IO adiciona viewport automaticamente. Verifique
+      se apps não removem ou modificam a tag.
+    wordpress: |
+      O WordPress adiciona viewport automaticamente em temas modernos.
+      Verifique se o tema tem `add_theme_support('responsive-embeds')`.
+    nextjs: |
+      No Next.js 13+, use o metadata API:
+      ```tsx
+      export const metadata = { viewport: 'width=device-width, initial-scale=1' }
+      ```
+    shopify: |
+      O Shopify adiciona viewport automaticamente. Verifique se
+      apps não removem a tag do `theme.liquid`.
+
+- codigo: imagens-sem-alt
+  titulo: "Imagens sem texto alternativo"
+  severidade: 2
+  metricas_afetadas: [LCP]
+  audits_lighthouse:
+    - image-alt
+  descricao: |
+    Imagens estão sem o atributo `alt`, que é essencial para acessibilidade.
+    Isso afeta leitores de tela e pode impactar SEO negativamente.
+  solucoes:
+    geral: |
+      1. Adicione `alt` descritivo em todas as tags `<img>`
+      2. Use `alt=""` para imagens decorativas
+      3. Priorize imagens do LCP com alt relevante
+    vtex: |
+      No VTEX IO, configure o alt text nos campos de imagem
+      do site editor e no CMS de produtos.
+    wordpress: |
+      1. Preencha "Texto Alternativo" na biblioteca de mídia
+      2. Use plugin que alerta sobre imagens sem alt
+      3. Para imagens decorativas, use `alt=""` no HTML
+    nextjs: |
+      O componente `next/image` requer `alt` obrigatoriamente:
+      ```tsx
+      <Image src="/foto.jpg" alt="Descrição da foto" width={800} height={600} />
+      ```
+    shopify: |
+      Preencha o campo "Alt text" nas imagens de produto no admin.
+      O Shopify adiciona alt automaticamente via `image_tag`.
+
+- codigo: meta-description-faltando
+  titulo: "Meta description ausente"
+  severidade: 2
+  metricas_afetadas: [TTFB]
+  audits_lighthouse:
+    - meta-description
+  descricao: |
+    A meta description está ausente ou muito curta. Isso prejudica o snippet
+    nos resultados de busca, afetando CTR e SEO.
+  solucoes:
+    geral: |
+      1. Adicione `<meta name="description" content="...">` no `<head>`
+      2. Mantenha entre 120-160 caracteres
+      3. Inclua a keyword principal e um CTA
+    vtex: |
+      No VTEX IO, configure a meta description no CMS de cada página.
+      Apps de SEO podem gerar automaticamente.
+    wordpress: |
+      1. Use Yoast SEO ou RankMath para editar meta descriptions
+      2. Configure templates automáticos por tipo de conteúdo
+    nextjs: |
+      Use o metadata API:
+      ```tsx
+      export const metadata = { description: 'Descrição da página' }
+      ```
+    shopify: |
+      Configure "Page title" e "Meta description" no admin
+      de cada página e produto.
+
+- codigo: cache-headers-inadequados
+  titulo: "Headers de cache inadequados para recursos estáticos"
+  severidade: 3
+  metricas_afetadas: [TTFB]
+  audits_lighthouse:
+    - uses-long-cache-ttl
+  descricao: |
+    Recursos estáticos (fontes, imagens, CSS) têm tempo de cache curto ou ausente.
+      Isso força o browser a revalidar em cada visita.
+  solucoes:
+    geral: |
+      1. Para assets com hash: `Cache-Control: max-age=31536000, immutable`
+      2. Para HTML: `Cache-Control: max-age=0, must-revalidate`
+      3. Para APIs: `Cache-Control: max-age=60, s-maxage=300`
+    vtex: |
+      O VTEX IO gerencia cache via CDN automaticamente.
+      Verifique se não há configurações conflitantes.
+    wordpress: |
+      1. Ative "Browser Caching" no WP Rocket
+      2. Configure headers no `.htaccess`
+      3. Use CDN Cloudflare com regras de cache
+    nextjs: |
+      O Next.js com hash automático + headers longos.
+      Configure `headers()` em `next.config.js` se necessário.
+    shopify: |
+      O Shopify CDN gerencia cache automaticamente.
+      Para recursos customizados, use CDN ou S3 com headers longos.
+
+- codigo: js-passive-listeners-faltando
+  titulo: "Event listeners sem passive: true"
+  severidade: 3
+  metricas_afetadas: [INP, FCP]
+  audits_lighthouse:
+    - uses-passive-event-listeners
+  descricao: |
+    Event listeners de scroll, touch e wheel não estão marcados como `passive: true`.
+      Isso impede o browser de otimizar o scroll, causando jank.
+  solucoes:
+    geral: |
+      1. Adicione `{ passive: true }` em listeners de scroll/touch/wheel
+      2. Se não precisa de `preventDefault()`, sempre use passive
+      3. Frameworks modernos usam passive por padrão em muitos casos
+    vtex: |
+      Verifique event handlers em apps customizados.
+      Garanta que listeners de scroll usam passive.
+    wordpress: |
+      1. O WordPress 5.1+ usa passive por padrão em jQuery
+      2. Revise scripts do tema para listeners manuais
+    nextjs: |
+      React usa passive por padrão em event listeners sintéticos.
+      Revise `addEventListener` diretos.
+    shopify: |
+      Revise JavaScript customizado no tema.
+      Adicione `{ passive: true }` em listeners de scroll.
+
+- codigo: cookies-thirdparty
+  titulo: "Cookies de terceiros impactando performance"
+  severidade: 3
+  metricas_afetadas: [TTFB, LCP]
+  audits_lighthouse:
+    - third-party-cookies
+  descricao: |
+    Cookies de domínios de terceiros aumentam o tamanho dos headers de requisição,
+      especialmente em requisições subsequentes.
+  solucoes:
+    geral: |
+      1. Minimize cookies de terceiros (analytics, ads, chat)
+      2. Use SameSite=None apenas quando necessário
+      3. Considere server-side tracking em vez de client-side
+    vtex: |
+      Revise cookies de apps VTEX de terceiros.
+      Desabilite tracking desnecessário.
+    wordpress: |
+      1. Configure GDPR/cookie consent antes de carregar trackers
+      2. Use server-side GTM para reduzir cookies client-side
+      3. Remova plugins de analytics não essenciais
+    nextjs: |
+      1. Use middleware para cookies de autenticação
+      2. Carregue analytics após consentimento
+    shopify: |
+      1. Revise cookies de apps de terceiros
+      2. Use Shopify Pixel Manager para gerenciar tracking
+      3. Implemente cookie consent antes de trackers
+
+- codigo: outros
+  titulo: "Problema não catalogado na base de conhecimento"
+  severidade: 2
+  metricas_afetadas: [LCP]
+  audits_lighthouse: []
+  descricao: |
+    Este problema foi detectado mas não possui solução específica documentada na base de conhecimento.
+    Considere consultar a documentação oficial do Lighthouse ou buscar ajuda de um especialista.
+  solucoes:
+    geral: |
+      1. Consulte a documentação oficial do Lighthouse em https://web.dev/lighthouse-performance/
+      2. Verifique se há atualizações disponíveis para este audit
+      3. Entre em contato com o suporte para obter ajuda específica
+    vtex: |
+      Consulte a documentação da VTEX IO em https://developers.vtex.com/
+    wordpress: |
+      Consulte o WordPress Codex e fóruns de suporte
+    nextjs: |
+      Consulte a documentação do Next.js em https://nextjs.org/docs
+    shopify: |
+      Consulte o Shopify Dev Docs em https://shopify.dev/docs
+
+- codigo: js-duplicado
+  titulo: "JavaScript duplicado carregado múltiplas vezes"
+  severidade: 3
+  metricas_afetadas: [INP, TBT, FCP]
+  audits_lighthouse:
+    - duplicated-javascript
+  descricao: |
+    O mesmo arquivo JavaScript está sendo incluído mais de uma vez na página. Isso desperdiça
+    banda, aumenta o tempo de parse e pode causar conflitos de estado.
+  solucoes:
+    geral: |
+      1. Identifique scripts duplicados (bundle analyzer, Network tab)
+      2. Use module system (ESM/CJS) para deduplicar automaticamente
+      3. Revise bundler config para evitar chunks duplicados
+      4. Verifique se plugins não injetam os mesmos scripts
+    vtex: |
+      Verifique se apps VTEX não incluem versões duplicadas de libs.
+      Use o VTEX IO dependency manager para evitar conflitos.
+    wordpress: |
+      1. Desative plugins que incluem jQuery/Bootstrap duplicados
+      2. Use "WP Rocket" para detectar JS duplicado
+      3. Revise o tema para scripts incluídos manualmente
+    nextjs: |
+      1. Verifique se imports não causam duplicatas no bundle
+      2. Use `npx @next/bundle-analyzer` para identificar chunks duplicados
+      3. Configure `transpilePackages` se necessário
+    shopify: |
+      1. Revise apps instalados que podem incluir libs duplicadas
+      2. Use `{{ 'script.js' | asset_url | script_tag }}` para centralizar
+
+- codigo: bf-cache-nao-elegivel
+  titulo: "Back/Forward cache não elegível"
+  severidade: 2
+  metricas_afetadas: [TTFB, FCP]
+  audits_lighthouse:
+    - bf-cache
+  descricao: |
+    A página não é elegível para o back/forward cache do browser. Quando o usuário navega
+    para outra página e volta, a página é recarregada completamente em vez de ser restaurada
+    instantaneamente da memória.
+  solucoes:
+    geral: |
+      1. Evite `unload` event listener (substitua por `pagehide`)
+      2. Não use `Cache-Control: no-store`
+      3. Feche conexões abertas (WebSocket, fetch com keepalive)
+      4. Evite `document.write()`
+    vtex: |
+      Verifique se apps customizados não registram event listeners
+      que bloqueiam o bfcache.
+    wordpress: |
+      1. Verifique se plugins não usam `window.onunload`
+      2. Remova scripts que adicionam `unload` listeners
+    nextjs: |
+      O Next.js App Router suporta bfcache nativamente. Verifique
+      se middleware não adiciona headers que bloqueiam o cache.
+    shopify: |
+      Verifique apps que possam registrar `unload` handlers.
+      Use `pagehide` como alternativa quando necessário.
+
+- codigo: imagens-formato-moderno
+  titulo: "Imagens servidas em formato desatualizado (JPEG/PNG em vez de WebP/AVIF)"
+  severidade: 3
+  metricas_afetadas: [LCP, TTFB]
+  audits_lighthouse:
+    - uses-webp-images
+    - modern-image-formats
+  descricao: |
+    Imagens estão sendo servidas em formatos antigos (JPEG, PNG) em vez de formatos modernos
+    (WebP, AVIF). Formatos modernos oferecem 30-50% de compressão melhor para a mesma qualidade.
+  solucoes:
+    geral: |
+      1. Converta imagens para AVIF (melhor) ou WebP (melhor compatibilidade)
+      2. Use `<picture>` com fallback para JPEG/PNG
+      3. Configure o servidor para servir WebP automaticamente (Accept negotiation)
+      4. Use CDNs de imagens (Cloudinary, imgix) para conversão on-the-fly
+    vtex: |
+      No VTEX IO, configure o componente de imagem para servir
+      WebP automaticamente via CDN da VTEX.
+    wordpress: |
+      1. Use "ShortPixel" ou "EWWW Image Optimizer" para converter para WebP
+      2. Ative "Serve WebP images" no WP Rocket
+      3. Configure `<picture>` no tema para fallback
+    nextjs: |
+      O `next/image` serve WebP/AVIF automaticamente quando
+      `images.formats: ['image/avif', 'image/webp']` está configurado.
+    shopify: |
+      O Shopify converte para WebP automaticamente no CDN.
+      Verifique se imagens customizadas não estão bypassando o CDN.
+
+- codigo: imagens-tamanho-correto
+  titulo: "Imagens servidas em tamanho incorreto (maior que necessário)"
+  severidade: 4
+  metricas_afetadas: [LCP, TTFB, CLS]
+  audits_lighthouse:
+    - uses-responsive-images
+  descricao: |
+    Imagens estão sendo servidas em tamanho muito maior do que o container exibe. Isso
+    desperdiça banda, aumenta tempo de download e pode afetar LCP e CLS.
+  solucoes:
+    geral: |
+      1. Use `srcset` com tamanhos apropriados
+      2. Configure `sizes` para descrever o layout
+      3. Sirva imagens no tamanho exato do container (não 2x+ a menos que necessário)
+      4. Use `max-width: 100%` no CSS para evitar overflow
+    vtex: |
+      Use o componente `<img-vtex>` com `width` explícito.
+      O VTEX IO gera srcset automaticamente.
+    wordpress: |
+      1. Configure tamanhos de imagem em Configurações > Mídia
+      2. Use `the_post_thumbnail()` com tamanhos registrados
+      3. Ative "Responsive Images" no tema (padrão desde WP 4.4)
+    nextjs: |
+      Use `next/image` com `sizes` para imagens responsivas:
+      ```tsx
+      <Image src="/foto.jpg" alt="..." width={800} height={600} sizes="(max-width: 768px) 100vw, 50vw" />
+      ```
+    shopify: |
+      Use `image_url` com `width` param para gerar tamanhos apropriados.
+      Configure `sizes` no CSS do tema.
+
+- codigo: imagens-offscreen
+  titulo: "Imagens fora da viewport sem lazy loading"
+  severidade: 3
+  metricas_afetadas: [TTFB, LCP]
+  audits_lighthouse:
+    - offscreen-images
+  descricao: |
+    Imagens que estão fora da viewport visível estão sendo carregadas imediatamente. Isso
+    desperdiça banda e recursos de rede que poderiam ser usados para recursos críticos.
+  solucoes:
+    geral: |
+      1. Adicione `loading="lazy"` em imagens abaixo da dobra
+      2. NÃO use lazy loading na imagem do LCP
+      3. Use Intersection Observer para lazy loading customizado
+      4. Considere `fetchpriority="low"` para imagens offscreen
+    vtex: |
+      No VTEX IO, imagens abaixo da dobra são lazy-loaded
+      automaticamente. Verifique se a imagem do LCP não está lazy.
+    wordpress: |
+      1. WP Rocket: ative "Lazy Load" (exceto para imagem hero)
+      2. Adicione `loading="lazy"` manualmente no tema
+      3. Use "Lazy Load by WP Rocket" plugin se não usar WP Rocket
+    nextjs: |
+      O `next/image` aplica lazy loading automaticamente.
+      Use `priority` para a imagem do LCP.
+    shopify: |
+      Use `loading: 'lazy'` para imagens abaixo da dobra:
+      ```liquid
+      {{ image | image_url: width: 600 | image_tag: loading: 'lazy' }}
+      ```
+
+- codigo: prioridade-recursos
+  titulo: "Recurso LCP sem preload ou prioridade adequada"
+  severidade: 4
+  metricas_afetadas: [LCP]
+  audits_lighthouse:
+    - prioritize-lcp-image
+  descricao: |
+    O recurso principal do LCP (geralmente uma imagem) não está sendo pré-carregado
+    ou priorizado. O browser só descobre o recurso durante o parse do HTML.
+  solucoes:
+    geral: |
+      1. Adicione `<link rel="preload" as="image" href="..." fetchpriority="high">`
+      2. Use `fetchpriority="high"` na tag `<img>` do LCP
+      3. Evite srcset complexo no LCP — sirva o tamanho exato
+      4. Use `<link rel="preload" as="font">` para fontes críticas
+    vtex: |
+      Configure o bloco de imagem hero com `priority="true"`
+      e `loading="eager"` no site editor VTEX.
+    wordpress: |
+      1. Adicione preload no `header.php`:
+         ```html
+         <link rel="preload" as="image" href="<?php echo get_header_image(); ?>" fetchpriority="high">
+         ```
+      2. Marque a imagem hero como priority em builders (Elementor, Divi)
+    nextjs: |
+      Use `priority` prop no `next/image`:
+      ```tsx
+      <Image src="/hero.jpg" alt="..." width={1200} height={600} priority />
+      ```
+    shopify: |
+      Use `fetchpriority: 'high'` na tag Liquid da imagem hero:
+      ```liquid
+      {{ image | image_url: width: 1200 | image_tag: fetchpriority: 'high' }}
+      ```
+
+- codigo: animacoes-nao-compositadas
+  titulo: "Animações CSS forçando recálculo de layout"
+  severidade: 3
+  metricas_afetadas: [INP, CLS]
+  audits_lighthouse:
+    - non-composited-animations
+  descricao: |
+    Animações CSS que modificam propriedades de layout (top, left, width, height, margin, padding)
+    forçam o browser a recalcular geometria em cada frame. Use propriedades compostas (transform, opacity).
+  solucoes:
+    geral: |
+      1. Substitua animações de `top/left/right/bottom` por `transform: translateX/Y()`
+      2. Use `opacity` para fade in/out em vez de `visibility`
+      3. Adicione `will-change: transform, opacity` em elementos animados
+      4. Use `contain: layout` para isolar recálculos
+    vtex: |
+      Verifique animações no tema VTEX. Substitua animações
+      que modificam layout por `transform` + `opacity`.
+    wordpress: |
+      1. Revise sliders e carrosséis — use `transform: translateX()` em vez de `margin-left`
+      2. Use plugins de slider otimizados (Swiper em vez de Slick)
+    nextjs: |
+      Use `transition: transform 0.3s ease` e `transform: translateX()`:
+      ```css
+      .slide { transition: transform 0.3s ease; will-change: transform; }
+      ```
+    shopify: |
+      Revise animações no tema. Substitua `margin`/`padding` animations
+      por `transform` animations.
+
+- codigo: dom-profundidade-alta
+  titulo: "DOM aninhado muito profundamente"
+  severidade: 3
+  metricas_afetadas: [INP, TBT]
+  audits_lighthouse:
+    - dom-size
+  descricao: |
+    O DOM da página tem elementos aninhados muito profundamente (>30 níveis). Isso aumenta
+    o custo de querys e renderização, piorando INP e TBT.
+  solucoes:
+    geral: |
+      1. Simplifique a estrutura HTML (reduza nesting)
+      2. Use componentes flat em vez de wrappers aninhados
+      3. Evite divitis — use elementos semânticos
+      4. Use Shadow DOM para isolar estilos quando possível
+    vtex: |
+      Verifique componentes VTEX com nesting excessivo.
+      Simplifique a estrutura de blocos no site editor.
+    wordpress: |
+      1. Revise builders (Elementor, Divi) que criam divs aninhadas
+      2. Simplifique shortcodes que geram HTML profundo
+      3. Use o tema mais leve possível
+    nextjs: |
+      1. Revise componentes com wrappers desnecessários
+      2. Use React.Fragment em vez de divs wrapper
+      3. Evite aninhamento excessivo em layouts
+    shopify: |
+      1. Simplifique snippets do tema que geram HTML profundo
+      2. Revise sections com nesting excessivo
+      3. Use componentes com estrutura flat
+
+- codigo: servidor-tempo-resposta-lento
+  titulo: "Servidor com tempo de resposta lento"
+  severidade: 5
+  metricas_afetadas: [TTFB, LCP, FCP]
+  audits_lighthouse:
+    - server-response-time
+  descricao: |
+    O servidor está demorando mais de 600ms para responder à primeira requisição HTML.
+    Isso atrasa TODAS as outras métricas pois o parse e renderização só começam após o HTML chegar.
+  solucoes:
+    geral: |
+      1. Use CDN (Cloudflare, AWS CloudFront) na frente do servidor
+      2. Ative cache de página no servidor
+      3. Otimize queries no banco (índices, connection pooling)
+      4. Considere edge computing ou SSR em edge
+    vtex: |
+      No VTEX IO, o edge caching é gerenciado pela plataforma.
+      Verifique se não há apps customizados adicionando latência.
+    wordpress: |
+      1. Use hosting otimizado (WP Engine, Kinsta, Cloudways)
+      2. Ative page caching (WP Rocket, LiteSpeed Cache)
+      3. Otimize MySQL (WP-Optimize, consultas lentas)
+    nextjs: |
+      1. Use ISR (Incremental Static Regeneration) quando possível
+      2. Deploy em Vercel edge ou Cloudflare Workers
+      3. Otimize `getServerSideProps` com cache
+    shopify: |
+      O Shopify gerencia TTFB automaticamente via CDN global.
+      Revise apps de terceiros que possam adicionar server-side latency.
+
+- codigo: recurso-render-blocking-extra
+  titulo: "Recursos extras bloqueando renderização"
+  severidade: 4
+  metricas_afetadas: [LCP, FCP, INP]
+  audits_lighthouse:
+    - render-blocking-resources
+  descricao: |
+    Recursos CSS e JavaScript externos bloqueiam a primeira renderização. O parser HTML
+    para ao encontrar esses recursos e só continua após o download completo.
+  solucoes:
+    geral: |
+      1. Inline CSS crítico (< 15KB) diretamente no HTML
+      2. Use `defer` ou `async` em scripts não essenciais
+      3. Carregue CSS não crítico com `media="print" onload="this.media='all'"`
+      4. Combine múltiplos arquivos CSS em um único arquivo
+    vtex: |
+      O VTEX IO otimiza render-blocking resources automaticamente.
+      Revise apps que injetam CSS/JS no head.
+    wordpress: |
+      1. WP Rocket: "Optimize CSS Delivery" + "Delay JS Execution"
+      2. Combine CSS com Autoptimize
+      3. Inline CSS crítico do above-the-fold
+    nextjs: |
+      O Next.js faz SSR e code splitting automáticos.
+      Verifique se `_app.tsx` não importa libs pesadas globalmente.
+    shopify: |
+      1. Minifique CSS do tema
+      2. Use `defer` em scripts de apps de terceiros
+      3. Revise assets que ainda restam de apps desinstalados
+
+- codigo: eficiente-conteudo-animado
+  titulo: "Conteúdo animado consumindo muitos recursos"
+  severidade: 3
+  metricas_afetadas: [INP, CLS]
+  audits_lighthouse:
+    - efficient-animated-content
+  descricao: |
+    Animações em vídeos, GIFs ou Lottie consomem recursos da thread principal. GIFs grandes
+    são especialmente ineficientes — vídeos MP4 são até 90% menores para o mesmo conteúdo.
+  solucoes:
+    geral: |
+      1. Substitua GIFs por vídeos MP4 (mesma qualidade, tamanho até 90% menor)
+      2. Use `poster` attribute em `<video>` para LCP estático
+      3. Carregue animações Lottie lazy
+      4. Prefira CSS animations a JS animations quando possível
+    vtex: |
+      Verifique banners e hero sections com GIFs ou animações pesadas.
+      Substitua por vídeos MP4 otimizados.
+    wordpress: |
+      1. Use plugin "GIF to Video" ou converta manualmente com ffmpeg
+      2. Carregue vídeos de hero com `preload="metadata"` (não `auto`)
+      3. Use lazy loading para vídeos abaixo da dobra
+    nextjs: |
+      Use `next/dynamic` para componentes com animação pesada:
+      ```tsx
+      const Animation = dynamic(() => import('./Animation'), { ssr: false })
+      ```
+    shopify: |
+      Substitua GIFs do tema por vídeos MP4.
+      Use a tag `<video>` com `poster` para preview estático.
+
+- codigo: https-redirecionamento
+  titulo: "Página carregada via HTTP sem redirecionamento para HTTPS"
+  severidade: 5
+  metricas_afetadas: [TTFB, LCP]
+  audits_lighthouse:
+    - is-on-https
+  descricao: |
+    A página está sendo servida via HTTP inseguro. Navegadores modernos podem exibir aviso
+    "Não seguro" e recursos mistos (HTTP em HTTPS) são bloqueados.
+  solucoes:
+    geral: |
+      1. Ative HTTPS no servidor (Let's Encrypt para certificado gratuito)
+      2. Configure redirecionamento 301 HTTP → HTTPS
+      3. Adicione HSTS header: `Strict-Transport-Security: max-age=31536000`
+      4. Atualize todas as URLs internas para HTTPS
+    vtex: |
+      O VTEX IO já serve via HTTPS automaticamente.
+      Verifique se não há recursos customizados em HTTP.
+    wordpress: |
+      1. Configure SSL no hosting (Let's Encrypt via Cloudflare)
+      2. Use plugin "Really Simple SSL" para forçar HTTPS
+      3. Atualize WordPress Address e Site Address para HTTPS
+    nextjs: |
+      O Next.js em Vercel/CDN serve HTTPS automaticamente.
+      Configure `headers()` para HSTS em `next.config.js`.
+    shopify: |
+      O Shopify força HTTPS automaticamente.
+      Verifique se recursos customizados no tema usam HTTPS.
+
+- codigo: performance-budget
+  titulo: "Página excedendo limites de tamanho e performance"
+  severidade: 3
+  metricas_afetadas: [LCP, INP, TBT, FCP]
+  audits_lighthouse:
+    - performance-budget
+  descricao: |
+    A página excede os budgets recomendados de tamanho de JavaScript, CSS e imagens.
+    Budgets de performance ajudam a manter a qualidade e evitar regressão.
+  solucoes:
+    geral: |
+      1. Defina budgets: JS < 200KB compressed, CSS < 50KB, imagens < 500KB por imagem
+      2. Use bundle analyzer para monitorar tamanho
+      3. Configure Lighthouse CI com budgets no pipeline
+      4. Monitore com RUM (Real User Monitoring)
+    vtex: |
+      Monitore o tamanho dos assets da loja.
+      Revise apps que adicionam muito JavaScript.
+    wordpress: |
+      1. WP Rocket: monitore tamanho após otimização
+      2. Use "Query Monitor" para identificar assets pesados
+      3. Configure PageSpeed Insights como gate no deploy
+    nextjs: |
+      1. Use `@next/bundle-analyzer` para monitorar tamanho do bundle
+      2. Configure `output: 'export'` quando possível (menor bundle)
+      3. Monitore com `next-bundle-analyzer`
+    shopify: |
+      1. Monitore tamanho dos assets do tema
+      2. Revise apps instalados e seu impacto no bundle
+      3. Use Shopify Speed Report para benchmark
+
+- codigo: service-worker-sem-estrategia-cache
+  titulo: "Service Worker sem estratégia de cache adequada"
+  severidade: 2
+  metricas_afetadas: [TTFB, FCP]
+  audits_lighthouse:
+    - service-worker
+  descricao: |
+    Um service worker está registrado mas pode não estar usando a estratégia de cache
+    ideal, ou não está interceptando requisições de recursos estáticos.
+  solucoes:
+    geral: |
+      1. Use Cache-First para assets estáticos (com hash no nome)
+      2. Use Network-First ou Stale-While-Revalidate para HTML/API
+      3. Implemente cache versionamento para invalidar cache antigo
+      4. Monitore hit rate do cache
+    vtex: |
+      O VTEX IO gerencia service worker automaticamente.
+      Verifique se não há conflito com SW customizado.
+    wordpress: |
+      1. Se usar PWA plugin, configure estratégia de cache
+      2. Cache estático com Workbox (CacheFirst)
+      3. Não use SW se não houver motivo claro
+    nextjs: |
+      Use `next-pwa` com Workbox para estratégias de cache:
+      ```js
+      runtimeCaching: [{ urlPattern: /.*\\.js/, handler: 'CacheFirst' }]
+      ```
+    shopify: |
+      Se usar PWA, configure cache apropriado para assets estáticos
+      e estratégia network-first para conteúdo dinâmico.
+
+- codigo: metrica-lcp-info
+  titulo: "Largest Contentful Paint (metrica de resultado)"
+  severidade: 1
+  metricas_afetadas: [LCP]
+  audits_lighthouse:
+    - largest-contentful-paint
+  descricao: |
+    Tempo ate o maior elemento visivel ser renderizado. Esta e uma metrica de resultado,
+    nao uma causa direta. Para melhorar, atue nas causas: imagens grandes, CSS bloqueante,
+    TTFB alto, lazy-loading errado.
+  solucoes:
+    geral: |
+      1. Identifique o elemento LCP na aba Performance do DevTools
+      2. Otimize esse recurso especifico (imagem, texto, video)
+      3. Reduza TTFB com CDN e cache
+      4. Elimine recursos render-blocking
+    vtex: |
+      No VTEX IO, configure `priority="true"` no bloco de imagem hero.
+      Use o Speed Report para identificar o elemento LCP.
+    wordpress: |
+      1. Otimize a imagem hero (WebP, tamanho correto, preload)
+      2. Use caching para reduzir TTFB
+      3. Minimize CSS/JS bloqueantes no head
+    nextjs: |
+      Use `next/image` com `priority` para o elemento LCP.
+      Otimize TTFB com ISR e edge deployment.
+    shopify: |
+      Otimize a imagem hero com `fetchpriority: 'high'`.
+      Reduza TTFB com o CDN nativo do Shopify.
+
+- codigo: metrica-fcp-info
+  titulo: "First Contentful Paint (metrica de resultado)"
+  severidade: 1
+  metricas_afetadas: [FCP]
+  audits_lighthouse:
+    - first-contentful-paint
+  descricao: |
+    Tempo ate o primeiro texto ou imagem ser renderizado. Esta e uma metrica de resultado.
+    Para melhorar, reduza recursos render-blocking e otimize o servidor.
+  solucoes:
+    geral: |
+      1. Reduza recursos render-blocking (CSS, JS)
+      2. Otimize TTFB com CDN e cache
+      3. Use service worker para cache offline
+    vtex: |
+      O VTEX IO otimiza FCP automaticamente. Revise apps
+      que possam adicionar render-blocking resources.
+    wordpress: |
+      1. Use WP Rocket para otimizar CSS/JS
+      2. Ative page caching
+      3. Minimize CSS nao utilizado
+    nextjs: |
+      O Next.js SSR otimiza FCP automaticamente.
+      Revise imports globais no layout.
+    shopify: |
+      Minifique CSS do tema. Revise apps
+      de terceiros que adicionam render-blocking.
+
+- codigo: metrica-tti-info
+  titulo: "Time to Interactive (metrica de resultado)"
+  severidade: 1
+  metricas_afetadas: [INP, TBT]
+  audits_lighthouse:
+    - interactive
+  descricao: |
+    Tempo ate a pagina ficar totalmente interativa. Esta e uma metrica de resultado
+    que reflete TTFB + JS parse/execute + main thread busy. Para melhorar, atue em
+    TTFB, bundle size e long tasks.
+  solucoes:
+    geral: |
+      1. Reduza o tamanho do bundle JavaScript
+      2. Use code splitting por rota
+      3. Otimize TTFB com CDN
+      4. Quebre long tasks em chunks menores
+    vtex: |
+      Revise apps VTEX instalados e remova os nao essenciais.
+      Apps pesados aumentam o TTI significativamente.
+    wordpress: |
+      1. Minimize JavaScript com WP Rocket
+      2. Adie JS nao critico
+      3. Otimize TTFB com page caching
+    nextjs: |
+      Use `next/dynamic` para code splitting.
+      Otimize o bundle com `@next/bundle-analyzer`.
+    shopify: |
+      Revise apps instalados. Remova os que
+      adicionam JavaScript excessivo.
+
+- codigo: metrica-si-info
+  titulo: "Speed Index (metrica de resultado)"
+  severidade: 1
+  metricas_afetadas: [LCP, FCP, CLS]
+  audits_lighthouse:
+    - speed-index
+  descricao: |
+    O Speed Index mede quao rapido o conteudo e exibido visualmente durante o carregamento.
+    Esta e uma metrica de resultado que reflete FCP, LCP e CLS combinados.
+  solucoes:
+    geral: |
+      1. Otimize FCP e LCP (causas diretas do SI)
+      2. Reduza layout shifts (CLS)
+      3. Use CDN para recursos estaticos
+      4. Inline CSS critico
+    vtex: |
+      O VTEX IO otimiza o Speed Index automaticamente.
+      Revise apps que possam atrasar a renderizacao.
+    wordpress: |
+      1. Otimize FCP com cache e CSS inline
+      2. Reduza CLS com dimensoes em imagens
+      3. Use WP Rocket para otimizacao geral
+    nextjs: |
+      O Next.js SSR otimiza SI automaticamente.
+      Revise componentes pesados no layout inicial.
+    shopify: |
+      Otimize imagens e minimize CSS do tema.
+      Revise apps que atrasam a renderizacao.
+
+- codigo: metrica-inp-info
+  titulo: "Interaction to Next Paint (metrica de resultado)"
+  severidade: 1
+  metricas_afetadas: [INP]
+  audits_lighthouse:
+    - experimental-interaction-to-next-paint
+  descricao: |
+    Tempo de resposta do browser a interacoes do usuario (cliques, scrolls, digitacao).
+    Esta e uma metrica de resultado. Para melhorar, reduza long tasks e minimize
+    JavaScript na main thread.
+  solucoes:
+    geral: |
+      1. Quebre long tasks com requestIdleCallback
+      2. Use Web Workers para processamento pesado
+      3. Reduza o tamanho do bundle JavaScript
+      4. Use debounce em event handlers de scroll/input
+    vtex: |
+      Revise apps VTEX com event handlers pesados.
+      Use debounce para interacoes frequentes.
+    wordpress: |
+      1. Otimize plugins com JS pesado
+      2. Use passive event listeners
+      3. Minimize jQuery se possivel
+    nextjs: |
+      Use `useTransition` e `useDeferredValue` para
+      updates nao urgentes. Evite work pesado no mount.
+    shopify: |
+      Revise apps com interacoes pesadas.
+      Use debounce em event handlers customizados.
+
+- codigo: user-timing
+  titulo: "Marcações e medições de User Timing detectadas"
+  severidade: 1
+  metricas_afetadas: [TTFB]
+  audits_lighthouse:
+    - user-timings
+  descricao: |
+    Foram encontradas marcações User Timing na página (performance.mark / performance.measure).
+    Isso não é um problema — é uma prática positiva de observabilidade. O Lighthouse apenas lista
+    as marks/measures encontrados para que o desenvolvedor saiba que existem.
+  solucoes:
+    geral: |
+      1. Nenhuma ação necessária — User Timing é uma boa prática
+      2. Use as marks para identificar gargalos de performance customizados
+      3. Exporte os dados via PerformanceObserver para análise em RUM
+    vtex: |
+      Use as marks do VTEX IO para medir tempo de renderização de componentes.
+    wordpress: |
+      Use `performance.mark()` em plugins customizados para medir tempo
+      de operações pesadas (consulta DB, renderização de shortcodes).
+    nextjs: |
+      Use `performance.mark()` em Server Components e middleware
+      para identificar gargalos. Combine com `next/diagnostics`.
+    shopify: |
+      Use Performance API em scripts customizados do tema para
+      medir tempo de carregamento de seções críticas.
+
+- codigo: js-nao-minificado
+  titulo: "JavaScript servido sem minificação"
+  severidade: 3
+  metricas_afetadas: [TBT, INP, FCP]
+  audits_lighthouse:
+    - unminified-javascript
+  descricao: |
+    Arquivos JavaScript estão sendo servidos sem minificação (comentários, espaços extras,
+    nomes longos de variáveis). Isso aumenta o tamanho do download e o tempo de parse.
+  solucoes:
+    geral: |
+      1. Configure o bundler para produção (Terser, esbuild, SWC minification)
+      2. Verifique se assets estáticos não estão bypassando o pipeline de build
+      3. Use `terser` ou `uglify-js` para scripts que não passam pelo bundler
+      4. Ative compressão gzip/brotli no servidor
+    vtex: |
+      O VTEX IO minifica automaticamente em produção. Verifique se
+      assets customizados estão sendo processados pelo build pipeline.
+    wordpress: |
+      1. WP Rocket: ative "Minify JavaScript"
+      2. Use Autoptimize para minificar JS que não passa por plugins
+      3. Verifique se plugins não incluem JS desminificado em produção
+    nextjs: |
+      O Next.js minifica automaticamente em `next build`.
+      Verifique se `__next_static` e chunks estão comprimidos.
+    shopify: |
+      1. Minifique JS customizado do tema com `theme check --minify`
+      2. Use o asset pipeline do Shopify para scripts do tema
+      3. Verifique apps que podem injetar JS não-minificado
+
+- codigo: document-write-evitado
+  titulo: "Uso de document.write() detectado"
+  severidade: 4
+  metricas_afetadas: [FCP, LCP, INP, TBT]
+  audits_lighthouse:
+    - no-document-write
+  descricao: |
+    document.write() foi detectado na página. Isso bloqueia o parser HTML e pode impedir
+    o carregamento paralelo de recursos. Também não funciona com back/forward cache e
+    pode causar problemas em conexões lentas.
+  solucoes:
+    geral: |
+      1. Substitua document.write() por DOM manipulation (createElement, innerHTML)
+      2. Use defer/async para scripts que antes usavam document.write()
+      3. Para injeção de scripts de terceiros, use tag manager (GTM) ou load async
+      4. Use iframe sandboxed em vez de document.write() para widgets
+    vtex: |
+      Verifique apps VTEX que usam document.write(). Contate o
+      suporte do app para obter versão atualizada sem document.write().
+    wordpress: |
+      1. Identifique plugins que usam document.write() com "Query Monitor"
+      2. Contate o desenvolvedor do plugin para correção
+      3. Use snippet para interceptar document.write em modo de compatibilidade
+    nextjs: |
+      document.write() não deve aparecer em código Next.js. Verifique
+      se scripts de terceiros não o utilizam. Use next/script com strategy.
+    shopify: |
+      1. Verifique apps de terceiros que injetam scripts via document.write()
+      2. Use `addEventListener` e `createElement` como alternativa
+      3. Prefira carregar scripts de terceiros de forma assíncrona
+
+- codigo: preconnect-origens
+  titulo: "Origens necessárias sem pré-conexão"
+  severidade: 2
+  metricas_afetadas: [TTFB, FCP]
+  audits_lighthouse:
+    - uses-rel-preconnect
+  descricao: |
+    Recursos de origens externas (CDN, APIs, fonts) são descobertos tardiamente pelo parser.
+    Adicionar `<link rel="preconnect">` permite ao browser iniciar DNS lookup, TCP handshake
+    e TLS negotiation antes do recurso ser solicitado.
+  solucoes:
+    geral: |
+      1. Adicione `<link rel="preconnect" href="https://cdn.exemplo.com">` no head
+      2. Para cross-origin, use `crossorigin` attribute
+      3. Não use preconnect para mais de 4-6 origens (cada uma consome recursos do browser)
+      4. Prefira preconnect para fonts e APIs, não para recursos do mesmo domínio
+    vtex: |
+      O VTEX IO gerencia preconnect para CDNs da plataforma.
+      Adicione preconnect para origens de apps de terceiros se necessário.
+    wordpress: |
+      1. WP Rocket: ative "Preconnect to external domains"
+      2. Adicione manualmente no head para Google Fonts e CDNs:
+         ```html
+         <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+         ```
+    nextjs: |
+      Adicione preconnect via `<head>` em layout ou next.config.js headers:
+      ```tsx
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      ```
+    shopify: |
+      1. Adicione preconnect para Google Fonts no head do tema
+      2. Use para CDNs de apps de terceiros que carregam recursos externos

@@ -1,0 +1,1 @@
+self.__SSG_MANIFEST=new Set(["\u002Fclientes\u002F[id]","\u002Fferramentas\u002Fcore-web-vitals\u002Fexecucao\u002F[id]","\u002Fferramentas\u002Fcore-web-vitals\u002Fhistorico\u002F[clienteId]","\u002Fferramentas\u002Fcore-web-vitals\u002Furl\u002F[analiseId]","\u002Fferramentas\u002Fhistorico\u002F[id]"]);self.__SSG_MANIFEST_CB&&self.__SSG_MANIFEST_CB()

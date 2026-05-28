@@ -84,10 +84,24 @@ class Settings(BaseSettings):
     revisor_llm_model: str = "gpt-4.1"
     enriquecedor_llm_model: str = "gpt-4.1"
 
+    cwv_analisador_llm_model: str = "gpt-4o-mini"
+    cwv_analisador_llm_temperature: float = 0.1
+    cwv_pesquisador_llm_model: str = "gpt-4.1"
+    cwv_pesquisador_llm_temperature: float = 0.4
+    cwv_admin_reload_token: str = ""
+    cwv_alerta_webhook_url: str = ""
+
     embedding_model: str = "embedding-3"
     embedding_dimensions: int = 1024
 
     serpapi_key: str = ""
+    api_context7_key: str = ""
+    api_psi_key: str = ""
+    api_psi_key2: str = ""
+
+    cwv_workflow_timeout: int = 1200
+    cwv_max_urls_por_execucao: int = 50
+    cwv_pesquisador_max_por_analise: int = 5
     google_trends_enabled: bool = False
 
     imagem_model: str = "glm-image"

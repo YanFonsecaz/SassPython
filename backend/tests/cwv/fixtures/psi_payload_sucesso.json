@@ -1,0 +1,71 @@
+{
+  "lighthouseResult": {
+    "finalUrl": "https://example.com/",
+    "userAgent": "Chrome/120 Mozilla/5.0",
+    "categories": {
+      "performance": {"score": 0.87}
+    },
+    "audits": {
+      "largest-contentful-paint": {
+        "id": "largest-contentful-paint",
+        "title": "Largest Contentful Paint element",
+        "score": 0.5,
+        "numericValue": 3200,
+        "scoreDisplayMode": "numeric",
+        "displayValue": "3.2 s"
+      },
+      "cumulative-layout-shift": {
+        "id": "cumulative-layout-shift",
+        "title": "Cumulative Layout Shift",
+        "score": 1.0,
+        "numericValue": 0.02,
+        "scoreDisplayMode": "numeric",
+        "displayValue": "0.02"
+      },
+      "interaction-to-next-paint": {
+        "id": "interaction-to-next-paint",
+        "title": "Interaction to Next Paint",
+        "score": 0.9,
+        "numericValue": 150,
+        "scoreDisplayMode": "numeric",
+        "displayValue": "150 ms"
+      },
+      "first-contentful-paint": {
+        "id": "first-contentful-paint",
+        "title": "First Contentful Paint",
+        "score": 1.0,
+        "numericValue": 900,
+        "scoreDisplayMode": "numeric"
+      },
+      "server-response-time": {
+        "id": "server-response-time",
+        "title": "Server Response Time",
+        "score": 1.0,
+        "numericValue": 80,
+        "scoreDisplayMode": "numeric"
+      },
+      "total-blocking-time": {
+        "id": "total-blocking-time",
+        "title": "Total Blocking Time",
+        "score": 0.85,
+        "numericValue": 200,
+        "scoreDisplayMode": "numeric"
+      },
+      "uses-optimized-images": {
+        "id": "uses-optimized-images",
+        "title": "Uses Optimized Images",
+        "score": 0.4,
+        "numericValue": 0,
+        "scoreDisplayMode": "numeric"
+      },
+      "dom-size": {
+        "id": "dom-size",
+        "title": "DOM Size",
+        "score": 1.0,
+        "numericValue": 150,
+        "scoreDisplayMode": "numeric"
+      }
+    },
+    "stackPacks": []
+  }
+}
