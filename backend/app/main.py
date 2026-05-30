@@ -124,6 +124,11 @@ if FRONTEND_DIR.is_dir():
                 if not full_path.endswith("/"):
                     return RedirectResponse(f"/{full_path}/", status_code=301)
                 return FileResponse(str(index_path))
+        # Arquivos internos de dados/prefetch do Next (RSC) não são páginas: devolver
+        # o SPA (200) em vez de 404, senão o prefetch de rotas dinâmicas loga 404 no console.
+        if "__next" in full_path or "_rsc" in request.url.query:
+            return FileResponse(str(FRONTEND_DIR / "index.html"))
+
         # Rota não-casada: servir a página 404 estática (not-found.tsx) com status 404,
         # em vez de devolver index.html (que mascarava o 404 e caía no início).
         not_found = FRONTEND_DIR / "404.html"
