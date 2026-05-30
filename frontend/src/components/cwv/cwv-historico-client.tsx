@@ -24,8 +24,14 @@ function formatData(data: string) {
   return new Date(data).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function estrategiasResumo(analises: { estrategia: string }[]): { mobile: boolean; desktop: boolean } {
+  const set = new Set(analises.map((a) => a.estrategia));
+  return { mobile: set.has("mobile"), desktop: set.has("desktop") };
+}
+
 function UrlCard({ urlEntry }: { urlEntry: CwvHistoricoUrlResposta }) {
   const ultima = urlEntry.analises[0];
+  const est = estrategiasResumo(urlEntry.analises);
 
   return (
     <Link
@@ -41,6 +47,16 @@ function UrlCard({ urlEntry }: { urlEntry: CwvHistoricoUrlResposta }) {
           <Badge variant="outline" className="text-[10px]">{urlEntry.template_tipo}</Badge>
           {urlEntry.plataforma_detectada && urlEntry.plataforma_detectada !== "desconhecida" && (
             <Badge variant="outline" className="text-[10px]">{urlEntry.plataforma_detectada}</Badge>
+          )}
+          {est.mobile && (
+            <Badge variant="outline" className="text-[10px] gap-1">
+              <span className="size-1.5 rounded-full bg-blue-500" aria-hidden /> Mobile
+            </Badge>
+          )}
+          {est.desktop && (
+            <Badge variant="outline" className="text-[10px] gap-1">
+              <span className="size-1.5 rounded-full bg-green-500" aria-hidden /> Desktop
+            </Badge>
           )}
           {ultima && (
             <>

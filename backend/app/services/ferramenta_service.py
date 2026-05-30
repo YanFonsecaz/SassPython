@@ -26,7 +26,8 @@ CUSTO_MAX_DISTRIBUIR_INLINKS = 115
 
 CUSTO_BASE_CWV = 15
 CUSTO_POR_URL_CWV = 1
-CUSTO_MAX_CWV = 50
+CUSTO_MAX_CWV = 100
+
 
 CUSTOS_TABELA = [
     {"acao": "gerar_artigo_base", "custo_creditos": CUSTO_BASE, "chamadas_llm_estimadas": 5},

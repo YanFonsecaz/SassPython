@@ -4,14 +4,18 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { notFound } from "next/navigation";
 import { DashboardUrlClient } from "@/components/cwv/cwv-dashboard-client";
-import { buscarAnaliseCwv, buscarHistoricoUrlCwv } from "@/lib/api/cwv";
+import { buscarAnaliseCwv, buscarHistoricoUrlCwv, buscarIrmaCwv } from "@/lib/api/cwv";
 import type { CwvAnaliseResposta, CwvAnaliseResumo } from "@/lib/api/cwv";
+
+export type CwvEstrategia = "mobile" | "desktop";
 
 export function CwvUrlClient() {
   const pathname = usePathname();
   const analiseId = pathname.split("/").filter(Boolean).pop() || "";
 
   const [analiseAtual, setAnaliseAtual] = useState<CwvAnaliseResposta | null>(null);
+  const [irma, setIrma] = useState<CwvAnaliseResposta | null>(null);
+  const [estrategiaAtiva, setEstrategiaAtiva] = useState<CwvEstrategia>("mobile");
   const [historico, setHistorico] = useState<CwvAnaliseResumo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [naoEncontrado, setNaoEncontrado] = useState(false);
@@ -25,10 +29,11 @@ export function CwvUrlClient() {
       try {
         const analise = await buscarAnaliseCwv(analiseId);
         setAnaliseAtual(analise);
+        setEstrategiaAtiva(analise.estrategia as CwvEstrategia);
 
         try {
-          const hist = await buscarHistoricoUrlCwv(analise.cliente_id, analise.url_canonica);
-          setHistorico(hist.analises ?? []);
+          const irmaRes = await buscarIrmaCwv(analiseId);
+          setIrma(irmaRes.analise);
         } catch {
         }
       } catch {
@@ -39,6 +44,21 @@ export function CwvUrlClient() {
     }
     load();
   }, [analiseId]);
+
+  // Histórico/evolução acompanham a estratégia ativa (mobile↔mobile, desktop↔desktop).
+  // Re-busca ao trocar o toggle para não mostrar a evolução da estratégia errada.
+  useEffect(() => {
+    if (!analiseAtual) return;
+    let cancelado = false;
+    buscarHistoricoUrlCwv(analiseAtual.cliente_id, analiseAtual.url_canonica, estrategiaAtiva)
+      .then((hist) => {
+        if (!cancelado) setHistorico(hist.analises ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelado = true;
+    };
+  }, [analiseAtual, estrategiaAtiva]);
 
   if (naoEncontrado) notFound();
 
@@ -53,9 +73,16 @@ export function CwvUrlClient() {
     );
   }
 
+  const analiseExibida = analiseAtual.estrategia === estrategiaAtiva ? analiseAtual : irma;
+  const irmaExiste = irma !== null;
+
   return (
     <DashboardUrlClient
-      analiseAtual={analiseAtual}
+      analiseAtual={analiseExibida ?? analiseAtual}
+      irma={irma}
+      irmaExiste={irmaExiste}
+      estrategiaAtiva={estrategiaAtiva}
+      onTrocarEstrategia={setEstrategiaAtiva}
       historico={historico}
       clienteId={analiseAtual.cliente_id}
     />

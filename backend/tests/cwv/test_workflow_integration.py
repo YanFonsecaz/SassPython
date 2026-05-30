@@ -78,12 +78,19 @@ async def test_workflow_completo_persiste_e_atualiza_execucao(
         assert execucao.status == "concluida", f"Bug #7: status={execucao.status}, erro={execucao.erro_msg}"
         assert execucao.resultado_json is not None, "Bug #6: resultado_json e None"
         analise_ids = execucao.resultado_json.get("analise_ids", [])
-        assert len(analise_ids) == 1, f"Bug #6: esperado 1 analise, got {len(analise_ids)}"
+        # Mobile + Desktop: 1 URL gera 2 analises
+        assert len(analise_ids) == 2, f"esperado 2 analises (mobile+desktop), got {len(analise_ids)}"
 
         analise = await check_session.get(CwvAnalise, uuid.UUID(analise_ids[0]))
         assert analise is not None
         assert analise.status == "sucesso"
         assert analise.plataforma_detectada == "wordpress"
+
+        estrategias = set()
+        for aid in analise_ids:
+            a = await check_session.get(CwvAnalise, uuid.UUID(aid))
+            estrategias.add(a.estrategia)
+        assert estrategias == {"mobile", "desktop"}, f"esperado mobile+desktop, got {estrategias}"
 
 
 @pytest.mark.asyncio

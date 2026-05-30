@@ -20,8 +20,6 @@ import {
   Trash2Icon,
   ClipboardPasteIcon,
   GlobeIcon,
-  SmartphoneIcon,
-  MonitorIcon,
 } from "lucide-react";
 import type { TemplateTipo } from "@/lib/api/cwv";
 import { analisarCwv, buscarCustoCwv } from "@/lib/api/cwv";
@@ -50,7 +48,6 @@ export function CwvFormPage() {
 
   const [step, setStep] = useState(0);
   const [clienteId, setClienteId] = useState("");
-  const [estrategia, setEstrategia] = useState<"mobile" | "desktop">("mobile");
   const [urls, setUrls] = useState<Record<TemplateTipo, string[]>>({
     home: [], categoria: [], produto: [], blog: [], blogpost: [], outros: [],
   });
@@ -122,7 +119,6 @@ export function CwvFormPage() {
       const resultado = await analisarCwv({
         cliente_id: clienteId,
         urls_por_template: urls,
-        estrategia,
       });
       router.push(`/ferramentas/core-web-vitals/execucao/${resultado.id}`);
     } catch (err) {
@@ -238,23 +234,9 @@ export function CwvFormPage() {
                 <p className="text-sm font-medium text-muted-foreground">
                   Adicione URLs agrupadas por <TermoComAjuda termo="template" />
                 </p>
-                <div className="flex gap-1">
-                  <span className="text-xs text-muted-foreground mr-1 self-center">
-                    <TermoComAjuda termo="estratégia" texto="Dispositivo de teste: Mobile testa como o site funciona em celulares; Desktop testa em computadores." />
-                  </span>
-                  <button type="button" onClick={() => setEstrategia("mobile")}
-                    className={cn("flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
-                      estrategia === "mobile" ? "border-brand bg-brand/5 text-brand-dark" : "text-muted-foreground hover:bg-surface-light"
-                    )}>
-                    <SmartphoneIcon className="size-3.5" /> Mobile
-                  </button>
-                  <button type="button" onClick={() => setEstrategia("desktop")}
-                    className={cn("flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
-                      estrategia === "desktop" ? "border-brand bg-brand/5 text-brand-dark" : "text-muted-foreground hover:bg-surface-light"
-                    )}>
-                    <MonitorIcon className="size-3.5" /> Desktop
-                  </button>
-                </div>
+                <span className="text-xs text-muted-foreground">
+                  Mobile + Desktop (automático)
+                </span>
               </div>
 
               <div className="flex flex-wrap gap-1.5">
@@ -342,8 +324,8 @@ export function CwvFormPage() {
                     <span className="text-right truncate font-medium">{clientes.find((c) => c.id === clienteId)?.nome ?? "—"}</span>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <span className="text-muted-foreground shrink-0"><TermoComAjuda termo="Estratégia" texto="Dispositivo usado na análise: Mobile ou Desktop." /></span>
-                    <span className="text-right font-medium">{estrategia === "mobile" ? "Mobile" : "Desktop"}</span>
+                    <span className="text-muted-foreground shrink-0">Dispositivos</span>
+                    <span className="text-right font-medium">Mobile + Desktop</span>
                   </div>
                   <div className="flex justify-between gap-4">
                     <span className="text-muted-foreground shrink-0">Total de URLs</span>
@@ -363,8 +345,8 @@ export function CwvFormPage() {
                 <div className="text-sm space-y-1.5 text-muted-foreground">
                   <p className="font-semibold text-foreground">{custo ?? "..."} créditos</p>
                   <p className="pl-3">Base: 15 créditos (fixo)</p>
-                  <p className="pl-3">Por URL: 1 crédito cada</p>
-                  <p className="pl-3">Máximo: 50 créditos</p>
+                  <p className="pl-3">Por URL: 1 crédito cada (mobile + desktop = 2)</p>
+                  <p className="pl-3">Máximo: 100 créditos</p>
                 </div>
                 <div className="pt-2 border-t border-brand/20">
                   <p className="text-sm">

@@ -45,7 +45,8 @@ async def test_custo_endpoint(client_autenticado):
     resp = await client_autenticado.get("/api/ferramentas/core-web-vitals/custo?n_urls=5")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["custo"] == 20
+    # Mobile + Desktop: 15 base + 5 URLs x 2 estrategias = 25
+    assert body["custo"] == 25
     assert body["n_urls"] == 5
 
 
@@ -54,7 +55,8 @@ async def test_custo_endpoint_max(client_autenticado):
     resp = await client_autenticado.get("/api/ferramentas/core-web-vitals/custo?n_urls=50")
     assert resp.status_code == 200
     body = resp.json()
-    assert body["custo"] == 50
+    # 15 + 50 x 2 = 115, limitado ao teto CUSTO_MAX_CWV = 100
+    assert body["custo"] == 100
 
 
 @pytest.mark.asyncio

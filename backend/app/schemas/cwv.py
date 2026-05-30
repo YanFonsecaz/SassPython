@@ -64,7 +64,6 @@ class UrlsPorTemplate(BaseModel):
 class AnalisarRequest(BaseModel):
     cliente_id: UUID
     urls_por_template: UrlsPorTemplate
-    estrategia: Estrategia = "mobile"
 
     @field_validator("urls_por_template")
     @classmethod
@@ -120,6 +119,7 @@ class AnaliseResumoResposta(BaseModel):
     id: UUID
     url_canonica: str
     template_tipo: str
+    estrategia: str
     score_performance: int | None
     lcp_ms: float | None
     cls: float | None
@@ -144,6 +144,7 @@ class CustoCwvResponse(BaseModel):
     custo: int
     custo_por_url: int
     n_urls: int
+    n_urls_reais: int = 0
 
 
 class MetricaComparada(BaseModel):

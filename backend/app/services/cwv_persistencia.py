@@ -112,7 +112,7 @@ async def buscar_analise_com_problemas(session, analise_id: str) -> dict | None:
     return _analise_to_dict(analise, problemas)
 
 
-async def buscar_historico_url(session, cliente_id: str, url_canonica: str) -> list[dict]:
+async def buscar_historico_url(session, cliente_id: str, url_canonica: str, estrategia: str | None = None) -> list[dict]:
     contagens = (
         select(
             CwvProblema.analise_id.label("analise_id"),
@@ -126,6 +126,13 @@ async def buscar_historico_url(session, cliente_id: str, url_canonica: str) -> l
         .subquery()
     )
 
+    where = [
+        CwvAnalise.cliente_id == cliente_id,
+        CwvAnalise.url_canonica == url_canonica,
+    ]
+    if estrategia:
+        where.append(CwvAnalise.estrategia == estrategia)
+
     resultado = await session.execute(
         select(
             CwvAnalise,
@@ -133,10 +140,7 @@ async def buscar_historico_url(session, cliente_id: str, url_canonica: str) -> l
             func.coalesce(contagens.c.n_alta, 0).label("n_alta"),
         )
         .outerjoin(contagens, contagens.c.analise_id == CwvAnalise.id)
-        .where(
-            CwvAnalise.cliente_id == cliente_id,
-            CwvAnalise.url_canonica == url_canonica,
-        )
+        .where(*where)
         .order_by(CwvAnalise.criado_em.desc())
         .limit(30)
     )
@@ -147,18 +151,42 @@ async def buscar_historico_url(session, cliente_id: str, url_canonica: str) -> l
 
 
 async def buscar_ultima_analise_url(
-    session, cliente_id: str, url_canonica: str
+    session, cliente_id: str, url_canonica: str, estrategia: str | None = None
 ) -> CwvAnalise | None:
+    where = [
+        CwvAnalise.cliente_id == cliente_id,
+        CwvAnalise.url_canonica == url_canonica,
+    ]
+    if estrategia:
+        where.append(CwvAnalise.estrategia == estrategia)
     resultado = await session.execute(
         select(CwvAnalise)
-        .where(
-            CwvAnalise.cliente_id == cliente_id,
-            CwvAnalise.url_canonica == url_canonica,
-        )
+        .where(*where)
         .order_by(CwvAnalise.criado_em.desc())
         .limit(1)
     )
     return resultado.scalar_one_or_none()
+
+
+async def buscar_analise_irma(session, analise_id: str) -> dict | None:
+    analise = await buscar_analise_por_id(session, analise_id)
+    if not analise:
+        return None
+    irma_estrategia = "desktop" if analise.estrategia == "mobile" else "mobile"
+    resultado = await session.execute(
+        select(CwvAnalise)
+        .where(
+            CwvAnalise.execucao_id == analise.execucao_id,
+            CwvAnalise.url_canonica == analise.url_canonica,
+            CwvAnalise.estrategia == irma_estrategia,
+        )
+        .limit(1)
+    )
+    irma = resultado.scalar_one_or_none()
+    if not irma:
+        return None
+    probs = await buscar_problemas_analise(session, str(irma.id))
+    return _analise_to_dict(irma, probs)
 
 
 async def listar_historico_cliente(session, cliente_id: str, template: str | None = None) -> list[dict]:
@@ -261,6 +289,7 @@ def _analise_resumo(a: CwvAnalise, *, n_problemas: int = 0, n_alta: int = 0) -> 
         "id": str(a.id),
         "url_canonica": a.url_canonica,
         "template_tipo": a.template_tipo,
+        "estrategia": a.estrategia,
         "score_performance": int(a.score_performance) if a.score_performance is not None else None,
         "lcp_ms": float(a.lcp_ms) if a.lcp_ms is not None else None,
         "cls": float(a.cls) if a.cls is not None else None,
@@ -281,19 +310,23 @@ async def buscar_problemas_analise(session, analise_id: str) -> list[CwvProblema
 
 
 async def buscar_analise_anterior(
-    session, url_canonica: str, cliente_id: str, antes_de: datetime
+    session, url_canonica: str, cliente_id: str, antes_de: datetime, estrategia: str | None = None
 ) -> CwvAnalise | None:
-    """Retorna a análise imediatamente anterior à data dada para mesma URL+cliente."""
+    """Retorna a análise imediatamente anterior à data dada para mesma URL+cliente+estratégia."""
     from sqlalchemy import select
+    
+    where = [
+        CwvAnalise.cliente_id == cliente_id,
+        CwvAnalise.url_canonica == url_canonica,
+        CwvAnalise.criado_em < antes_de,
+        CwvAnalise.status == "sucesso",
+    ]
+    if estrategia:
+        where.append(CwvAnalise.estrategia == estrategia)
     
     resultado = await session.execute(
         select(CwvAnalise)
-        .where(
-            CwvAnalise.cliente_id == cliente_id,
-            CwvAnalise.url_canonica == url_canonica,
-            CwvAnalise.criado_em < antes_de,
-            CwvAnalise.status == "sucesso",
-        )
+        .where(*where)
         .order_by(CwvAnalise.criado_em.desc())
         .limit(1)
     )

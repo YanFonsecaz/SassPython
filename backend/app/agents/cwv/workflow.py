@@ -13,17 +13,23 @@ SEMAFORO_PSI = asyncio.Semaphore(5)
 SEMAFORO_LLM = asyncio.Semaphore(3)
 
 
+ESTRATEGIAS_CWV = ("mobile", "desktop")
+
+
+def _chave(url: str, estrategia: str) -> str:
+    return f"{estrategia}\x00{url}"
+
+
 class EstadoCWV(TypedDict):
     execucao_id: str
     usuario_id: str
     cliente_id: str
-    urls_por_template: list[tuple[str, str]]
-    estrategia: str
+    jobs: list[tuple[str, str, str]]
     psi_resultados: dict[str, dict]
     plataformas: dict[str, str]
     problemas_por_url: dict[str, list[dict]]
     analises_persistidas: list[str]
-    llm_stats_por_url: dict[str, dict]  # url -> {"llm_usado": bool, "processados": int, "descartados": int}
+    llm_stats_por_url: dict[str, dict]
 
 
 def _log_prefix(eid: str) -> str:
@@ -38,31 +44,32 @@ async def node_coletar_psi(estado: EstadoCWV) -> dict[str, Any]:
     from app.services.cwv_psi_client import PSIError, fetch_psi, parse_psi
 
     eid = estado["execucao_id"]
-    urls = [(template, url) for template, url in estado["urls_por_template"]]
-    total = len(urls)
-    await publish_event(eid, "node_start", "coletar_psi", f"Coletando metricas CWV para {total} URLs...")
+    jobs = estado["jobs"]
+    total = len(jobs)
+    await publish_event(eid, "node_start", "coletar_psi", f"Coletando metricas CWV para {total} URLs (mobile + desktop)...")
 
-    async def coletar_uma(url: str, idx: int, total: int) -> tuple[str, dict]:
+    async def coletar_uma(url: str, estrategia: str, idx: int, total: int) -> tuple[str, dict]:
         async with SEMAFORO_PSI:
-            await publish_event(eid, "node_progress", "coletar_psi", f"Coletando PSI {idx}/{total}: {url[:80]}")
+            await publish_event(eid, "node_progress", "coletar_psi", f"Coletando PSI {idx}/{total}: {url[:60]} ({estrategia})")
             t0 = time.monotonic()
             try:
-                payload = await fetch_psi(url, estado["estrategia"])
+                payload = await fetch_psi(url, estrategia)
                 parsed = parse_psi(payload)
-                return url, {"ok": True, "payload": payload, "parsed": parsed}
+                return url, {"ok": True, "payload": payload, "parsed": parsed, "estrategia": estrategia}
             except PSIError as e:
-                return url, {"ok": False, "erro": str(e)}
+                return url, {"ok": False, "erro": str(e), "estrategia": estrategia}
             finally:
                 cwv_analise_duracao_seconds.observe(time.monotonic() - t0)
 
-    tarefas = [coletar_uma(url, i + 1, total) for i, (_, url) in enumerate(urls)]
+    tarefas = [coletar_uma(url, estrategia, i + 1, total) for i, (_, url, estrategia) in enumerate(jobs)]
     resultados = await asyncio.gather(*tarefas)
 
     psi_dict: dict[str, dict] = {}
     n_ok = 0
     n_fail = 0
     for url, r in resultados:
-        psi_dict[url] = r
+        chave = _chave(url, r["estrategia"])
+        psi_dict[chave] = r
         if r["ok"]:
             n_ok += 1
         else:
@@ -80,11 +87,13 @@ async def node_detectar_plataformas(estado: EstadoCWV) -> dict[str, Any]:
     await publish_event(eid, "node_start", "detectar_plataformas", "Detectando plataformas...")
 
     plataformas: dict[str, str] = {}
-    for url, r in estado["psi_resultados"].items():
+    for _, url, estrategia in estado["jobs"]:
+        chave = _chave(url, estrategia)
+        r = estado["psi_resultados"].get(chave, {})
         if r.get("ok"):
-            plataformas[url] = detectar_plataforma(r["payload"])
+            plataformas[chave] = detectar_plataforma(r["payload"])
         else:
-            plataformas[url] = "desconhecida"
+            plataformas[chave] = "desconhecida"
 
     contagem: dict[str, int] = {}
     for p in plataformas.values():
@@ -102,31 +111,33 @@ async def node_analisar_seo(estado: EstadoCWV) -> dict[str, Any]:
     problemas_por_url: dict[str, list[dict]] = {}
     llm_stats_por_url: dict[str, dict] = {}
 
-    urls_to_analyze = []
-    for _, url in estado["urls_por_template"]:
-        r = estado["psi_resultados"].get(url, {})
+    jobs_to_analyze = []
+    for template, url, estrategia in estado["jobs"]:
+        chave = _chave(url, estrategia)
+        r = estado["psi_resultados"].get(chave, {})
         if r.get("ok"):
-            urls_to_analyze.append(url)
+            jobs_to_analyze.append((template, url, estrategia))
 
-    total = len(urls_to_analyze)
+    total = len(jobs_to_analyze)
     await publish_event(eid, "node_start", "analisar_seo", f"Analisando {total} URLs com sucesso...")
 
-    async def analisar_uma(url: str, idx: int) -> tuple[str, list[dict], dict]:
+    async def analisar_uma(template: str, url: str, estrategia: str, idx: int) -> tuple[str, list[dict], dict]:
         async with SEMAFORO_LLM:
-            r = estado["psi_resultados"][url]
-            await publish_event(eid, "node_progress", "analisar_seo", f"Analisando {idx}/{total}: {url[:80]}")
+            chave = _chave(url, estrategia)
+            r = estado["psi_resultados"][chave]
+            await publish_event(eid, "node_progress", "analisar_seo", f"Analisando {idx}/{total}: {url[:60]} ({estrategia})")
             problemas, stats = await agente.analisar(
                 audits_falhos=r["parsed"]["audits_falhos"],
-                plataforma=estado["plataformas"][url],
+                plataforma=estado["plataformas"][chave],
                 metricas=r["parsed"],
             )
-            return url, problemas, stats
+            return chave, problemas, stats
 
-    if urls_to_analyze:
-        resultados = await asyncio.gather(*[analisar_uma(url, i + 1) for i, url in enumerate(urls_to_analyze)])
-        for url, probs, stats in resultados:
-            problemas_por_url[url] = probs
-            llm_stats_por_url[url] = stats
+    if jobs_to_analyze:
+        resultados = await asyncio.gather(*[analisar_uma(t, u, e, i + 1) for i, (t, u, e) in enumerate(jobs_to_analyze)])
+        for chave, probs, stats in resultados:
+            problemas_por_url[chave] = probs
+            llm_stats_por_url[chave] = stats
 
     total_problemas = sum(len(p) for p in problemas_por_url.values())
     await publish_event(eid, "node_complete", "analisar_seo", f"{total_problemas} problemas identificados em {total} URLs")
@@ -141,32 +152,39 @@ async def node_documentar(estado: EstadoCWV) -> dict[str, Any]:
     agente = CWVDocumentadorAgent()
     novo: dict[str, list[dict]] = {}
 
-    urls_com_problemas = [(url, probs) for url, probs in estado["problemas_por_url"].items() if probs]
+    urls_com_problemas = [(chave, probs) for chave, probs in estado["problemas_por_url"].items() if probs]
     total = len(urls_com_problemas)
     await publish_event(eid, "node_start", "documentar", f"Documentando problemas em {total} URLs...")
 
-    async def doc_uma(url: str, problemas: list[dict], idx: int) -> tuple[str, list[dict]]:
-        await publish_event(eid, "node_progress", "documentar", f"Documentando {idx}/{total}: {url[:80]}")
+    async def doc_uma(chave: str, problemas: list[dict], idx: int) -> tuple[str, list[dict]]:
+        await publish_event(eid, "node_progress", "documentar", f"Documentando {idx}/{total}: {_chave_label(chave)}")
         documentados = await agente.documentar(
             problemas=problemas,
-            plataforma=estado["plataformas"][url],
+            plataforma=estado["plataformas"].get(chave, "outros"),
         )
-        return url, documentados
+        return chave, documentados
 
     if urls_com_problemas:
         resultados = await asyncio.gather(
-            *[doc_uma(url, probs, i + 1) for i, (url, probs) in enumerate(urls_com_problemas)]
+            *[doc_uma(chave, probs, i + 1) for i, (chave, probs) in enumerate(urls_com_problemas)]
         )
-        for url, docs in resultados:
-            novo[url] = docs
+        for chave, docs in resultados:
+            novo[chave] = docs
 
-    for url, probs in estado["problemas_por_url"].items():
-        if url not in novo:
-            novo[url] = probs
+    for chave, probs in estado["problemas_por_url"].items():
+        if chave not in novo:
+            novo[chave] = probs
 
     total_docs = sum(len(d) for d in novo.values())
     await publish_event(eid, "node_complete", "documentar", f"{total_docs} problemas documentados")
     return {"problemas_por_url": novo}
+
+
+def _chave_label(chave: str) -> str:
+    parts = chave.split("\x00", 1)
+    if len(parts) == 2:
+        return f"{parts[1][:60]} ({parts[0]})"
+    return chave[:80]
 
 
 async def node_pesquisar_outros(estado: EstadoCWV) -> dict[str, Any]:
@@ -178,18 +196,18 @@ async def node_pesquisar_outros(estado: EstadoCWV) -> dict[str, Any]:
     novo: dict[str, list[dict]] = {}
     total_pesquisas = 0
 
-    for url, problemas in estado["problemas_por_url"].items():
+    for chave, problemas in estado["problemas_por_url"].items():
         sem_kb = [p for p in problemas if p.get("kb_codigo") is None][:settings.cwv_pesquisador_max_por_analise]
         if not sem_kb:
-            novo[url] = problemas
+            novo[chave] = problemas
             continue
 
         from app.core.metrics import cwv_pesquisador_invocacoes
 
-        plataforma = estado["plataformas"].get(url, "outros")
+        plataforma = estado["plataformas"].get(chave, "outros")
         pesquisador = CWVPesquisadorAgent(usuario_id=usuario_id, plataforma=plataforma)
         cwv_pesquisador_invocacoes.inc(len(sem_kb))
-        await publish_event(eid, "node_progress", "pesquisar_outros", f"Pesquisando {len(sem_kb)} problemas residuais: {url[:80]}")
+        await publish_event(eid, "node_progress", "pesquisar_outros", f"Pesquisando {len(sem_kb)} problemas residuais: {_chave_label(chave)}")
 
         for p in sem_kb:
             ctx = p.get("contexto_especifico", {})
@@ -210,7 +228,7 @@ async def node_pesquisar_outros(estado: EstadoCWV) -> dict[str, Any]:
             except Exception as e:
                 logger.warning("Pesquisador falhou para audit %s: %s", ctx.get("audit_id"), e)
 
-        novo[url] = problemas
+        novo[chave] = problemas
 
     await publish_event(eid, "node_complete", "pesquisar_outros", f"{total_pesquisas} problemas pesquisados")
     return {"problemas_por_url": novo}
@@ -224,9 +242,9 @@ async def node_priorizar(estado: EstadoCWV) -> dict[str, Any]:
     await publish_event(eid, "node_start", "priorizar", "Priorizando problemas...")
 
     novo: dict[str, list[dict]] = {}
-    for url, problemas in estado["problemas_por_url"].items():
-        parsed = estado["psi_resultados"].get(url, {}).get("parsed")
-        novo[url] = priorizar_problemas(problemas, metricas=parsed)
+    for chave, problemas in estado["problemas_por_url"].items():
+        parsed = estado["psi_resultados"].get(chave, {}).get("parsed")
+        novo[chave] = priorizar_problemas(problemas, metricas=parsed)
 
     total = sum(len(p) for p in novo.values())
     await publish_event(eid, "node_complete", "priorizar", f"{total} problemas priorizados")
@@ -238,17 +256,18 @@ async def node_persistir(estado: EstadoCWV) -> dict[str, Any]:
     from app.services.cwv_persistencia import persistir_analise
 
     eid = estado["execucao_id"]
-    total = len(estado["urls_por_template"])
-    await publish_event(eid, "node_start", "persistir", f"Salvando analises ({total} URLs)...")
+    total = len(estado["jobs"])
+    await publish_event(eid, "node_start", "persistir", f"Salvando analises ({total} URLs × 2 estrategias)...")
 
     from app.core.metrics import cwv_problemas_por_analise
 
     analises_ids: list[str] = []
     llm_stats = estado.get("llm_stats_por_url", {})
     async with async_session_factory() as session:
-        for template, url in estado["urls_por_template"]:
-            r = estado["psi_resultados"].get(url, {"ok": False, "erro": "nao coletado"})
-            problemas_url = estado["problemas_por_url"].get(url, [])
+        for template, url, estrategia in estado["jobs"]:
+            chave = _chave(url, estrategia)
+            r = estado["psi_resultados"].get(chave, {"ok": False, "erro": "nao coletado"})
+            problemas_url = estado["problemas_por_url"].get(chave, [])
             analise_id = await persistir_analise(
                 session,
                 execucao_id=eid,
@@ -256,11 +275,11 @@ async def node_persistir(estado: EstadoCWV) -> dict[str, Any]:
                 usuario_id=estado["usuario_id"],
                 url=url,
                 template=template,
-                estrategia=estado["estrategia"],
-                plataforma=estado["plataformas"].get(url, "desconhecida"),
+                estrategia=estrategia,
+                plataforma=estado["plataformas"].get(chave, "desconhecida"),
                 psi_resultado=r,
                 problemas=problemas_url,
-                llm_stats=llm_stats.get(url),
+                llm_stats=llm_stats.get(chave),
             )
             analises_ids.append(analise_id)
             if r.get("ok"):
@@ -342,13 +361,16 @@ async def executar_workflow_cwv(execucao_id: str, ctx: dict[str, Any] | None = N
             return
 
         urls_flat = urls_obj.itens()
+        jobs = []
+        for template, url in urls_flat:
+            for estrategia in ESTRATEGIAS_CWV:
+                jobs.append((template, url, estrategia))
 
         estado_inicial: EstadoCWV = {
             "execucao_id": execucao_id,
             "usuario_id": str(execucao.usuario_id),
             "cliente_id": str(execucao.cliente_id) if execucao.cliente_id else "",
-            "urls_por_template": urls_flat,
-            "estrategia": entrada.get("estrategia", "mobile"),
+            "jobs": jobs,
             "psi_resultados": {},
             "plataformas": {},
             "problemas_por_url": {},
@@ -415,29 +437,29 @@ async def _run_workflow_cwv(workflow, estado_inicial, config, execucao_id: str):
             analises_ids = estado_final.get("analises_persistidas", [])
 
         n_sucesso = 0
-        n_total_urls = len(estado_final.get("urls_por_template", [])) if estado_final else 0
+        n_total_jobs = len(estado_final.get("jobs", [])) if estado_final else 0
         if estado_final:
-            for _url, r in estado_final.get("psi_resultados", {}).items():
+            for _chave_j, r in estado_final.get("psi_resultados", {}).items():
                 if r.get("ok"):
                     n_sucesso += 1
 
         custo_base = ferramenta_service.CUSTO_BASE_CWV
 
         # SPEC 10 Cenário #6: PSI falhou em TODAS as URLs → não cobra base, libera reserva
-        if n_sucesso == 0 and n_total_urls > 0:
+        if n_sucesso == 0 and n_total_jobs > 0:
             await credito_service.liberar_reserva(session, str(execucao.usuario_id), custo_base)
             execucao.status = "falhou"
             execucao.creditos_cobrados = 0
             execucao.erro_msg = "Nenhuma URL pode ser analisada (PSI indisponivel ou todas as URLs invalidas)"
             execucao.resultado_json = {
                 "n_urls_analisadas": 0,
-                "n_urls_falharam": n_total_urls,
+                "n_urls_falharam": n_total_jobs,
                 "analise_ids": analises_ids,
                 "motivo_falha": "psi_total",
             }
             execucao.concluida_em = datetime.now(UTC)
             await session.commit()
-            logger.warning("%s CWV falhou: 0 URLs ok (de %d) — creditos liberados", _log_prefix(execucao_id), n_total_urls)
+            logger.warning("%s CWV falhou: 0 URLs ok (de %d) — creditos liberados", _log_prefix(execucao_id), n_total_jobs)
             return
 
         custo = ferramenta_service.calcular_custo_cwv(n_sucesso)
@@ -463,7 +485,7 @@ async def _run_workflow_cwv(workflow, estado_inicial, config, execucao_id: str):
 
         resultado_json = {
             "n_urls_analisadas": n_sucesso,
-            "n_urls_falharam": n_total_urls - n_sucesso,
+            "n_urls_falharam": n_total_jobs - n_sucesso,
             "analise_ids": analises_ids,
         }
 

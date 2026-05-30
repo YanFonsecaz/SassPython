@@ -38,6 +38,14 @@ Geradas após o e2e identificar bugs reais + gaps de cobertura.
 
 ---
 
+## 🚀 Novas funcionalidades (V2)
+
+| # | SPEC | Tipo | Esforço |
+|---|---|---|---|
+| 11 | [Análise Mobile **e** Desktop](SPEC_CWV_Mobile_e_Desktop.md) | ✨ Toda análise roda Mobile+Desktop (2 análises/URL) + toggle no dashboard. **Sem migration** (schema já suporta). Custo passa a `15 + N×2`. | ~1–1,5 dia |
+
+---
+
 ## 🗺️ Ordem de execução recomendada V1.1
 
 ```

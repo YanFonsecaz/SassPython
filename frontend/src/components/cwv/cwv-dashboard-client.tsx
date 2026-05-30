@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon, RefreshCwIcon, AlertTriangleIcon } from "lucide-react";
+import { ArrowLeftIcon, RefreshCwIcon, AlertTriangleIcon, SmartphoneIcon, MonitorIcon } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
@@ -17,14 +17,28 @@ import { classificarAnalise } from "@/lib/cwv-estado";
 import { PencilIcon, SparklesIcon } from "lucide-react";
 import type { CwvAnaliseResposta, CwvAnaliseResumo, ComparacaoResposta } from "@/lib/api/cwv";
 import { buscarComparacao } from "@/lib/api/cwv";
+import type { CwvEstrategia } from "@/components/cwv/cwv-url-client";
+import { cn } from "@/lib/utils";
 
 interface DashboardUrlClientProps {
   analiseAtual: CwvAnaliseResposta;
+  irma: CwvAnaliseResposta | null;
+  irmaExiste: boolean;
+  estrategiaAtiva: CwvEstrategia;
+  onTrocarEstrategia: (e: CwvEstrategia) => void;
   historico: CwvAnaliseResumo[];
   clienteId: string;
 }
 
-export function DashboardUrlClient({ analiseAtual, historico, clienteId }: DashboardUrlClientProps) {
+export function DashboardUrlClient({
+  analiseAtual,
+  irma,
+  irmaExiste,
+  estrategiaAtiva,
+  onTrocarEstrategia,
+  historico,
+  clienteId,
+}: DashboardUrlClientProps) {
   const [reanalisarOpen, setReanalisarOpen] = useState(false);
   const [plataformaOpen, setPlataformaOpen] = useState(false);
   const [comparacao, setComparacao] = useState<ComparacaoResposta | null>(null);
@@ -39,14 +53,12 @@ export function DashboardUrlClient({ analiseAtual, historico, clienteId }: Dashb
         const data = await buscarComparacao(analiseAtual.id);
         setComparacao(data);
       } catch (error) {
-        // Ignorar erros de comparação - pode não ter análise anterior
         setErroComparacao(error instanceof Error ? error.message : "Erro ao carregar comparação");
       } finally {
         setCarregandoComparacao(false);
       }
     }
     
-    // Só tentar carregar se houver histórico e análise atual
     if (historico.length >= 1 && analiseAtual) {
       carregarComparacao();
     } else {
@@ -124,7 +136,6 @@ export function DashboardUrlClient({ analiseAtual, historico, clienteId }: Dashb
                   </button>
                 )}
                 <Badge variant="outline">{analiseAtual.template_tipo}</Badge>
-                <Badge variant="outline">{analiseAtual.estrategia === "mobile" ? "Mobile" : "Desktop"}</Badge>
                 {analiseAtual.llm_usado && (
                   <Badge
                     variant="outline"
@@ -137,16 +148,47 @@ export function DashboardUrlClient({ analiseAtual, historico, clienteId }: Dashb
                 )}
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setReanalisarOpen(true)}>
-              <RefreshCwIcon className="size-4 mr-1" /> Re-analisar
-            </Button>
+            <div className="flex items-center gap-2">
+              <div className="inline-flex rounded-lg border bg-card p-0.5">
+                <button
+                  type="button"
+                  onClick={() => onTrocarEstrategia("mobile")}
+                  disabled={!irmaExiste && estrategiaAtiva === "mobile"}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                    estrategiaAtiva === "mobile"
+                      ? "bg-brand text-white"
+                      : "text-muted-foreground hover:text-foreground",
+                    !irmaExiste && "opacity-50",
+                  )}
+                >
+                  <SmartphoneIcon className="size-3.5" /> Mobile
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onTrocarEstrategia("desktop")}
+                  disabled={!irmaExiste && estrategiaAtiva === "desktop"}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                    estrategiaAtiva === "desktop"
+                      ? "bg-brand text-white"
+                      : "text-muted-foreground hover:text-foreground",
+                    !irmaExiste && "opacity-50",
+                  )}
+                >
+                  <MonitorIcon className="size-3.5" /> Desktop
+                </button>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setReanalisarOpen(true)}>
+                <RefreshCwIcon className="size-4 mr-1" /> Re-analisar
+              </Button>
+            </div>
           </div>
 
           <MetricasResumo analiseAtual={analiseAtual} analiseAnterior={analiseAnterior} />
 
           <CwvEstadoBanner estado={estado} score={analiseAtual.score_performance} />
 
-          {/* Comparador com análise anterior */}
           {carregandoComparacao && (
             <div className="mt-6 border-t border-border pt-6">
               <div className="animate-pulse space-y-2">

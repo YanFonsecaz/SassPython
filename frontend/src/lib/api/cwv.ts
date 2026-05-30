@@ -44,6 +44,7 @@ export interface CwvAnaliseResumo {
   id: string;
   url_canonica: string;
   template_tipo: string;
+  estrategia: string;
   score_performance: number | null;
   lcp_ms: number | null;
   cls: number | null;
@@ -64,6 +65,7 @@ export interface CwvCustoResponse {
   custo: number;
   custo_por_url: number;
   n_urls: number;
+  n_urls_reais: number;
 }
 
 export interface CwvExecucaoCriada {
@@ -82,7 +84,6 @@ export type TemplateTipo = "home" | "categoria" | "produto" | "blog" | "blogpost
 export interface CwvAnalisarRequest {
   cliente_id: string;
   urls_por_template: Record<TemplateTipo, string[]>;
-  estrategia: "mobile" | "desktop";
 }
 
 export async function buscarCustoCwv(nUrls: number): Promise<CwvCustoResponse> {
@@ -109,8 +110,9 @@ export async function buscarHistoricoCwv(clienteId: string, template?: string): 
   return api.get(`/ferramentas/core-web-vitals/historico?${qs}`);
 }
 
-export async function buscarHistoricoUrlCwv(clienteId: string, urlCanonica: string): Promise<CwvHistoricoUrlResposta> {
+export async function buscarHistoricoUrlCwv(clienteId: string, urlCanonica: string, estrategia?: string): Promise<CwvHistoricoUrlResposta> {
   const qs = new URLSearchParams({ cliente_id: clienteId, url: urlCanonica });
+  if (estrategia) qs.set("estrategia", estrategia);
   return api.get(`/ferramentas/core-web-vitals/historico-url?${qs}`);
 }
 
@@ -153,4 +155,13 @@ export interface ComparacaoResposta {
 
 export async function buscarComparacao(analiseId: string): Promise<ComparacaoResposta> {
   return api.get<ComparacaoResposta>(`/ferramentas/core-web-vitals/comparacao/${analiseId}`);
+}
+
+export interface IrmaResponse {
+  existe: boolean;
+  analise: CwvAnaliseResposta | null;
+}
+
+export async function buscarIrmaCwv(analiseId: string): Promise<IrmaResponse> {
+  return api.get<IrmaResponse>(`/ferramentas/core-web-vitals/analise/${analiseId}/irma`);
 }

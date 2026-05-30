@@ -42,11 +42,13 @@ async def custo_cwv_endpoint(
     n_urls: int = Query(1, ge=1, le=50),
     usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
-    custo = calcular_custo_cwv(n_urls)
+    n_jobs = n_urls * 2
+    custo = calcular_custo_cwv(n_jobs)
     return {
         "custo": custo,
         "custo_por_url": CUSTO_POR_URL_CWV,
         "n_urls": n_urls,
+        "n_urls_reais": n_jobs,
     }
 
 
@@ -60,7 +62,7 @@ async def analisar_cwv(
     await _validar_cliente(db, str(usuario.id), str(body.cliente_id))
 
     n_urls = body.urls_por_template.total()
-    custo = calcular_custo_cwv(n_urls)
+    custo = calcular_custo_cwv(n_urls * 2)
 
     from app.services import credito_service
 
@@ -163,6 +165,7 @@ async def listar_historico_cwv(
 async def historico_url_cwv(
     cliente_id: uuid.UUID,
     url: str,
+    estrategia: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -173,8 +176,8 @@ async def historico_url_cwv(
         buscar_ultima_analise_url,
     )
 
-    ultima = await buscar_ultima_analise_url(db, str(cliente_id), url)
-    analises = await buscar_historico_url(db, str(cliente_id), url)
+    ultima = await buscar_ultima_analise_url(db, str(cliente_id), url, estrategia=estrategia)
+    analises = await buscar_historico_url(db, str(cliente_id), url, estrategia=estrategia)
     return {
         "url_canonica": url,
         "template_tipo": ultima.template_tipo if ultima else "",
@@ -200,7 +203,7 @@ async def reanalisar_cwv(
 
     url_obj = UrlsPorTemplate(**{analise.template_tipo: [analise.url_canonica]})
 
-    custo = calcular_custo_cwv(1)
+    custo = calcular_custo_cwv(2)
 
     from app.services import credito_service
 
@@ -212,7 +215,6 @@ async def reanalisar_cwv(
     entrada = {
         "cliente_id": str(analise.cliente_id),
         "urls_por_template": url_obj.model_dump(mode="json"),
-        "estrategia": analise.estrategia,
     }
     execucao = await _criar_execucao_cwv(db, str(usuario.id), str(analise.cliente_id), entrada)
 
@@ -268,7 +270,8 @@ async def comparar_com_anterior(
         db, 
         analise_atual.url_canonica, 
         analise_atual.cliente_id, 
-        analise_atual.criado_em
+        analise_atual.criado_em,
+        estrategia=analise_atual.estrategia,
     )
     
     dias_decorridos = None
@@ -345,6 +348,25 @@ async def comparar_com_anterior(
         problemas_novos=problemas_novos,
         problemas_persistentes=problemas_persistentes
     )
+
+
+@router.get("/core-web-vitals/analise/{analise_id}/irma")
+async def buscar_irma_cwv(
+    analise_id: str,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+) -> dict[str, Any]:
+    from app.models.cwv_analise import CwvAnalise
+    from app.services.cwv_persistencia import buscar_analise_irma, buscar_analise_por_id
+
+    analise = await buscar_analise_por_id(db, analise_id)
+    if not analise or str(analise.usuario_id) != str(usuario.id):
+        raise HTTPException(status_code=404, detail="Analise nao encontrada")
+
+    irma = await buscar_analise_irma(db, analise_id)
+    if not irma:
+        return {"existe": False, "analise": None}
+    return {"existe": True, "analise": irma}
 
 
 @router.patch("/core-web-vitals/analise/{analise_id}/plataforma")
