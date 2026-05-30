@@ -40,7 +40,7 @@ export function FormularioMfa({
       onSucesso();
     } catch (err) {
       const apiErr = err as ApiError;
-      setErro(apiErr.detalhe || "Codigo invalido");
+      setErro(apiErr.detalhe || "Código inválido");
     } finally {
       setEnviando(false);
     }
@@ -65,7 +65,7 @@ export function FormularioMfa({
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="codigo-totp" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Codigo</Label>
+            <Label htmlFor="codigo-totp" className="text-sm font-medium text-muted-foreground">Codigo</Label>
             <Input
               id="codigo-totp"
               type="text"

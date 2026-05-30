@@ -21,7 +21,7 @@ function origemLabel(origem: string): string {
     case "redator_inicial":
       return "Inicial";
     case "revisao_auto":
-      return "Revisao auto";
+      return "Revisão auto";
     case "feedback_humano":
       return "Feedback";
     default:
@@ -42,9 +42,9 @@ export function ComparadorVersoes({ versoes, conteudosMap }: ComparadorVersoesPr
     <div className="space-y-4">
       <div className="flex items-center gap-4">
         <div className="flex-1 space-y-2">
-          <label className="text-sm font-medium">Versao esquerda</label>
+          <label className="text-sm font-medium">Versão esquerda</label>
           <select
-            className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm"
+            className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             value={esquerda}
             onChange={(e) => setEsquerda(Number(e.target.value))}
           >
@@ -56,9 +56,9 @@ export function ComparadorVersoes({ versoes, conteudosMap }: ComparadorVersoesPr
           </select>
         </div>
         <div className="flex-1 space-y-2">
-          <label className="text-sm font-medium">Versao direita</label>
+          <label className="text-sm font-medium">Versão direita</label>
           <select
-            className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm"
+            className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
             value={direita}
             onChange={(e) => setDireita(Number(e.target.value))}
           >

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/lib/api";
+import { api, mensagemErroAmigavel } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { CheckIcon, LinkIcon, FileTextIcon, SparklesIcon, Trash2Icon, ClipboardPasteIcon, InfoIcon } from "lucide-react";
 import type { InlinksRequest, ExecucaoCriada, CustoInlinksResponse } from "@/types";
@@ -81,11 +81,11 @@ export function FormularioInlinks() {
     const url = novaUrl.trim();
     if (!url) return;
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      setErro("URL deve comecar com http:// ou https://");
+      setErro("URL deve começar com http:// ou https://");
       return;
     }
     if (candidatasUrls.includes(url)) {
-      setErro("URL ja adicionada");
+      setErro("URL já adicionada");
       return;
     }
     setCandidatasUrls((prev) => [...prev, url]);
@@ -96,7 +96,7 @@ export function FormularioInlinks() {
   function addUrlsEmLote() {
     const linhas = urlsEmLote.split(/[\n,]/).map((l) => parseUrl(l)).filter((u): u is string => u !== null);
     if (linhas.length === 0) {
-      setErro("Nenhuma URL valida encontrada. Cada URL deve comecar com http:// ou https://");
+      setErro("Nenhuma URL válida encontrada. Cada URL deve começar com http:// ou https://");
       return;
     }
     const novas = linhas.filter((u) => !candidatasUrls.includes(u));
@@ -109,7 +109,7 @@ export function FormularioInlinks() {
       setErro("");
     }
     if (novas.length + candidatasUrls.length > 100) {
-      setErro("Maximo de 100 URLs por execucao");
+      setErro("Máximo de 100 URLs por execução");
     }
   }
 
@@ -138,11 +138,7 @@ export function FormularioInlinks() {
 
       router.push(`/ferramentas/historico/${resultado.id}`);
     } catch (err) {
-      const detalhe =
-        err && typeof err === "object" && "detalhe" in err
-          ? (err as { detalhe: string }).detalhe
-          : "Erro ao criar execucao";
-      setErro(detalhe);
+      setErro(mensagemErroAmigavel(err));
     } finally {
       setEnviando(false);
     }
@@ -201,11 +197,11 @@ export function FormularioInlinks() {
 
         {step === 0 && (
           <div className="space-y-5 animate-fade-in">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Forneça o conteudo pilar — pode ser uma URL ou texto markdown
+            <p className="text-sm font-medium text-muted-foreground">
+              Forneça o conteúdo pilar — pode ser uma URL ou texto markdown
             </p>
             <div className="space-y-2">
-              <Label htmlFor="pilar-url" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <Label htmlFor="pilar-url" className="text-sm font-medium text-muted-foreground">
                 URL do artigo pilar
               </Label>
               <Input
@@ -218,12 +214,12 @@ export function FormularioInlinks() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="pilar-md" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <Label htmlFor="pilar-md" className="text-sm font-medium text-muted-foreground">
                 Ou cole o markdown do artigo
               </Label>
               <Textarea
                 id="pilar-md"
-                placeholder="Cole aqui o conteudo markdown do artigo pilar..."
+                placeholder="Cole aqui o conteúdo markdown do artigo pilar..."
                 maxLength={100000}
                 value={pilarMarkdown}
                 onChange={(e) => setPilarMarkdown(e.target.value)}
@@ -236,7 +232,7 @@ export function FormularioInlinks() {
 
         {step === 1 && (
           <div className="space-y-5 animate-fade-in">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="text-sm font-medium text-muted-foreground">
               Adicione as URLs candidatas para receber inlinks do artigo pilar
             </p>
 
@@ -263,7 +259,7 @@ export function FormularioInlinks() {
 
             {!modoLote ? (
               <div className="space-y-2">
-                <Label htmlFor="nova-url" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <Label htmlFor="nova-url" className="text-sm font-medium text-muted-foreground">
                   URL candidata
                 </Label>
                 <div className="flex gap-2">
@@ -288,7 +284,7 @@ export function FormularioInlinks() {
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="urls-lote" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <Label htmlFor="urls-lote" className="text-sm font-medium text-muted-foreground">
                   URLs candidatas (uma por linha)
                 </Label>
                 <Textarea
@@ -311,7 +307,7 @@ export function FormularioInlinks() {
                   Adicionar todas
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Cole uma URL por linha ou separadas por virgula. Maximo de 100 URLs por execucao.
+                  Cole uma URL por linha ou separadas por vírgula. Máximo de 100 URLs por execução.
                 </p>
               </div>
             )}
@@ -343,10 +339,10 @@ export function FormularioInlinks() {
             <div className="grid gap-4 sm:grid-cols-3 pt-2">
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="max-inlinks" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <Label htmlFor="max-inlinks" className="text-sm font-medium text-muted-foreground">
                     Teto de inlinks
                   </Label>
-                  <span title="Calculamos automaticamente 4-5 inlinks por mil palavras. Este valor e apenas um limite superior para evitar excesso.">
+                  <span title="Calculamos automaticamente 4-5 inlinks por mil palavras. Este valor é apenas um limite superior para evitar excesso.">
                     <InfoIcon className="size-3 text-muted-foreground/60" />
                   </span>
                 </div>
@@ -362,8 +358,8 @@ export function FormularioInlinks() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="threshold" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Score minimo
+                  <Label htmlFor="threshold" className="text-sm font-medium text-muted-foreground">
+                    Score mínimo
                   </Label>
                   <span title="Quanto mais alto, mais rigoroso. Valores entre 0.5 e 0.7 funcionam para a maioria. Abaixo de 0.4 = links pouco relacionados.">
                     <InfoIcon className="size-3 text-muted-foreground/60" />
@@ -382,10 +378,10 @@ export function FormularioInlinks() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="rel-attr" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <Label htmlFor="rel-attr" className="text-sm font-medium text-muted-foreground">
                     Rel attribute
                   </Label>
-                  <span title="Atributo HTML do link. noopener = recomendado para SEO; nofollow = diz ao Google para nao seguir o link.">
+                  <span title="Atributo HTML do link. noopener = recomendado para SEO; nofollow = diz ao Google para não seguir o link.">
                     <InfoIcon className="size-3 text-muted-foreground/60" />
                   </span>
                 </div>
@@ -409,13 +405,13 @@ export function FormularioInlinks() {
         {step === 2 && (
           <div className="space-y-5 animate-fade-in">
             <div className="rounded-xl border bg-surface-light p-5 space-y-3">
-              <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Resumo</h4>
+              <h4 className="text-sm font-semibold text-muted-foreground">Resumo</h4>
               <div className="grid gap-3 text-sm">
                 {[
                   ["Pilar URL", pilarUrl || "Texto markdown fornecido"],
                   ["URLs candidatas", `${candidatasUrls.length} URLs`],
                   ["Teto de inlinks", String(maxInlinks)],
-                  ["Score minimo", String(thresholdScore)],
+                  ["Score mínimo", String(thresholdScore)],
                   ["Rel", relAttr],
                 ].map(([label, value]) => (
                   <div key={label} className="flex justify-between gap-4">
@@ -427,14 +423,14 @@ export function FormularioInlinks() {
             </div>
 
             <div className="rounded-xl border border-brand/20 bg-brand/5 p-5 space-y-3">
-              <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Custo estimado</h4>
+              <h4 className="text-sm font-semibold text-muted-foreground">Custo estimado</h4>
               <div className="text-sm space-y-1.5 text-muted-foreground">
                 <p className="font-semibold text-foreground">
-                  {custoEstimado ? `${custoEstimado.custo_estimado} creditos` : "... creditos"}
+                  {custoEstimado ? `${custoEstimado.custo_estimado} créditos` : "... créditos"}
                 </p>
-                <p className="pl-3">Base: 15 creditos (fixo)</p>
-                <p className="pl-3">Por URL: 1 credito cada</p>
-                <p className="pl-3">Maximo: 60 creditos</p>
+                <p className="pl-3">Base: 15 créditos (fixo)</p>
+                <p className="pl-3">Por URL: 1 crédito cada</p>
+                <p className="pl-3">Máximo: 60 créditos</p>
               </div>
               <div className="pt-2 border-t border-brand/20">
                 <p className="text-sm">
@@ -442,7 +438,7 @@ export function FormularioInlinks() {
                   <span className={cn("font-bold", saldo !== null && saldo < 20 ? "text-destructive" : "text-brand-dark")}>
                     {saldo ?? "..."}
                   </span>{" "}
-                  creditos
+                  créditos
                 </p>
               </div>
             </div>
@@ -465,7 +461,7 @@ export function FormularioInlinks() {
                 onClick={() => setStep((s) => s + 1)}
                 disabled={!canAdvance() || enviando}
               >
-                Proximo
+                Próximo
               </Button>
             ) : (
               <Button

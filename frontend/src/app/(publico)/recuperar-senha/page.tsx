@@ -59,7 +59,7 @@ function RecuperarSenhaConteudo() {
     setErro("");
 
     if (novaSenha !== novaSenhaConfirmacao) {
-      setErro("As senhas nao conferem");
+      setErro("As senhas não conferem");
       return;
     }
 
@@ -128,11 +128,11 @@ function RecuperarSenhaConteudo() {
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="token" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Token</Label>
+                <Label htmlFor="token" className="text-sm font-medium text-muted-foreground">Token</Label>
                 <Input id="token" type="text" required value={token} onChange={(e) => setToken(e.target.value)} disabled={enviando} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="nova-senha" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Nova senha</Label>
+                <Label htmlFor="nova-senha" className="text-sm font-medium text-muted-foreground">Nova senha</Label>
                 <Input
                   id="nova-senha" type="password" placeholder="Minimo 12 caracteres" required minLength={12} maxLength={64}
                   autoComplete="new-password" value={novaSenha} onChange={(e) => handleSenhaChange(e.target.value)} disabled={enviando}
@@ -142,7 +142,7 @@ function RecuperarSenhaConteudo() {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="nova-senha-confirmacao" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Confirmar nova senha</Label>
+                <Label htmlFor="nova-senha-confirmacao" className="text-sm font-medium text-muted-foreground">Confirmar nova senha</Label>
                 <Input
                   id="nova-senha-confirmacao" type="password" placeholder="Repita a nova senha" required minLength={12} maxLength={64}
                   autoComplete="new-password" value={novaSenhaConfirmacao} onChange={(e) => setNovaSenhaConfirmacao(e.target.value)} disabled={enviando}
@@ -176,7 +176,7 @@ function RecuperarSenhaConteudo() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">E-mail</Label>
+              <Label htmlFor="email" className="text-sm font-medium text-muted-foreground">E-mail</Label>
               <Input id="email" type="email" placeholder="seu@email.com" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={enviando} />
             </div>
           </div>

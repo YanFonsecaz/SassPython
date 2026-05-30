@@ -15,6 +15,7 @@ import type {
 } from "@/types";
 
 interface UseExecucaoReturn {
+  listarErro: string | null;
   execucao: Execucao | null;
   etapaAtual: string | null;
   statusFinal: string | null;
@@ -52,6 +53,7 @@ export function useExecucao(): UseExecucaoReturn {
   const [currentNodeDetail, setCurrentNodeDetail] = useState<string | null>(null);
   const [execucoes, setExecucoes] = useState<Execucao[]>([]);
   const [total, setTotal] = useState(0);
+  const [listarErro, setListarErro] = useState<string | null>(null);
   const closeRef = useRef<(() => void) | null>(null);
 
   const desconectarProgresso = useCallback(() => {
@@ -197,6 +199,7 @@ export function useExecucao(): UseExecucaoReturn {
 
   const listar = useCallback(async (offset = 0) => {
     try {
+      setListarErro(null);
       const dados = await api.get<{
         execucoes: Execucao[];
         total: number;
@@ -204,7 +207,7 @@ export function useExecucao(): UseExecucaoReturn {
       setExecucoes(dados.execucoes);
       setTotal(dados.total);
     } catch {
-      // silent
+      setListarErro("Não foi possível carregar o histórico de execuções.");
     }
   }, []);
 
@@ -224,7 +227,7 @@ export function useExecucao(): UseExecucaoReturn {
           setExecucoes(dados.execucoes);
           setTotal(dados.total);
         } catch {
-          // silent
+          setListarErro("Não foi possível buscar execuções.");
         }
       }
     },
@@ -256,5 +259,6 @@ export function useExecucao(): UseExecucaoReturn {
     total,
     listar,
     buscar,
+    listarErro,
   };
 }

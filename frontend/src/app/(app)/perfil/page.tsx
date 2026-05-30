@@ -7,6 +7,8 @@ import { api } from "@/lib/api";
 import { FormularioAlterarSenha } from "@/components/auth/formulario-alterar-senha";
 import { FormularioListarMfa } from "@/components/auth/formulario-listar-mfa";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
+import { TermoComAjuda } from "@/components/ui/termo-com-ajuda";
 import type { MfaDispositivo } from "@/types";
 
 export default function PerfilPage() {
@@ -14,14 +16,6 @@ export default function PerfilPage() {
   const { usuario, logout } = useAuth();
   const [secao, setSecao] = useState<"principal" | "alterar-senha">("principal");
   const [dispositivos, setDispositivos] = useState<MfaDispositivo[]>([]);
-
-  if (!usuario) {
-    return (
-      <div className="flex min-h-screen items-center justify-center px-4">
-        <p className="text-muted-foreground">Carregando...</p>
-      </div>
-    );
-  }
 
   async function handleLogout() {
     await logout();
@@ -39,40 +33,54 @@ export default function PerfilPage() {
 
   if (secao === "alterar-senha") {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
-        <FormularioAlterarSenha
-          mfaAtivo={usuario.mfa_ativo}
-          onSucesso={() => setSecao("principal")}
+      <div className="space-y-6">
+        <PageHeader
+          title="Alterar senha"
+          action={
+            <Button variant="ghost" size="sm" onClick={() => setSecao("principal")}>
+              ← Voltar ao perfil
+            </Button>
+          }
         />
+        <div className="max-w-md">
+          <FormularioAlterarSenha
+            mfaAtivo={usuario!.mfa_ativo}
+            onSucesso={() => setSecao("principal")}
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md space-y-4">
+    <div className="space-y-6">
+      <PageHeader
+        title="Perfil"
+        description="Dados da sua conta e configurações de segurança"
+      />
+
+      <div className="max-w-md space-y-4">
         <div className="rounded-lg border bg-card p-6">
-          <h1 className="text-xl font-semibold">Perfil</h1>
-          <dl className="mt-4 space-y-3 text-sm">
+          <dl className="space-y-3 text-sm">
             <div>
               <dt className="font-medium text-muted-foreground">Nome</dt>
-              <dd>{usuario.nome}</dd>
+              <dd>{usuario?.nome}</dd>
             </div>
             <div>
               <dt className="font-medium text-muted-foreground">E-mail</dt>
-              <dd>{usuario.email}</dd>
+              <dd>{usuario?.email}</dd>
             </div>
             <div>
               <dt className="font-medium text-muted-foreground">Plano</dt>
-              <dd>{usuario.plano || "Gratuito"}</dd>
+              <dd>{usuario?.plano || "Gratuito"}</dd>
             </div>
             <div>
-              <dt className="font-medium text-muted-foreground">MFA</dt>
-              <dd>{usuario.mfa_ativo ? "Ativo" : "Inativo"}</dd>
+              <dt className="font-medium text-muted-foreground"><TermoComAjuda termo="MFA" /></dt>
+              <dd>{usuario?.mfa_ativo ? "Ativo" : "Inativo"}</dd>
             </div>
             <div>
               <dt className="font-medium text-muted-foreground">Membro desde</dt>
-              <dd>{new Date(usuario.criado_em).toLocaleDateString("pt-BR")}</dd>
+              <dd>{new Date(usuario!.criado_em).toLocaleDateString("pt-BR")}</dd>
             </div>
           </dl>
         </div>
@@ -90,7 +98,7 @@ export default function PerfilPage() {
             className="w-full"
             onClick={() => router.push("/configurar-mfa")}
           >
-            {usuario.mfa_ativo ? "Gerenciar MFA" : "Configurar MFA"}
+            {usuario?.mfa_ativo ? "Gerenciar MFA" : "Configurar MFA"}
           </Button>
           <Button
             variant="outline"

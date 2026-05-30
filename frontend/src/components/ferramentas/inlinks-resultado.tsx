@@ -127,7 +127,7 @@ export function InlinksResultado({ inlinks, totalCandidatas }: Props) {
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0 flex-1 space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="text-sm font-semibold text-muted-foreground">
                       Âncora
                     </span>
                     <span
@@ -172,7 +172,7 @@ export function InlinksResultado({ inlinks, totalCandidatas }: Props) {
 
               {!sugestaoManual && il.trecho_contexto && (
                 <div className="rounded-lg bg-surface-light p-3 text-sm leading-relaxed">
-                  <div className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <div className="mb-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                     <MapPinIcon className="size-3" />
                     Onde foi inserido
                     <span className="font-normal normal-case tracking-normal">
@@ -187,7 +187,7 @@ export function InlinksResultado({ inlinks, totalCandidatas }: Props) {
 
               {(il.motivo_contexto || rejeitado || sugestaoManual) && (
                 <div className="rounded-lg border border-dashed p-3 text-sm">
-                  <div className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <div className="mb-1 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                     <SparklesIcon className="size-3" />
                     {sugestaoManual ? "Por que sugerimos" : "Por que aqui"}
                   </div>

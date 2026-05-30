@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { ArrowRight } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceArea } from "recharts";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceArea, ReferenceLine } from "recharts";
 import { cn } from "@/lib/utils";
 import {
   THRESHOLDS,
@@ -65,81 +65,126 @@ function ChipClassificacao({ value, cfg }: { value: number | null; cfg: Threshol
   );
 }
 
-interface ComparativoProps {
-  antes: CwvAnaliseResumo;
-  agora: CwvAnaliseResumo;
-}
+/**
+ * Sparkline minimalista. Orientado por "melhor = mais alto" sempre:
+ * para métricas onde menor é melhor (LCP/CLS/INP) o eixo é invertido,
+ * então uma série que melhora SEMPRE sobe visualmente.
+ */
+function Sparkline({
+  valores,
+  cor,
+  lowerIsBetter,
+}: {
+  valores: (number | null)[];
+  cor: string;
+  lowerIsBetter: boolean;
+}) {
+  const pts = valores.filter((v): v is number => v !== null && !Number.isNaN(v));
+  if (pts.length < 2) return null;
 
-function AntesAgora({ antes, agora }: ComparativoProps) {
-  const linhas = METRICAS.map((m) => {
-    const vAntes = antes[m.campo] as number | null;
-    const vAgora = agora[m.campo] as number | null;
-    const delta = calcularDelta(vAgora, vAntes, m.cfg);
-    return { ...m, vAntes, vAgora, delta };
+  const w = 120;
+  const h = 36;
+  const pad = 4;
+  const min = Math.min(...pts);
+  const max = Math.max(...pts);
+  const range = max - min || 1;
+  const step = (w - pad * 2) / (pts.length - 1);
+
+  const coords = pts.map((v, i) => {
+    const norm = (v - min) / range; // 0..1 (cru)
+    const bom = lowerIsBetter ? 1 - norm : norm; // 1 = melhor
+    const x = pad + i * step;
+    const y = pad + (h - pad * 2) * (1 - bom);
+    return [x, y] as const;
   });
 
-  const dataAntes = new Date(antes.criado_em).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const dataAgora = new Date(agora.criado_em).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const d = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const [lastX, lastY] = coords[coords.length - 1];
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground px-1">
-        <div>
-          <span className="font-medium text-foreground">Antes</span> · {dataAntes}
-        </div>
-        <div className="text-right md:text-left">
-          <span className="font-medium text-foreground">Agora</span> · {dataAgora}
-        </div>
-      </div>
+    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden className="overflow-visible">
+      <path d={d} fill="none" stroke={cor} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={lastX} cy={lastY} r={3} fill={cor} />
+    </svg>
+  );
+}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {linhas.map((l) => (
+interface PainelProps {
+  ordenado: CwvAnaliseResumo[];
+}
+
+/** Painel de cards: cada métrica num card com antes→agora, sparkline e veredito normalizado. */
+function PainelResumo({ ordenado }: PainelProps) {
+  const primeiro = ordenado[0];
+  const ultimo = ordenado[ordenado.length - 1];
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {METRICAS.map((m) => {
+        const valores = ordenado.map((a) => a[m.campo] as number | null);
+        const vAntes = primeiro[m.campo] as number | null;
+        const vAgora = ultimo[m.campo] as number | null;
+        const delta = calcularDelta(vAgora, vAntes, m.cfg);
+
+        // Veredito normalizado: verde = melhorou sempre, independente da métrica.
+        let veredito: { label: string; icon: typeof TrendingUp; cls: string };
+        if (!delta || delta.improved === null) {
+          veredito = { label: "Estável", icon: Minus, cls: "text-muted-foreground" };
+        } else if (delta.improved) {
+          veredito = { label: "Melhorou", icon: TrendingUp, cls: "text-success" };
+        } else {
+          veredito = { label: "Piorou", icon: TrendingDown, cls: "text-destructive" };
+        }
+        const Icon = veredito.icon;
+        const corSpark =
+          veredito.cls === "text-success"
+            ? "#16a34a"
+            : veredito.cls === "text-destructive"
+            ? "#dc2626"
+            : "#94a3b8";
+
+        return (
           <div
-            key={l.id}
-            className="rounded-xl border bg-card p-3 flex flex-col gap-2"
-            title={tooltipThresholds(l.label, l.cfg)}
+            key={m.id}
+            className="rounded-xl border bg-card p-4 flex flex-col gap-3"
+            title={tooltipThresholds(m.label, m.cfg)}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{l.label}</span>
-              {l.delta && (
-                <span className={cn("text-xs font-medium tabular-nums", l.delta.color)}>
-                  {l.delta.text}
-                  {l.delta.improved === true && " ▲"}
-                  {l.delta.improved === false && " ▼"}
-                </span>
-              )}
+              <span className="text-sm font-medium text-muted-foreground">{m.label}</span>
+              <span className={cn("inline-flex items-center gap-1 text-xs font-semibold", veredito.cls)}>
+                <Icon className="h-3.5 w-3.5" />
+                {veredito.label}
+                {delta && delta.improved !== null && (
+                  <span className="tabular-nums font-medium">· {delta.text.replace(/^[+-]/, "")}</span>
+                )}
+              </span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-lg font-semibold tabular-nums">{l.formatter(l.vAntes)}</span>
-                <ChipClassificacao value={l.vAntes} cfg={l.cfg} />
+
+            <div className="flex items-center gap-2">
+              <div className="flex flex-col">
+                <span className="text-sm font-medium tabular-nums text-muted-foreground">{m.formatter(vAntes)}</span>
+                <span className="text-[10px] text-muted-foreground">antes</span>
               </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-              <div className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-lg font-semibold tabular-nums">{l.formatter(l.vAgora)}</span>
-                <ChipClassificacao value={l.vAgora} cfg={l.cfg} />
+              <div className="flex-1 px-1">
+                <Sparkline valores={valores} cor={corSpark} lowerIsBetter={m.cfg.lowerIsBetter} />
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-lg font-bold tabular-nums">{m.formatter(vAgora)}</span>
+                <span className="text-[10px] text-muted-foreground">agora</span>
               </div>
             </div>
+
+            <ChipClassificacao value={vAgora} cfg={m.cfg} />
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
 
 export function EvolucaoChart({ historico }: EvolucaoChartProps) {
   const [tab, setTab] = useState<MetricaDef["id"]>("score");
-  const [modo, setModo] = useState<"comparar" | "linha">("comparar");
+  const [modo, setModo] = useState<"resumo" | "linha">("resumo");
 
   const ordenado = useMemo(
     () => [...historico].sort((a, b) => new Date(a.criado_em).getTime() - new Date(b.criado_em).getTime()),
@@ -182,13 +227,13 @@ export function EvolucaoChart({ historico }: EvolucaoChartProps) {
         <div className="inline-flex rounded-md border bg-card p-0.5 text-xs">
           <button
             type="button"
-            onClick={() => setModo("comparar")}
+            onClick={() => setModo("resumo")}
             className={cn(
               "px-3 py-1 rounded transition-colors",
-              modo === "comparar" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+              modo === "resumo" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            Antes × Agora
+            Resumo
           </button>
           <button
             type="button"
@@ -203,8 +248,8 @@ export function EvolucaoChart({ historico }: EvolucaoChartProps) {
         </div>
       </div>
 
-      {modo === "comparar" ? (
-        <AntesAgora antes={antes} agora={agora} />
+      {modo === "resumo" ? (
+        <PainelResumo ordenado={ordenado} />
       ) : (
         <Tabs value={tab} onValueChange={(v) => setTab(v as MetricaDef["id"])}>
           <TabsList className="mb-4">
@@ -217,6 +262,9 @@ export function EvolucaoChart({ historico }: EvolucaoChartProps) {
 
           {METRICAS.map((m) => {
             const cfg = m.cfg;
+            const vAntes = antes[m.campo] as number | null;
+            const vAgora = agora[m.campo] as number | null;
+            const delta = calcularDelta(vAgora, vAntes, cfg);
             const maxValor = Math.max(...dados.map((d) => d[m.campo] as number));
             const yMax = m.yMax ?? Math.max(maxValor * 1.1, cfg.poor * 1.2);
             const bandaBom = cfg.lowerIsBetter ? { y1: 0, y2: cfg.good } : { y1: cfg.good, y2: yMax };
@@ -224,8 +272,25 @@ export function EvolucaoChart({ historico }: EvolucaoChartProps) {
               ? { y1: cfg.good, y2: cfg.poor }
               : { y1: cfg.poor, y2: cfg.good };
 
+            let veredito: { label: string; cls: string };
+            if (!delta || delta.improved === null) {
+              veredito = { label: "Estável", cls: "text-muted-foreground" };
+            } else if (delta.improved) {
+              veredito = { label: `Melhorou ${delta.text.replace(/^[+-]/, "")}`, cls: "text-success" };
+            } else {
+              veredito = { label: `Piorou ${delta.text.replace(/^[+-]/, "")}`, cls: "text-destructive" };
+            }
+
             return (
               <TabsContent key={m.id} value={m.id}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className={cn("text-sm font-semibold", veredito.cls)}>
+                    {veredito.label}
+                    <span className="ml-2 text-xs font-normal text-muted-foreground tabular-nums">
+                      {m.formatter(vAntes)} → {m.formatter(vAgora)}
+                    </span>
+                  </p>
+                </div>
                 <p className="text-xs text-muted-foreground mb-2">{tooltipThresholds(m.label, cfg)}</p>
                 <div className="h-[280px] w-full">
                   <ChartContainer config={{ [m.campo]: { label: m.label, color: m.cor } }} className="h-full w-full">
@@ -237,15 +302,23 @@ export function EvolucaoChart({ historico }: EvolucaoChartProps) {
                         y1={bandaBom.y1}
                         y2={bandaBom.y2}
                         fill="var(--color-success, #16a34a)"
-                        fillOpacity={0.1}
+                        fillOpacity={0.12}
                         ifOverflow="extendDomain"
+                        label={{ value: "Bom", position: "insideTopLeft", fontSize: 10, fill: "#16a34a" }}
                       />
                       <ReferenceArea
                         y1={bandaMid.y1}
                         y2={bandaMid.y2}
                         fill="#eab308"
-                        fillOpacity={0.1}
+                        fillOpacity={0.12}
                         ifOverflow="extendDomain"
+                        label={{ value: "Precisa melhorar", position: "insideTopLeft", fontSize: 10, fill: "#a16207" }}
+                      />
+                      <ReferenceLine
+                        y={cfg.good}
+                        stroke="#16a34a"
+                        strokeDasharray="4 4"
+                        strokeOpacity={0.5}
                       />
                       <ChartTooltip content={<ChartTooltipContent />} />
                       <Line

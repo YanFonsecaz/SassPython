@@ -184,3 +184,21 @@ export const api = {
     request<T>(caminho, { ...opcoes, method: "DELETE", body }),
 };
 
+export function mensagemErroAmigavel(err: unknown): string {
+  if (!err || typeof err !== "object") return "Algo deu errado. Tente novamente.";
+  const e = err as { status?: number; detalhe?: string };
+  const MAPA_STATUS: Record<number, string> = {
+    401: "Sessão expirada. Faça login novamente.",
+    402: "Saldo insuficiente de créditos.",
+    403: "Você não tem permissão para isso.",
+    404: "Recurso não encontrado.",
+    429: "Muitas requisições. Aguarde alguns minutos e tente novamente.",
+    500: "Erro interno do servidor. Tente novamente mais tarde.",
+    502: "Servidor indisponível. Tente novamente em instantes.",
+    503: "Serviço temporariamente indisponível. Tente novamente.",
+  };
+  if (e.status && MAPA_STATUS[e.status]) return MAPA_STATUS[e.status];
+  if (e.detalhe && /^[A-ZÀ-ÿ]/.test(e.detalhe) && e.detalhe.length < 120) return e.detalhe;
+  return "Algo deu errado. Tente novamente.";
+}
+

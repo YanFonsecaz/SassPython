@@ -81,7 +81,7 @@ export function Sidebar() {
         </div>
         <div className="flex flex-col">
           <span className="font-heading text-sm font-semibold text-sidebar-foreground tracking-tight">SEO SaaS</span>
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Inteligência Artificial</span>
+          <span className="text-xs font-medium text-muted-foreground">Inteligência Artificial</span>
         </div>
       </div>
 
@@ -119,7 +119,7 @@ export function Sidebar() {
         </div>
 
         <div className="rounded-lg bg-accent/40 px-3 py-2.5 border border-sidebar-border">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80">Logado como</p>
+          <p className="text-xs font-medium text-muted-foreground/80">Logado como</p>
           <p className="text-xs font-medium text-foreground truncate mt-0.5">
             {usuario?.nome || usuario?.email || "Usuário"}
           </p>
@@ -140,6 +140,7 @@ export function Sidebar() {
     <>
       <button
         onClick={() => setMobileOpen(true)}
+        aria-label="Abrir menu"
         className="fixed top-4 left-4 z-50 flex items-center justify-center size-9 rounded-lg bg-surface-light border border-border lg:hidden"
       >
         <MenuIcon className="size-4" />

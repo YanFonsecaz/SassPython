@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { api, mensagemErroAmigavel } from "@/lib/api";
 import { useClientes } from "@/hooks/use-clientes";
 import { cn } from "@/lib/utils";
 import { CheckIcon, UserIcon, FileTextIcon, MessageSquareIcon, SparklesIcon } from "lucide-react";
 import type { Cliente, GerarArtigoRequest, ExecucaoCriada } from "@/types";
+import { TermoComAjuda } from "@/components/ui/termo-com-ajuda";
 
 interface FormularioGerarArtigoProps {
   clientePreSelecionado?: Cliente;
@@ -22,9 +23,9 @@ const TIPOS_CONTEUDO = [
   { value: "blog", label: "Blog" },
   { value: "produto", label: "Produto" },
   { value: "categoria", label: "Categoria" },
-  { value: "noticias", label: "Noticias" },
+  { value: "noticias", label: "Notícias" },
   { value: "instagram", label: "Instagram" },
-  { value: "topico", label: "Topico" },
+  { value: "topico", label: "Tópico" },
 ];
 
 const STEPS = [
@@ -74,13 +75,13 @@ export function FormularioGerarArtigo({
 
   const canAdvance = useCallback(() => {
     switch (step) {
-      case 0: return !!clientId && !!personaId;
+      case 0: return !!clientId;
       case 1: return !!topico.trim() && !!palavraChave.trim();
       case 2: return true;
       case 3: return true;
       default: return false;
     }
-  }, [step, clientId, personaId, topico, palavraChave]);
+  }, [step, clientId, topico, palavraChave]);
 
   async function handleSubmit() {
     setErro("");
@@ -111,11 +112,7 @@ export function FormularioGerarArtigo({
         router.push(`/ferramentas/historico/${resultado.id}`);
       }
     } catch (err) {
-      const detalhe =
-        err && typeof err === "object" && "detalhe" in err
-          ? (err as { detalhe: string }).detalhe
-          : "Erro ao criar execucao";
-      setErro(detalhe);
+      setErro(mensagemErroAmigavel(err));
     } finally {
       setEnviando(false);
     }
@@ -197,8 +194,9 @@ export function FormularioGerarArtigo({
         {step === 0 && (
           <div className="space-y-5 animate-fade-in">
             <div className="space-y-2">
-              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Cliente</Label>
+              <Label htmlFor="cliente" className="text-sm font-medium text-muted-foreground">Cliente</Label>
               <select
+                id="cliente"
                 className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
                 value={clientId}
                 onChange={(e) => { setClientId(e.target.value); setPersonaId(""); }}
@@ -216,14 +214,24 @@ export function FormularioGerarArtigo({
               </Link>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Persona</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="persona" className="text-sm font-medium text-muted-foreground">
+                  <TermoComAjuda termo="persona" />
+                </Label>
+                {clientId && (
+                  <Link href={`/clientes/${clientId}`} className={buttonVariants({ variant: "link", size: "sm" })}>
+                    Gerenciar personas
+                  </Link>
+                )}
+              </div>
               <select
+                id="persona"
                 className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
                 value={personaId}
                 onChange={(e) => setPersonaId(e.target.value)}
                 disabled={enviando || !clientId}
               >
-                <option value="">Selecione uma persona</option>
+                <option value="">Padrão do cliente (Persona Global)</option>
                 {personas.map((p, i) => (
                   <option key={i} value={p.nome}>{p.nome}</option>
                 ))}
@@ -235,7 +243,7 @@ export function FormularioGerarArtigo({
         {step === 1 && (
           <div className="space-y-5 animate-fade-in">
             <div className="space-y-2">
-              <Label htmlFor="topico" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Topico *</Label>
+              <Label htmlFor="topico" className="text-sm font-medium text-muted-foreground">Tópico *</Label>
               <Textarea
                 id="topico"
                 placeholder="Ex: Guia completo de SEO local para clinicas odontologicas"
@@ -248,7 +256,7 @@ export function FormularioGerarArtigo({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="palavra-chave" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Palavra-chave principal *</Label>
+              <Label htmlFor="palavra-chave" className="text-sm font-medium text-muted-foreground">Palavra-chave principal *</Label>
               <Input
                 id="palavra-chave"
                 placeholder="Ex: seo local para clinicas"
@@ -260,8 +268,8 @@ export function FormularioGerarArtigo({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="secundarias" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Palavras-chave secundarias <span className="normal-case text-muted-foreground">(Enter para adicionar)</span>
+              <Label htmlFor="secundarias" className="text-sm font-medium text-muted-foreground">
+                Palavras-chave secundárias <span className="normal-case text-muted-foreground">(Enter para adicionar)</span>
               </Label>
               <Input
                 id="secundarias"
@@ -274,7 +282,7 @@ export function FormularioGerarArtigo({
                   {palavrasSecundarias.split(",").map((w) => w.trim()).filter(Boolean).map((w, i) => (
                     <span key={i} className="inline-flex items-center gap-1 rounded-full bg-brand/10 border border-brand/20 px-2.5 py-0.5 text-xs text-brand-dark">
                       {w}
-                      <button type="button" onClick={() => removeSecundaria(i)} className="text-brand-dark/60 hover:text-brand-dark">&times;</button>
+                      <button type="button" onClick={() => removeSecundaria(i)} aria-label="Remover palavra-chave" className="text-brand-dark/60 hover:text-brand-dark">&times;</button>
                     </span>
                   ))}
                 </div>
@@ -282,7 +290,7 @@ export function FormularioGerarArtigo({
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="tipo-conteudo" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tipo de conteudo</Label>
+                <Label htmlFor="tipo-conteudo" className="text-sm font-medium text-muted-foreground">Tipo de conteúdo</Label>
                 <select
                   id="tipo-conteudo"
                   className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
@@ -296,7 +304,7 @@ export function FormularioGerarArtigo({
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="meta-palavras" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Meta de palavras</Label>
+                <Label htmlFor="meta-palavras" className="text-sm font-medium text-muted-foreground">Meta de palavras</Label>
                 <Input
                   id="meta-palavras"
                   type="number"
@@ -309,7 +317,7 @@ export function FormularioGerarArtigo({
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="objetivo" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Objetivo</Label>
+              <Label htmlFor="objetivo" className="text-sm font-medium text-muted-foreground">Objetivo</Label>
               <Textarea
                 id="objetivo"
                 placeholder="Ex: Educar gestores sobre a importancia de SEO local"
@@ -325,12 +333,12 @@ export function FormularioGerarArtigo({
 
         {step === 2 && (
           <div className="space-y-5 animate-fade-in">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Campos opcionais — forneça mais contexto para obter melhores resultados</p>
+            <p className="text-sm font-medium text-muted-foreground">Campos opcionais — forneça mais contexto para obter melhores resultados</p>
             <div className="space-y-2">
-              <Label htmlFor="artigo-intro" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Artigo introdutorio</Label>
+              <Label htmlFor="artigo-intro" className="text-sm font-medium text-muted-foreground">Artigo introdutório</Label>
               <Textarea
                 id="artigo-intro"
-                placeholder="Cole aqui um artigo de referencia para orientar a IA..."
+                placeholder="Cole aqui um artigo de referência para orientar a IA..."
                 maxLength={2000}
                 value={artigoIntrodutorio}
                 onChange={(e) => setArtigoIntrodutorio(e.target.value)}
@@ -339,7 +347,7 @@ export function FormularioGerarArtigo({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="perguntas" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Perguntas de clientes</Label>
+              <Label htmlFor="perguntas" className="text-sm font-medium text-muted-foreground">Perguntas de clientes</Label>
               <Textarea
                 id="perguntas"
                 placeholder="Quanto custa SEO? Quanto tempo leva para aparecer no Google?"
@@ -351,10 +359,10 @@ export function FormularioGerarArtigo({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="instrucoes" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Instrucoes adicionais para IA</Label>
+              <Label htmlFor="instrucoes" className="text-sm font-medium text-muted-foreground">Instruções adicionais para IA</Label>
               <Textarea
                 id="instrucoes"
-                placeholder="Ex: Inclua dados estatisticos sobre busca local"
+                placeholder="Ex: Inclua dados estatísticos sobre busca local"
                 maxLength={2000}
                 value={instrucoesAdicionais}
                 onChange={(e) => setInstrucoesAdicionais(e.target.value)}
@@ -368,12 +376,12 @@ export function FormularioGerarArtigo({
         {step === 3 && (
           <div className="space-y-5 animate-fade-in">
             <div className="rounded-xl border bg-surface-light p-5 space-y-3">
-              <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Resumo</h4>
+              <h4 className="text-sm font-semibold text-muted-foreground">Resumo</h4>
               <div className="grid gap-3 text-sm">
                 {[
                   ["Cliente", clienteSelecionado?.nome],
                   ["Persona", personaId],
-                  ["Topico", topico],
+                  ["Tópico", topico],
                   ["Palavra-chave", palavraChave],
                   ["Tipo", TIPOS_CONTEUDO.find((t) => t.value === tipoConteudo)?.label],
                   ["Meta", `${metaPalavras} palavras`],
@@ -387,16 +395,16 @@ export function FormularioGerarArtigo({
             </div>
 
             <div className="rounded-xl border border-brand/20 bg-brand/5 p-5 space-y-3">
-              <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Custo estimado</h4>
+              <h4 className="text-sm font-semibold text-muted-foreground">Custo estimado</h4>
               <div className="text-sm space-y-1.5 text-muted-foreground">
-                <p className="font-semibold text-foreground">20-38 creditos</p>
-                <p className="pl-3">Geracao base: 15 creditos (fixo)</p>
-                <p className="pl-3">Revisoes: 3 creditos cada (0-6 possiveis)</p>
-                <p className="pl-3">Imagem: 5 creditos (fixo)</p>
+                <p className="font-semibold text-foreground">20-38 créditos</p>
+                <p className="pl-3">Geração base: 15 créditos (fixo)</p>
+                <p className="pl-3">Revisões: 3 créditos cada (0-6 possíveis)</p>
+                <p className="pl-3">Imagem: 5 créditos (fixo)</p>
               </div>
               <div className="pt-2 border-t border-brand/20">
                 <p className="text-sm">
-                  Seu saldo atual: <span className={cn("font-bold", saldo !== null && saldo < 20 ? "text-destructive" : "text-brand-dark")}>{saldo ?? "..."}</span> creditos
+                  Seu saldo atual: <span className={cn("font-bold", saldo !== null && saldo < 20 ? "text-destructive" : "text-brand-dark")}>{saldo ?? "..."}</span> créditos
                 </p>
               </div>
             </div>
@@ -419,7 +427,7 @@ export function FormularioGerarArtigo({
                 onClick={() => setStep((s) => s + 1)}
                 disabled={!canAdvance() || enviando}
               >
-                Proximo
+                Próximo
               </Button>
             ) : (
               <Button

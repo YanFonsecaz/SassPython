@@ -50,7 +50,7 @@ export function FormularioAlterarSenha({
     setSucesso(false);
 
     if (novaSenha !== novaSenhaConfirmacao) {
-      setErro("As senhas nao conferem");
+      setErro("As senhas não conferem");
       return;
     }
 
@@ -126,9 +126,11 @@ export function FormularioAlterarSenha({
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           {erro && (
-            <p className="text-sm text-destructive" role="alert">
-              {erro}
-            </p>
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2">
+              <p className="text-sm text-destructive" role="alert">
+                {erro}
+              </p>
+            </div>
           )}
           <div className="space-y-2">
             <Label htmlFor="senha-atual">Senha atual</Label>
@@ -158,11 +160,13 @@ export function FormularioAlterarSenha({
               disabled={enviando}
             />
             {errosSenha.length > 0 && (
-              <ul className="text-sm text-destructive space-y-1">
-                {errosSenha.map((msg) => (
-                  <li key={msg}>{msg}</li>
-                ))}
-              </ul>
+              <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2">
+                <ul className="text-sm text-destructive space-y-1">
+                  {errosSenha.map((msg) => (
+                    <li key={msg}>{msg}</li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
           <div className="space-y-2">

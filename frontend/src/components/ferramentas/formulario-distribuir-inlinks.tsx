@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/lib/api";
+import { api, mensagemErroAmigavel } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import {
   CheckIcon,
@@ -99,15 +99,15 @@ export function FormularioDistribuirInlinks() {
     const url = novaUrl.trim();
     if (!url) return;
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      setErro("URL deve comecar com http:// ou https://");
+      setErro("URL deve começar com http:// ou https://");
       return;
     }
     if (url === urlAlvo.trim()) {
-      setErro("A URL candidata nao pode ser igual a URL alvo");
+      setErro("A URL candidata não pode ser igual a URL alvo");
       return;
     }
     if (candidatasUrls.includes(url)) {
-      setErro("URL ja adicionada");
+      setErro("URL já adicionada");
       return;
     }
     setCandidatasUrls((prev) => [...prev, url]);
@@ -118,7 +118,7 @@ export function FormularioDistribuirInlinks() {
   function addUrlsEmLote() {
     const linhas = urlsEmLote.split(/[\n,]/).map((l) => parseUrl(l)).filter((u): u is string => u !== null);
     if (linhas.length === 0) {
-      setErro("Nenhuma URL valida encontrada. Cada URL deve comecar com http:// ou https://");
+      setErro("Nenhuma URL válida encontrada. Cada URL deve começar com http:// ou https://");
       return;
     }
     const alvoNorm = urlAlvo.trim();
@@ -132,7 +132,7 @@ export function FormularioDistribuirInlinks() {
       setErro("");
     }
     if (novas.length + candidatasUrls.length > 100) {
-      setErro("Maximo de 100 URLs por execucao");
+      setErro("Máximo de 100 URLs por execução");
     }
   }
 
@@ -143,15 +143,15 @@ export function FormularioDistribuirInlinks() {
   function addAncora() {
     const a = novaAncora.trim();
     if (!a || a.length < 2 || a.length > 50) {
-      setErro("Ancora deve ter entre 2 e 50 caracteres");
+      setErro("Âncora deve ter entre 2 e 50 caracteres");
       return;
     }
     if (ancorasPreferidas.some((x) => x.toLowerCase() === a.toLowerCase())) {
-      setErro("Ancora ja adicionada");
+      setErro("Âncora já adicionada");
       return;
     }
     if (ancorasPreferidas.length >= 10) {
-      setErro("Maximo 10 ancoras preferidas");
+      setErro("Máximo 10 âncoras preferidas");
       return;
     }
     setAncorasPreferidas((prev) => [...prev, a]);
@@ -186,11 +186,7 @@ export function FormularioDistribuirInlinks() {
 
       router.push(`/ferramentas/historico/${resultado.id}`);
     } catch (err) {
-      const detalhe =
-        err && typeof err === "object" && "detalhe" in err
-          ? (err as { detalhe: string }).detalhe
-          : "Erro ao criar execucao";
-      setErro(detalhe);
+      setErro(mensagemErroAmigavel(err));
     } finally {
       setEnviando(false);
     }
@@ -249,11 +245,11 @@ export function FormularioDistribuirInlinks() {
 
         {step === 0 && (
           <div className="space-y-5 animate-fade-in">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              URL alvo a ser linkada nas paginas satelites
+            <p className="text-sm font-medium text-muted-foreground">
+              URL alvo a ser linkada nas páginas satélites
             </p>
             <div className="space-y-2">
-              <Label htmlFor="url-alvo" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <Label htmlFor="url-alvo" className="text-sm font-medium text-muted-foreground">
                 URL alvo
               </Label>
               <Input
@@ -268,17 +264,17 @@ export function FormularioDistribuirInlinks() {
 
             <div className="space-y-2 pt-2">
               <div className="flex items-center gap-1.5">
-                <Label htmlFor="ancora" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Ancoras preferidas (opcional)
+                <Label htmlFor="ancora" className="text-sm font-medium text-muted-foreground">
+                  Âncoras preferidas (opcional)
                 </Label>
-                <span title="Termos que voce quer ver como ancora dos links. A ferramenta usa quando o paragrafo permite naturalmente; se nao couber, cai pro comportamento padrao. Maximo 10.">
+                <span title="Termos que você quer ver como âncora dos links. A ferramenta usa quando o parágrafo permite naturalmente; se não couber, cai pro comportamento padrão. Máximo 10.">
                   <InfoIcon className="size-3 text-muted-foreground/60" />
                 </span>
               </div>
               <div className="flex gap-2">
                 <Input
                   id="ancora"
-                  placeholder="ex.: reposicao de calcio"
+                  placeholder="ex.: reposição de cálcio"
                   maxLength={50}
                   value={novaAncora}
                   onChange={(e) => { setNovaAncora(e.target.value); setErro(""); }}
@@ -322,16 +318,16 @@ export function FormularioDistribuirInlinks() {
 
             <div className="space-y-2 pt-2">
               <div className="flex items-center gap-1.5">
-                <Label htmlFor="objetivo" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <Label htmlFor="objetivo" className="text-sm font-medium text-muted-foreground">
                   Objetivo da linkagem (opcional)
                 </Label>
-                <span title="Direcionamento estrategico que a ferramenta usa para escolher ancoras alinhadas ao seu objetivo. Ex.: 'foco em conversao para categoria de produto', 'fortalecimento semantico'.">
+                <span title="Direcionamento estratégico que a ferramenta usa para escolher âncoras alinhadas ao seu objetivo. Ex.: 'foco em conversão para categoria de produto', 'fortalecimento semântico'.">
                   <InfoIcon className="size-3 text-muted-foreground/60" />
                 </span>
               </div>
               <Textarea
                 id="objetivo"
-                placeholder="ex.: foco em conversao para categoria de produto"
+                placeholder="ex.: foco em conversão para categoria de produto"
                 maxLength={300}
                 value={objetivoLinkagem}
                 onChange={(e) => { setObjetivoLinkagem(e.target.value); }}
@@ -344,8 +340,8 @@ export function FormularioDistribuirInlinks() {
 
         {step === 1 && (
           <div className="space-y-5 animate-fade-in">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Adicione as paginas candidatas — em cada uma sera inserido um link para a URL alvo
+            <p className="text-sm font-medium text-muted-foreground">
+              Adicione as páginas candidatas — em cada uma será inserido um link para a URL alvo
             </p>
 
             <div className="flex gap-2">
@@ -371,7 +367,7 @@ export function FormularioDistribuirInlinks() {
 
             {!modoLote ? (
               <div className="space-y-2">
-                <Label htmlFor="nova-url" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <Label htmlFor="nova-url" className="text-sm font-medium text-muted-foreground">
                   URL candidata
                 </Label>
                 <div className="flex gap-2">
@@ -396,7 +392,7 @@ export function FormularioDistribuirInlinks() {
               </div>
             ) : (
               <div className="space-y-2">
-                <Label htmlFor="urls-lote" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <Label htmlFor="urls-lote" className="text-sm font-medium text-muted-foreground">
                   URLs candidatas (uma por linha)
                 </Label>
                 <Textarea
@@ -419,7 +415,7 @@ export function FormularioDistribuirInlinks() {
                   Adicionar todas
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Cole uma URL por linha ou separadas por virgula. Maximo de 100 URLs por execucao.
+                  Cole uma URL por linha ou separadas por vírgula. Máximo de 100 URLs por execução.
                 </p>
               </div>
             )}
@@ -451,10 +447,10 @@ export function FormularioDistribuirInlinks() {
             <div className="grid gap-4 sm:grid-cols-3 pt-2">
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="max-inlinks-candidata" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <Label htmlFor="max-inlinks-candidata" className="text-sm font-medium text-muted-foreground">
                     Links por candidata
                   </Label>
-                  <span title="Maximo de inlinks para a URL alvo em cada candidata. Use 1 para links naturais; 2-3 se quiser mais relevancia.">
+                  <span title="Máximo de inlinks para a URL alvo em cada candidata. Use 1 para links naturais; 2-3 se quiser mais relevância.">
                     <InfoIcon className="size-3 text-muted-foreground/60" />
                   </span>
                 </div>
@@ -470,8 +466,8 @@ export function FormularioDistribuirInlinks() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="threshold" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Score minimo
+                  <Label htmlFor="threshold" className="text-sm font-medium text-muted-foreground">
+                    Score mínimo
                   </Label>
                   <span title="Quanto mais alto, mais rigoroso. Valores entre 0.5 e 0.7 funcionam para a maioria. Abaixo de 0.4 = links pouco relacionados.">
                     <InfoIcon className="size-3 text-muted-foreground/60" />
@@ -490,10 +486,10 @@ export function FormularioDistribuirInlinks() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="rel-attr" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <Label htmlFor="rel-attr" className="text-sm font-medium text-muted-foreground">
                     Rel attribute
                   </Label>
-                  <span title="Atributo HTML do link. noopener = recomendado para SEO; nofollow = diz ao Google para nao seguir o link.">
+                  <span title="Atributo HTML do link. noopener = recomendado para SEO; nofollow = diz ao Google para não seguir o link.">
                     <InfoIcon className="size-3 text-muted-foreground/60" />
                   </span>
                 </div>
@@ -522,7 +518,7 @@ export function FormularioDistribuirInlinks() {
                 className="size-4 rounded border-input accent-brand"
               />
               <Label htmlFor="permitir-cta" className="text-xs text-muted-foreground cursor-pointer">
-                Permitir CTA &quot;Leia tambem&quot; quando ancora nao cabe naturalmente
+                Permitir CTA &quot;Leia também&quot; quando âncora não cabe naturalmente
               </Label>
             </div>
           </div>
@@ -531,15 +527,15 @@ export function FormularioDistribuirInlinks() {
         {step === 2 && (
           <div className="space-y-5 animate-fade-in">
             <div className="rounded-xl border bg-surface-light p-5 space-y-3">
-              <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Resumo</h4>
+              <h4 className="text-sm font-semibold text-muted-foreground">Resumo</h4>
               <div className="grid gap-3 text-sm">
                 {[
                   ["URL alvo", urlAlvo],
                   ["Candidatas", `${candidatasUrls.length} URLs`],
                   ["Links por candidata", String(maxInlinksPorCandidata)],
-                  ["Score minimo", String(thresholdScore)],
+                  ["Score mínimo", String(thresholdScore)],
                   ["Rel", relAttr],
-                  ["Ancoras preferidas", ancorasPreferidas.length
+                  ["Âncoras preferidas", ancorasPreferidas.length
                     ? ancorasPreferidas.join(", ")
                     : "—"],
                   ["Objetivo", objetivoLinkagem.trim() || "—"],
@@ -554,14 +550,14 @@ export function FormularioDistribuirInlinks() {
             </div>
 
             <div className="rounded-xl border border-brand/20 bg-brand/5 p-5 space-y-3">
-              <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Custo estimado</h4>
+              <h4 className="text-sm font-semibold text-muted-foreground">Custo estimado</h4>
               <div className="text-sm space-y-1.5 text-muted-foreground">
                 <p className="font-semibold text-foreground">
-                  {custoEstimado ? `${custoEstimado.custo_estimado} creditos` : "... creditos"}
+                  {custoEstimado ? `${custoEstimado.custo_estimado} créditos` : "... créditos"}
                 </p>
-                <p className="pl-3">Base: 15 creditos (fixo)</p>
-                <p className="pl-3">Por candidata: 1 credito cada</p>
-                <p className="pl-3">Maximo: 115 creditos</p>
+                <p className="pl-3">Base: 15 créditos (fixo)</p>
+                <p className="pl-3">Por candidata: 1 crédito cada</p>
+                <p className="pl-3">Máximo: 115 créditos</p>
               </div>
               <div className="pt-2 border-t border-brand/20">
                 <p className="text-sm">
@@ -569,7 +565,7 @@ export function FormularioDistribuirInlinks() {
                   <span className={cn("font-bold", saldo !== null && saldo < 20 ? "text-destructive" : "text-brand-dark")}>
                     {saldo ?? "..."}
                   </span>{" "}
-                  creditos
+                  créditos
                 </p>
               </div>
             </div>
@@ -592,7 +588,7 @@ export function FormularioDistribuirInlinks() {
                 onClick={() => setStep((s) => s + 1)}
                 disabled={!canAdvance() || enviando}
               >
-                Proximo
+                Próximo
               </Button>
             ) : (
               <Button
@@ -601,7 +597,7 @@ export function FormularioDistribuirInlinks() {
                 onClick={handleSubmit}
                 disabled={enviando || (saldo !== null && saldo < 15)}
               >
-                {enviando ? "Processando..." : "Iniciar distribuicao"}
+                {enviando ? "Processando..." : "Iniciar distribuição"}
               </Button>
             )}
           </div>

@@ -48,11 +48,11 @@ export function PlanoAcaoAccordion({ problemas }: PlanoAcaoProps) {
             <AccordionItem key={p.id} value={p.id}
               className="rounded-xl border bg-card px-4 data-[state=open]:shadow-sm transition-shadow">
               <AccordionTrigger className="hover:no-underline py-3">
-                <div className="flex items-center gap-3 text-left flex-1 pr-4">
+                <div className="flex items-center gap-3 text-left flex-1 min-w-0 pr-4">
                   <span className="text-xs text-muted-foreground font-mono shrink-0">#{p.prioridade_ordem}</span>
                   <SeveridadeIcon severidade={p.severidade} />
-                  <span className="text-sm font-medium flex-1 truncate">{p.titulo}</span>
-                  <div className="flex gap-1 shrink-0">
+                  <span className="text-sm font-medium flex-1 min-w-0 truncate">{p.titulo}</span>
+                  <div className="flex flex-wrap justify-end gap-1 shrink">
                     {(p.metricas_afetadas ?? []).map((m) => (
                       <Badge key={m} variant="outline" className="text-[10px] px-1.5">{m}</Badge>
                     ))}

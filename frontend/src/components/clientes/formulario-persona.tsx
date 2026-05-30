@@ -66,9 +66,11 @@ export function FormularioPersona({ onSalvar, onCancelar }: FormularioPersonaPro
   return (
     <div className="rounded-lg border p-4 space-y-4">
       {erro && (
-        <p className="text-sm text-destructive" role="alert">
-          {erro}
-        </p>
+        <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2">
+          <p className="text-sm text-destructive" role="alert">
+            {erro}
+          </p>
+        </div>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">

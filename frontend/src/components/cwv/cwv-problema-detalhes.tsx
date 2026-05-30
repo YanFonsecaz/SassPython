@@ -145,24 +145,24 @@ export function ProblemaDetalhes({
   return (
     <div className="space-y-4 pb-2">
       {(contexto.display_value || hasSavings) && (
-        <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900 px-4 py-3 space-y-2">
+        <div className="rounded-lg border bg-amber-50 border-amber-200 px-4 py-3 space-y-2">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-amber-900 dark:text-amber-200">
+            <span className="text-xs font-medium uppercase tracking-wide text-amber-900">
               {hasSavings ? "Economia estimada" : "Valor medido"}
             </span>
-            <span className="text-base font-semibold text-amber-900 dark:text-amber-100">
+            <span className="text-base font-semibold text-amber-900">
               {contexto.display_value ||
                 (contexto.savings_bytes != null && formatBytes(contexto.savings_bytes)) ||
                 (contexto.savings_ms != null && formatMs(contexto.savings_ms)) ||
                 "—"}
             </span>
             {contexto.savings_bytes != null && contexto.display_value && (
-              <span className="text-xs text-amber-800 dark:text-amber-300">
+              <span className="text-xs text-amber-800">
                 · {formatBytes(contexto.savings_bytes)} desperdiçados
               </span>
             )}
             {contexto.savings_ms != null && contexto.display_value && (
-              <span className="text-xs text-amber-800 dark:text-amber-300">
+              <span className="text-xs text-amber-800">
                 · {formatMs(contexto.savings_ms)} de carregamento
               </span>
             )}
@@ -172,7 +172,7 @@ export function ProblemaDetalhes({
               {Object.entries(contexto.metric_savings)
                 .filter(([, v]) => v != null && v !== 0)
                 .map(([k, v]) => (
-                  <Badge key={k} variant="outline" className="border-amber-300 text-amber-900 dark:text-amber-200">
+                  <Badge key={k} variant="outline" className="border-amber-300 text-amber-900">
                     {k}: −{formatMs(v)}
                   </Badge>
                 ))}
@@ -182,13 +182,13 @@ export function ProblemaDetalhes({
       )}
 
       {contexto.description && (
-        <div className="prose prose-sm max-w-none dark:prose-invert text-muted-foreground">
+        <div className="prose prose-sm max-w-none text-muted-foreground">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{contexto.description}</ReactMarkdown>
         </div>
       )}
 
       {(contexto.warnings ?? []).length > 0 && (
-        <div className="rounded border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 px-3 py-2 text-xs text-yellow-900 dark:text-yellow-200">
+        <div className="rounded border border-yellow-300 bg-yellow-50 px-3 py-2 text-xs text-yellow-900">
           <strong>Avisos:</strong>
           <ul className="mt-1 list-disc pl-5 space-y-0.5">
             {(contexto.warnings ?? []).map((w, i) => (
@@ -241,7 +241,7 @@ export function ProblemaDetalhes({
                               href={it.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-blue-700 dark:text-blue-400 hover:underline"
+                              className="text-blue-700 hover:underline"
                               title={it.url}
                             >
                               {shortUrl(it.url!)}
@@ -264,7 +264,7 @@ export function ProblemaDetalhes({
                           </td>
                         )}
                         {colWasted && (
-                          <td className="px-3 py-2 text-right font-medium whitespace-nowrap text-amber-700 dark:text-amber-300">
+                          <td className="px-3 py-2 text-right font-medium whitespace-nowrap text-amber-700">
                             {it.wastedBytes != null
                               ? formatBytes(it.wastedBytes)
                               : it.wastedMs != null
@@ -273,7 +273,7 @@ export function ProblemaDetalhes({
                               ? formatMs(it.mainThreadTime)
                               : "—"}
                             {it.wastedPercent != null && (
-                              <span className="ml-1 text-[10px] text-amber-600 dark:text-amber-400">
+                              <span className="ml-1 text-[10px] text-amber-600">
                                 ({Math.round(it.wastedPercent)}%)
                               </span>
                             )}
@@ -343,11 +343,11 @@ export function ProblemaDetalhes({
       )}
 
       {documentacaoMd && (
-        <div className="rounded-lg border bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900 px-4 py-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-emerald-900 dark:text-emerald-200 mb-2">
+        <div className="rounded-lg border bg-emerald-50/40 border-emerald-200 px-4 py-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-emerald-900 mb-2">
             Como corrigir
           </p>
-          <div className="prose prose-sm max-w-none dark:prose-invert">
+          <div className="prose prose-sm max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{documentacaoMd}</ReactMarkdown>
           </div>
         </div>

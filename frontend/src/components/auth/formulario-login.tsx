@@ -71,7 +71,7 @@ export function FormularioLogin() {
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <Label htmlFor="email" className="text-sm font-medium text-muted-foreground">
               E-mail
             </Label>
             <Input
@@ -86,7 +86,7 @@ export function FormularioLogin() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="senha" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <Label htmlFor="senha" className="text-sm font-medium text-muted-foreground">
               Senha
             </Label>
             <Input

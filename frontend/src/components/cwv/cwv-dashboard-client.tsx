@@ -65,7 +65,7 @@ export function DashboardUrlClient({ analiseAtual, historico, clienteId }: Dashb
           description={analiseAtual.url_canonica}
           action={
             <Link href={`/ferramentas/core-web-vitals/historico/${clienteId}`} className={buttonVariants({ variant: "ghost", size: "sm" })}>
-              <ArrowLeftIcon className="size-4 mr-1" /> Voltar ao historico
+              <ArrowLeftIcon className="size-4 mr-1" /> Voltar ao histórico
             </Link>
           }
         />
@@ -73,7 +73,7 @@ export function DashboardUrlClient({ analiseAtual, historico, clienteId }: Dashb
           <div className="flex items-center justify-center size-12 rounded-full bg-destructive/10 mx-auto">
             <AlertTriangleIcon className="size-6 text-destructive" />
           </div>
-          <h2 className="text-lg font-semibold">Analise falhou</h2>
+          <h2 className="text-lg font-semibold">Análise falhou</h2>
           <p className="text-sm text-muted-foreground">{analiseAtual.erro_msg || "Erro desconhecido ao consultar PageSpeed Insights."}</p>
           <Button onClick={() => setReanalisarOpen(true)}>
             <RefreshCwIcon className="size-4 mr-1" /> Tentar novamente
@@ -91,10 +91,10 @@ export function DashboardUrlClient({ analiseAtual, historico, clienteId }: Dashb
         description=""
         action={
           <Link href={`/ferramentas/core-web-vitals/historico/${clienteId}`} className={buttonVariants({ variant: "ghost", size: "sm" })}>
-            <ArrowLeftIcon className="size-4 mr-1" /> Voltar ao historico
-          </Link>
-        }
-      />
+              <ArrowLeftIcon className="size-4 mr-1" /> Voltar ao histórico
+            </Link>
+          }
+        />
 
       <div className="max-w-4xl space-y-6">
         <div className="glass-card rounded-2xl p-6 sm:p-8">
@@ -120,7 +120,7 @@ export function DashboardUrlClient({ analiseAtual, historico, clienteId }: Dashb
                     onClick={() => setPlataformaOpen(true)}
                     className="inline-flex items-center gap-1 rounded-md border border-amber-400 bg-amber-50 dark:bg-amber-950/20 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition-colors"
                   >
-                    ⚠ plataforma nao detectada · selecionar
+                    ⚠                     plataforma não detectada · selecionar
                   </button>
                 )}
                 <Badge variant="outline">{analiseAtual.template_tipo}</Badge>
@@ -159,7 +159,22 @@ export function DashboardUrlClient({ analiseAtual, historico, clienteId }: Dashb
           
           {!carregandoComparacao && comparacao && <ComparadorComponent comparacao={comparacao} />}
 
-          {!carregandoComparacao && !comparacao && historico.length >= 1 && (
+          {!carregandoComparacao && erroComparacao && (
+            <div className="mt-6 border-t border-border pt-6">
+              <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-center">
+                <p className="text-sm text-destructive" role="alert">{erroComparacao}</p>
+                <button
+                  type="button"
+                  onClick={() => { setErroComparacao(null); setCarregandoComparacao(true); buscarComparacao(analiseAtual.id).then(setComparacao).catch((e) => setErroComparacao(e instanceof Error ? e.message : "Erro ao carregar comparação")).finally(() => setCarregandoComparacao(false)); }}
+                  className="mt-2 text-sm underline text-destructive hover:no-underline"
+                >
+                  Tentar novamente
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!carregandoComparacao && !comparacao && !erroComparacao && historico.length >= 1 && (
             <div className="mt-6 border-t border-border pt-6">
               <p className="text-sm text-muted-foreground text-center py-4">
                 Primeira análise — registre mais para acompanhar evolução.
@@ -168,8 +183,8 @@ export function DashboardUrlClient({ analiseAtual, historico, clienteId }: Dashb
           )}
 
           <div className="mt-6 border-t border-border pt-6">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-              Plano de acao
+            <h3 className="text-sm font-semibold text-muted-foreground mb-4">
+              Plano de ação
             </h3>
             <PlanoAcaoAccordion problemas={analiseAtual.problemas ?? []} />
           </div>
@@ -177,8 +192,8 @@ export function DashboardUrlClient({ analiseAtual, historico, clienteId }: Dashb
 
         {historico.length >= 2 && (
           <div className="glass-card rounded-2xl p-6 sm:p-8">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-              Evolucao ({historico.length} analise{historico.length !== 1 ? "s" : ""})
+            <h3 className="text-sm font-semibold text-muted-foreground mb-4">
+              Evolução ({historico.length} análise{historico.length !== 1 ? "s" : ""})
             </h3>
             <EvolucaoChart historico={historico} />
           </div>

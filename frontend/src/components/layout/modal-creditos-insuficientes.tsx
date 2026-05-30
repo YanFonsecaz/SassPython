@@ -24,10 +24,10 @@ export function ModalCreditosInsuficientes({
     <Dialog open={aberto} onOpenChange={onFechar}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Creditos insuficientes</DialogTitle>
+          <DialogTitle>Créditos insuficientes</DialogTitle>
           <DialogDescription>
-            Voce nao tem creditos suficientes para realizar esta acao.
-            Adquira um pacote de creditos para continuar.
+            Você não tem créditos suficientes para realizar esta ação.
+            Adquira um pacote de créditos para continuar.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2">

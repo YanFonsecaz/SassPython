@@ -38,7 +38,7 @@ export function FormularioResetarSenha({
     setErro("");
 
     if (novaSenha !== novaSenhaConfirmacao) {
-      setErro("As senhas nao conferem");
+      setErro("As senhas não conferem");
       return;
     }
 
@@ -83,7 +83,7 @@ export function FormularioResetarSenha({
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="nova-senha" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Nova senha</Label>
+            <Label htmlFor="nova-senha" className="text-sm font-medium text-muted-foreground">Nova senha</Label>
             <Input
               id="nova-senha"
               type="password"
@@ -103,7 +103,7 @@ export function FormularioResetarSenha({
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="nova-senha-confirmacao" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Confirmar nova senha</Label>
+            <Label htmlFor="nova-senha-confirmacao" className="text-sm font-medium text-muted-foreground">Confirmar nova senha</Label>
             <Input
               id="nova-senha-confirmacao"
               type="password"

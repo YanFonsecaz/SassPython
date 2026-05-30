@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api } from "@/lib/api";
+import { api, mensagemErroAmigavel } from "@/lib/api";
 import type { Cliente, ClienteCreate, ConfigJson, Persona } from "@/types";
 import { FormularioPersona } from "./formulario-persona";
 
@@ -63,11 +63,7 @@ export function FormularioCliente({
         router.push(`/clientes/${dados.id}`);
       }
     } catch (err) {
-      setErro(
-        err && typeof err === "object" && "detalhe" in err
-          ? (err as { detalhe: string }).detalhe
-          : "Erro desconhecido"
-      );
+      setErro(mensagemErroAmigavel(err));
     } finally {
       setEnviando(false);
     }
@@ -91,10 +87,16 @@ export function FormularioCliente({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {erro && (
-        <p className="text-sm text-destructive" role="alert">
-          {erro}
-        </p>
+        <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2" role="alert">
+          <p className="text-sm text-destructive">{erro}</p>
+        </div>
       )}
+
+      <div className="rounded-xl border border-brand/20 bg-gradient-to-br from-brand/5 to-transparent p-5 space-y-2">
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          O <strong>cliente</strong> é o site/marca para o qual a IA vai gerar conteúdo. A <strong>Persona Global</strong> define o tom padrão de escrita. <strong>Personas específicas</strong> são variações opcionais para públicos diferentes.
+        </p>
+      </div>
 
       <div className="space-y-2">
         <Label htmlFor="nome">Nome do cliente</Label>
@@ -243,6 +245,7 @@ export function FormularioCliente({
               size="icon-xs"
               onClick={() => removerPersona(index)}
               disabled={enviando}
+              aria-label="Remover persona"
             >
               &times;
             </Button>

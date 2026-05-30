@@ -6,7 +6,10 @@ import { ArrowRightIcon, CircleCheckIcon, ClockIcon, AlertTriangleIcon, BanIcon,
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 import { useExecucao } from "@/hooks/use-execucao";
+import { labelFerramenta } from "@/lib/ferramentas";
+import { cn } from "@/lib/utils";
 import type { Execucao } from "@/types";
 
 function statusConfig(status: string) {
@@ -55,7 +58,7 @@ function ExecucaoCard({ exec }: { exec: Execucao }) {
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium truncate">{exec.ferramenta}</p>
+          <p className="text-sm font-medium truncate">{labelFerramenta(exec.ferramenta)}</p>
           <span className={`text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
         </div>
         <div className="flex items-center gap-3 mt-1">
@@ -74,13 +77,18 @@ function ExecucaoCard({ exec }: { exec: Execucao }) {
 }
 
 export default function HistóricoPage() {
-  const { execucoes, total, carregando, listar } = useExecucao();
+  const { execucoes, total, carregando, listar, listarErro } = useExecucao();
   const [offset, setOffset] = useState(0);
+  const [filtro, setFiltro] = useState<string | null>(null);
   const limite = 20;
 
   useEffect(() => {
     listar(0);
   }, [listar]);
+
+  // Ferramentas presentes na lista carregada, na ordem de primeira aparição.
+  const ferramentasPresentes = Array.from(new Set(execucoes.map((e) => e.ferramenta)));
+  const execucoesFiltradas = filtro ? execucoes.filter((e) => e.ferramenta === filtro) : execucoes;
 
   async function carregarMais() {
     await listar(offset + limite);
@@ -90,7 +98,7 @@ export default function HistóricoPage() {
   if (carregando && execucoes.length === 0) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Histórico" description="Acompanhe todas as suas execucoes" />
+        <PageHeader title="Histórico" description="Acompanhe todas as suas execuções" />
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-16 rounded-xl bg-muted/50 animate-pulse" />
@@ -100,25 +108,42 @@ export default function HistóricoPage() {
     );
   }
 
+  if (listarErro && execucoes.length === 0) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Histórico" description="Acompanhe todas as suas execuções" />
+        <ErrorState
+          title="Erro ao carregar"
+          description={listarErro}
+          action={
+            <Button variant="outline" onClick={() => listar(0)}>
+              Tentar novamente
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
   if (execucoes.length === 0) {
     return (
       <div className="space-y-6">
         <PageHeader
           title="Histórico"
-          description="Acompanhe todas as suas execucoes"
+          description="Acompanhe todas as suas execuções"
           action={
-            <Link href="/ferramentas/gerar-artigo" className={buttonVariants()}>
-              Gerar artigo
+            <Link href="/ferramentas" className={buttonVariants()}>
+              Ver ferramentas
             </Link>
           }
         />
         <EmptyState
           icon={ClockIcon}
           title="Nenhuma execução ainda"
-          description="Comece gerando seu primeiro artigo otimizado para SEO."
+          description="Use uma das ferramentas para começar — artigos, inlinks ou Core Web Vitals."
           action={
-            <Link href="/ferramentas/gerar-artigo" className={buttonVariants()}>
-              Gerar primeiro artigo
+            <Link href="/ferramentas" className={buttonVariants()}>
+              Ver ferramentas
             </Link>
           }
         />
@@ -130,21 +155,49 @@ export default function HistóricoPage() {
     <div className="space-y-6">
       <PageHeader
         title="Histórico"
-        description={`${total} ${total !== 1 ? "execucoes" : "execução"}`}
+        description={`${total} ${total !== 1 ? "execuções" : "execução"}`}
         action={
-          <Link href="/ferramentas/gerar-artigo" className={buttonVariants()}>
-            Gerar artigo
+          <Link href="/ferramentas" className={buttonVariants()}>
+            Ver ferramentas
           </Link>
         }
       />
 
+      {ferramentasPresentes.length > 1 && (
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => setFiltro(null)}
+            className={cn(
+              "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+              filtro === null ? "border-brand bg-brand/5 text-brand-dark" : "text-muted-foreground hover:bg-surface-light",
+            )}
+          >
+            Todas
+          </button>
+          {ferramentasPresentes.map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setFiltro(f)}
+              className={cn(
+                "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                filtro === f ? "border-brand bg-brand/5 text-brand-dark" : "text-muted-foreground hover:bg-surface-light",
+              )}
+            >
+              {labelFerramenta(f)}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="space-y-2">
-        {execucoes.map((exec) => (
+        {execucoesFiltradas.map((exec) => (
           <ExecucaoCard key={exec.id} exec={exec} />
         ))}
       </div>
 
-      {execucoes.length < total && (
+      {filtro === null && execucoes.length < total && (
         <div className="text-center">
           <Button variant="outline" size="sm" onClick={carregarMais} disabled={carregando}>
             {carregando ? "Carregando..." : "Carregar mais"}

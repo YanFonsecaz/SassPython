@@ -123,7 +123,7 @@ function CandidataAccordion({ candidata, urlAlvo }: { candidata: CandidataResult
 
           {candidata.anchor_text && (
             <div className="rounded-lg bg-surface-light p-3 space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                 <MapPinIcon className="size-3" />
                 Ancora: &ldquo;{candidata.anchor_text}&rdquo;
                 {candidata.ancora_preferida_usada && (
@@ -147,14 +147,14 @@ function CandidataAccordion({ candidata, urlAlvo }: { candidata: CandidataResult
 
           {candidata.trecho_original && candidata.anchor_text && (
             <div className="rounded-lg border border-dashed p-3 space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Trecho original</p>
+              <p className="text-sm font-medium text-muted-foreground">Trecho original</p>
               <p className="text-sm text-foreground/90">{candidata.trecho_original}</p>
             </div>
           )}
 
           {(candidata.justificativa || candidata.motivo) && (
             <div className="rounded-lg border border-dashed p-3 space-y-1">
-              <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                 <SparklesIcon className="size-3" />
                 Justificativa
               </div>

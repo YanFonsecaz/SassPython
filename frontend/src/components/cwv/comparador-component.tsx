@@ -32,7 +32,7 @@ export function ComparadorComponent({ comparacao }: ComparadorComponentProps) {
 
   return (
     <div className="mt-6 border-t border-border pt-6">
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+      <h3 className="text-sm font-semibold text-muted-foreground mb-4">
         Comparação com análise anterior ({dias_decorridos} dias atrás)
       </h3>
 

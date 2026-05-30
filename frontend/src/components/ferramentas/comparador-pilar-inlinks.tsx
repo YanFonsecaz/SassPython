@@ -55,7 +55,7 @@ export function ComparadorPilarInlinks({
     >
       <header className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-border">
         <div>
-          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <div className="text-sm font-medium text-muted-foreground">
             Conteúdo com links
           </div>
           <p className="text-xs text-muted-foreground mt-1">
@@ -100,7 +100,7 @@ function ColunaPilar({
 }) {
   return (
     <div className="flex flex-col">
-      <div className="px-5 py-2 border-b border-border bg-surface-light text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <div className="px-5 py-2 border-b border-border bg-surface-light text-sm font-medium text-muted-foreground">
         {rotulo}
       </div>
       <div className="prose prose-sm max-w-none px-5 py-5 overflow-y-auto max-h-[70vh]">

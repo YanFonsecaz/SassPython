@@ -131,15 +131,17 @@ export function FormularioConfigurarMfa({
         <form onSubmit={handleAtivar}>
           <CardContent className="space-y-4">
             {erro && (
+              <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2">
               <p className="text-sm text-destructive" role="alert">
                 {erro}
               </p>
+            </div>
             )}
             <div className="flex justify-center">
               {qrCode && (
                 <img
                   src={`data:image/png;base64,${qrCode}`}
-                  alt="QR Code para configuracao MFA"
+                  alt="QR Code para configuração MFA"
                   className="w-48 h-48 rounded-lg"
                 />
               )}
@@ -213,9 +215,11 @@ export function FormularioConfigurarMfa({
       <form onSubmit={handleConfigurar}>
         <CardContent className="space-y-4">
           {erro && (
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3 py-2">
             <p className="text-sm text-destructive" role="alert">
               {erro}
             </p>
+          </div>
           )}
           <div className="space-y-2">
             <Label htmlFor="nome-dispositivo">Nome do dispositivo</Label>

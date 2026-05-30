@@ -7,6 +7,7 @@ import { ArrowLeftIcon, ArrowRightIcon, GaugeIcon } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 import { Badge } from "@/components/ui/badge";
 import { buscarHistoricoCwv } from "@/lib/api/cwv";
 import type { CwvHistoricoUrlResposta } from "@/lib/api/cwv";
@@ -51,7 +52,7 @@ function UrlCard({ urlEntry }: { urlEntry: CwvHistoricoUrlResposta }) {
           )}
           {urlEntry.analises.length > 1 && (
             <span className="text-xs text-muted-foreground">
-              {urlEntry.analises.length} analises
+              {urlEntry.analises.length} análises
             </span>
           )}
         </div>
@@ -67,25 +68,29 @@ export function CwvHistoricoClient() {
 
   const [urls, setUrls] = useState<CwvHistoricoUrlResposta[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function load() {
+    setCarregando(true);
+    setErro(null);
+    try {
+      const dados = await buscarHistoricoCwv(clienteId);
+      setUrls(dados.urls);
+    } catch {
+      setErro("Não foi possível carregar o histórico de análises.");
+    } finally {
+      setCarregando(false);
+    }
+  }
 
   useEffect(() => {
-    async function load() {
-      setCarregando(true);
-      try {
-        const dados = await buscarHistoricoCwv(clienteId);
-        setUrls(dados.urls);
-      } catch {
-      } finally {
-        setCarregando(false);
-      }
-    }
     if (clienteId) load();
   }, [clienteId]);
 
   if (carregando) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Historico CWV" description="Carregando..." />
+        <PageHeader title="Histórico CWV" description="Carregando..." />
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-16 rounded-xl bg-muted/50 animate-pulse" />
@@ -98,12 +103,12 @@ export function CwvHistoricoClient() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Historico Core Web Vitals"
-        description={urls.length > 0 ? `${urls.length} URL${urls.length !== 1 ? "s" : ""} analisada${urls.length !== 1 ? "s" : ""}` : "Nenhuma analise ainda"}
+        title="Histórico Core Web Vitals"
+        description={urls.length > 0 ? `${urls.length} URL${urls.length !== 1 ? "s" : ""} analisada${urls.length !== 1 ? "s" : ""}` : "Nenhuma análise ainda"}
         action={
           <div className="flex gap-2 pl-12 lg:pl-0">
             <Link href="/ferramentas/core-web-vitals" className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Nova analise
+              Nova análise
             </Link>
             <Link href="/ferramentas/core-web-vitals" className={buttonVariants({ variant: "ghost", size: "sm" })}>
               <ArrowLeftIcon className="size-4 mr-1" /> Voltar
@@ -112,10 +117,20 @@ export function CwvHistoricoClient() {
         }
       />
 
-      {urls.length === 0 ? (
+      {erro ? (
+        <ErrorState
+          title="Erro ao carregar"
+          description={erro}
+          action={
+            <Button onClick={load} variant="outline">
+              <ArrowRightIcon className="size-4 mr-1" /> Tentar novamente
+            </Button>
+          }
+        />
+      ) : urls.length === 0 ? (
         <EmptyState
           icon={GaugeIcon}
-          title="Nenhuma analise ainda"
+          title="Nenhuma análise ainda"
           description="Comece analisando as URLs do seu site."
           action={
             <Link href="/ferramentas/core-web-vitals" className={buttonVariants()}>

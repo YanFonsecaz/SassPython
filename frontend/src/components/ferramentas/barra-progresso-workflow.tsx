@@ -386,7 +386,7 @@ export function BarraProgressoWorkflow({
       {/* Timeline View - Compact */}
       {nodeHistory.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <p className="text-sm font-medium text-muted-foreground">
             Atividade Recente
           </p>
           <div className="space-y-1.5">
@@ -463,7 +463,7 @@ export function BarraProgressoWorkflow({
           
           {nodeHistory.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <p className="text-sm font-medium text-muted-foreground">
                 Histórico Completo
               </p>
               <div className="space-y-1.5">

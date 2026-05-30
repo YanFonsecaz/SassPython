@@ -43,7 +43,7 @@ export function CwvExecucaoClient() {
         setErroMsg(dados.erro_msg);
       }
     }).catch(() => {
-      setErroMsg("Execucao nao encontrada");
+      setErroMsg("Execução não encontrada");
       setStatusFinal("falhou");
     });
   }, [id]);
@@ -75,7 +75,7 @@ export function CwvExecucaoClient() {
       },
       {
         onComplete: () => setConectandoSSE(false),
-        onError: () => { setConectandoSSE(false); setErroMsg("Erro na conexao"); },
+        onError: () => { setConectandoSSE(false); setErroMsg("Erro na conexão"); },
       }
     );
     closeRef.current = close;
@@ -103,7 +103,7 @@ export function CwvExecucaoClient() {
     <div className="space-y-6">
       <PageHeader
         title="Core Web Vitals"
-        description="Processando analise..."
+        description="Processando análise..."
         action={
           <Link href="/ferramentas/core-web-vitals" className={buttonVariants({ variant: "ghost", size: "sm" })}>
             <ArrowLeftIcon className="size-4 mr-1" /> Voltar
@@ -120,9 +120,9 @@ export function CwvExecucaoClient() {
                   <CheckCircle2Icon className="size-6 text-success" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold">Analise concluida!</h2>
+                  <h2 className="text-lg font-semibold">Análise concluída!</h2>
                   <p className="text-sm text-muted-foreground">
-                    {execucao?.creditos_cobrados ?? 0} creditos cobrados
+                    {execucao?.creditos_cobrados ?? 0} créditos cobrados
                   </p>
                 </div>
               </div>
@@ -144,7 +144,7 @@ export function CwvExecucaoClient() {
 
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" onClick={() => router.push("/ferramentas/core-web-vitals")}>
-                  Nova analise
+                  Nova análise
                 </Button>
               </div>
             </>

@@ -19,10 +19,10 @@ function formatarData(iso: string) {
 function tipoConfig(tipo: string) {
   const map: Record<string, { variant: "default" | "destructive" | "secondary"; label: string; icon: typeof ArrowDownIcon; color: string }> = {
     entrada: { variant: "default", label: "Entrada", icon: ArrowDownIcon, color: "text-success" },
-    debito: { variant: "destructive", label: "Debito", icon: ArrowUpIcon, color: "text-destructive" },
-    expiracao: { variant: "secondary", label: "Expiracao", icon: ClockIcon, color: "text-muted-foreground" },
+    débito: { variant: "destructive", label: "Débito", icon: ArrowUpIcon, color: "text-destructive" },
+    expiracao: { variant: "secondary", label: "Expiração", icon: ClockIcon, color: "text-muted-foreground" },
     compra: { variant: "default", label: "Compra", icon: ArrowDownIcon, color: "text-success" },
-    renovacao: { variant: "default", label: "Renovacao", icon: ArrowDownIcon, color: "text-success" },
+    renovacao: { variant: "default", label: "Renovação", icon: ArrowDownIcon, color: "text-success" },
   };
   return map[tipo] || { variant: "secondary" as const, label: tipo, icon: ClockIcon, color: "text-muted-foreground" };
 }
@@ -33,7 +33,7 @@ export default function CreditosPage() {
   if (carregando) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Creditos" description="Gerencie seus creditos e transacoes" />
+        <PageHeader title="Créditos" description="Gerencie seus créditos e transações" />
         <div className="grid gap-4 sm:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-28 rounded-xl bg-muted/50 animate-pulse" />
@@ -45,7 +45,7 @@ export default function CreditosPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Creditos" description="Gerencie seus creditos e transacoes" />
+      <PageHeader title="Créditos" description="Gerencie seus créditos e transações" />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
@@ -70,7 +70,7 @@ export default function CreditosPage() {
 
       {saldo && (
         <p className="text-sm text-muted-foreground">
-          Ciclo atual: {formatarData(saldo.ciclo_inicio)} ate {formatarData(saldo.ciclo_fim)}
+          Ciclo atual: {formatarData(saldo.ciclo_inicio)} até {formatarData(saldo.ciclo_fim)}
         </p>
       )}
 
@@ -78,17 +78,17 @@ export default function CreditosPage() {
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Transacoes</h2>
+          <h2 className="text-lg font-semibold">Transações</h2>
           <span className="text-sm text-muted-foreground">
-            {totalTransacoes} transacao{totalTransacoes !== 1 ? "es" : ""}
+            {totalTransacoes} transação{totalTransacoes !== 1 ? "ões" : ""}
           </span>
         </div>
 
         {transacoes.length === 0 ? (
           <EmptyState
             icon={CreditCardIcon}
-            title="Nenhuma transacao"
-            description="Suas transacoes de creditos aparecerão aqui."
+            title="Nenhuma transação"
+            description="Suas transações de créditos aparecerão aqui."
           />
         ) : (
           <div className="space-y-2">

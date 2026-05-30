@@ -13,6 +13,12 @@ import {
   type ThresholdConfig,
 } from "@/lib/cwv/thresholds";
 import type { CwvAnaliseResposta, CwvAnaliseResumo } from "@/lib/api/cwv";
+import { TermoComAjuda } from "@/components/ui/termo-com-ajuda";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 interface MetricasResumoProps {
   analiseAtual: CwvAnaliseResposta;
@@ -34,9 +40,10 @@ function MetricaTile({ label, value, cfg, formatter }: TileProps) {
   return (
     <div
       className="rounded-xl border bg-card p-4 flex flex-col items-center justify-center gap-1"
-      title={tooltip}
     >
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium text-muted-foreground">
+        <TermoComAjuda termo={label} texto={tooltip} />
+      </p>
       <p className={cn("text-xl font-bold tabular-nums", cores.text)}>{formatter(value)}</p>
       <span
         className={cn(
@@ -80,9 +87,10 @@ export function MetricasResumo({ analiseAtual, analiseAnterior }: MetricasResumo
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
         <div
           className={cn("rounded-xl border p-4 flex flex-col items-center justify-center gap-1", scoreCores.bg)}
-          title={tooltipThresholds("Score", scoreCfg)}
         >
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Score</p>
+          <p className="text-sm font-medium text-muted-foreground">
+            <TermoComAjuda termo="Score" texto={tooltipThresholds("Score", scoreCfg)} />
+          </p>
           <div className="flex items-baseline gap-1">
             <p className={cn("text-3xl font-bold tabular-nums", scoreCores.text)}>{score ?? "—"}</p>
             <span className="text-xs text-muted-foreground">/ 100</span>
@@ -107,7 +115,7 @@ export function MetricasResumo({ analiseAtual, analiseAnterior }: MetricasResumo
       {analiseAnterior && (
         <div className="rounded-lg bg-surface-light border px-4 py-3">
           <p className="text-xs text-muted-foreground mb-2">
-            vs. analise anterior
+            vs. análise anterior
             {analiseAnterior.criado_em && (
               <> (em {new Date(analiseAnterior.criado_em).toLocaleDateString("pt-BR")})</>
             )}
@@ -130,12 +138,6 @@ export function MetricasResumo({ analiseAtual, analiseAnterior }: MetricasResumo
             })}
           </div>
         </div>
-      )}
-
-      {!analiseAnterior && (
-        <p className="text-xs text-muted-foreground text-center">
-          Primeira analise — registre mais para acompanhar evolucao.
-        </p>
       )}
     </div>
   );

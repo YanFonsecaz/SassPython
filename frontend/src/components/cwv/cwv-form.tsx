@@ -26,6 +26,7 @@ import {
 import type { TemplateTipo } from "@/lib/api/cwv";
 import { analisarCwv, buscarCustoCwv } from "@/lib/api/cwv";
 import Link from "next/link";
+import { TermoComAjuda } from "@/components/ui/termo-com-ajuda";
 
 const STEPS = [
   { label: "Cliente", icon: GlobeIcon },
@@ -77,15 +78,15 @@ export function CwvFormPage() {
   function addUrl() {
     const u = novaUrl.trim();
     if (!u.startsWith("http://") && !u.startsWith("https://")) {
-      setErro("URL deve comecar com http:// ou https://");
+      setErro("URL deve começar com http:// ou https://");
       return;
     }
     if (urls[templateAtivo].includes(u)) {
-      setErro("URL ja adicionada neste template");
+      setErro("URL já adicionada neste template");
       return;
     }
     if (totalUrls >= 50) {
-      setErro("Maximo de 50 URLs por execucao");
+      setErro("Máximo de 50 URLs por execução");
       return;
     }
     setUrls((prev) => ({ ...prev, [templateAtivo]: [...prev[templateAtivo], u] }));
@@ -95,10 +96,10 @@ export function CwvFormPage() {
 
   function addUrlsEmLote() {
     const linhas = urlsEmLote.split(/[\n,]/).map((l) => l.trim()).filter((l) => l.startsWith("http://") || l.startsWith("https://"));
-    if (linhas.length === 0) { setErro("Nenhuma URL valida encontrada"); return; }
+    if (linhas.length === 0) { setErro("Nenhuma URL válida encontrada"); return; }
     const novas = linhas.filter((u) => !urls[templateAtivo].includes(u));
     const totalNovo = totalUrls + novas.length;
-    if (totalNovo > 50) { setErro("Maximo de 50 URLs por execucao"); return; }
+    if (totalNovo > 50) { setErro("Máximo de 50 URLs por execução"); return; }
     setUrls((prev) => ({ ...prev, [templateAtivo]: [...prev[templateAtivo], ...novas] }));
     setUrlsEmLote("");
     setErro("");
@@ -127,13 +128,13 @@ export function CwvFormPage() {
     } catch (err) {
       const e = err as { status?: number; detalhe?: string };
       if (e.status === 402) {
-        setErro(`Saldo insuficiente. Necessario ${custo ?? "—"} creditos. Compre creditos em /creditos.`);
+        setErro(`Saldo insuficiente. Necessário ${custo ?? "—"} créditos. Compre créditos em /créditos.`);
       } else if (e.status === 429) {
-        setErro("Aguarde alguns minutos. Limite: 3 analises a cada 5 minutos.");
+        setErro("Aguarde alguns minutos. Limite: 3 análises a cada 5 minutos.");
       } else if (e.status === 404) {
-        setErro("Cliente selecionado e invalido. Recarregue a pagina.");
+        setErro("Cliente selecionado é inválido. Recarregue a página.");
       } else {
-        setErro(e.detalhe || "Erro ao criar analise. Tente novamente.");
+        setErro(e.detalhe || "Erro ao criar análise. Tente novamente.");
       }
     } finally {
       setEnviando(false);
@@ -144,7 +145,7 @@ export function CwvFormPage() {
     <div className="space-y-6">
       <PageHeader
         title="Core Web Vitals"
-        description="Analise metricas de performance e receba um plano de acao por URL"
+        description="Análise métricas de performance e receba um plano de ação por URL"
         action={
           <Link href="/ferramentas" className={buttonVariants({ variant: "ghost", size: "sm" })}>
             <ArrowLeftIcon className="size-4 mr-1" /> Voltar
@@ -190,8 +191,8 @@ export function CwvFormPage() {
 
           {step === 0 && (
             <div className="space-y-5 animate-fade-in">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Selecione o cliente para a analise
+              <p className="text-sm font-medium text-muted-foreground">
+                Selecione o cliente para a análise
               </p>
               {carregandoClientes ? (
                 <div className="h-10 rounded-lg bg-muted/50 animate-pulse" />
@@ -218,16 +219,29 @@ export function CwvFormPage() {
                   ))}
                 </div>
               )}
+
+              {clienteId && (
+                <Link
+                  href={`/ferramentas/core-web-vitals/historico/${clienteId}`}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-brand/40 px-3 py-2.5 text-sm font-medium text-brand-dark hover:bg-brand/5 transition-colors"
+                >
+                  <GaugeIcon className="size-4" />
+                  Ver análises anteriores deste cliente
+                </Link>
+              )}
             </div>
           )}
 
           {step === 1 && (
             <div className="space-y-5 animate-fade-in">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Adicione URLs agrupadas por template
+                <p className="text-sm font-medium text-muted-foreground">
+                  Adicione URLs agrupadas por <TermoComAjuda termo="template" />
                 </p>
                 <div className="flex gap-1">
+                  <span className="text-xs text-muted-foreground mr-1 self-center">
+                    <TermoComAjuda termo="estratégia" texto="Dispositivo de teste: Mobile testa como o site funciona em celulares; Desktop testa em computadores." />
+                  </span>
                   <button type="button" onClick={() => setEstrategia("mobile")}
                     className={cn("flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
                       estrategia === "mobile" ? "border-brand bg-brand/5 text-brand-dark" : "text-muted-foreground hover:bg-surface-light"
@@ -260,7 +274,7 @@ export function CwvFormPage() {
 
               {TEMPLATES.filter((t) => t.key === templateAtivo).map((t) => (
                 <div key={t.key} className="space-y-3">
-                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  <Label className="text-sm font-medium text-muted-foreground">
                     URLs — {t.label}
                   </Label>
                   <div className="flex gap-2">
@@ -301,6 +315,7 @@ export function CwvFormPage() {
                           <LinkIcon className="size-3.5 text-muted-foreground shrink-0" />
                           <span className="text-sm truncate flex-1 min-w-0">{url}</span>
                           <button type="button" onClick={() => removeUrl(t.key, i)}
+                            aria-label="Remover URL"
                             className="text-muted-foreground hover:text-destructive transition-colors shrink-0" disabled={enviando}>
                             <Trash2Icon className="size-3.5" />
                           </button>
@@ -320,14 +335,14 @@ export function CwvFormPage() {
           {step === 2 && (
             <div className="space-y-5 animate-fade-in">
               <div className="rounded-xl border bg-surface-light p-5 space-y-3">
-                <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Resumo</h4>
+                <h4 className="text-sm font-semibold text-muted-foreground">Resumo</h4>
                 <div className="grid gap-3 text-sm">
                   <div className="flex justify-between gap-4">
                     <span className="text-muted-foreground shrink-0">Cliente</span>
                     <span className="text-right truncate font-medium">{clientes.find((c) => c.id === clienteId)?.nome ?? "—"}</span>
                   </div>
                   <div className="flex justify-between gap-4">
-                    <span className="text-muted-foreground shrink-0">Estrategia</span>
+                    <span className="text-muted-foreground shrink-0"><TermoComAjuda termo="Estratégia" texto="Dispositivo usado na análise: Mobile ou Desktop." /></span>
                     <span className="text-right font-medium">{estrategia === "mobile" ? "Mobile" : "Desktop"}</span>
                   </div>
                   <div className="flex justify-between gap-4">
@@ -344,12 +359,12 @@ export function CwvFormPage() {
               </div>
 
               <div className="rounded-xl border border-brand/20 bg-brand/5 p-5 space-y-3">
-                <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Custo estimado</h4>
+                <h4 className="text-sm font-semibold text-muted-foreground">Custo estimado</h4>
                 <div className="text-sm space-y-1.5 text-muted-foreground">
-                  <p className="font-semibold text-foreground">{custo ?? "..."} creditos</p>
-                  <p className="pl-3">Base: 15 creditos (fixo)</p>
-                  <p className="pl-3">Por URL: 1 credito cada</p>
-                  <p className="pl-3">Maximo: 50 creditos</p>
+                  <p className="font-semibold text-foreground">{custo ?? "..."} créditos</p>
+                  <p className="pl-3">Base: 15 créditos (fixo)</p>
+                  <p className="pl-3">Por URL: 1 crédito cada</p>
+                  <p className="pl-3">Máximo: 50 créditos</p>
                 </div>
                 <div className="pt-2 border-t border-brand/20">
                   <p className="text-sm">
@@ -357,7 +372,7 @@ export function CwvFormPage() {
                     <span className={cn("font-bold", saldo != null && saldo.saldo_total < 20 ? "text-destructive" : "text-brand-dark")}>
                       {saldo?.saldo_total ?? "..."}
                     </span>{" "}
-                    creditos
+                    créditos
                   </p>
                 </div>
               </div>
@@ -376,7 +391,7 @@ export function CwvFormPage() {
               {step < STEPS.length - 1 ? (
                 <Button type="button" className="gradient-bg border-0 hover:opacity-90 transition-opacity"
                   onClick={() => setStep((s) => s + 1)} disabled={!canAdvance() || enviando}>
-                  Proximo
+                  Próximo
                 </Button>
               ) : (
                 <Button type="button" className="gradient-bg border-0 hover:opacity-90 transition-opacity"

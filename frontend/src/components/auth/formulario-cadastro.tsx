@@ -35,7 +35,7 @@ export function FormularioCadastro() {
     setErro("");
 
     if (senha !== senhaConfirmacao) {
-      setErro("As senhas nao conferem");
+      setErro("As senhas não conferem");
       return;
     }
 
@@ -79,7 +79,7 @@ export function FormularioCadastro() {
             </div>
           )}
           <div className="space-y-2">
-            <Label htmlFor="nome" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <Label htmlFor="nome" className="text-sm font-medium text-muted-foreground">
               Nome
             </Label>
             <Input
@@ -96,7 +96,7 @@ export function FormularioCadastro() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <Label htmlFor="email" className="text-sm font-medium text-muted-foreground">
               E-mail
             </Label>
             <Input
@@ -111,7 +111,7 @@ export function FormularioCadastro() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="senha" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <Label htmlFor="senha" className="text-sm font-medium text-muted-foreground">
               Senha
             </Label>
             <Input
@@ -135,7 +135,7 @@ export function FormularioCadastro() {
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="senha-confirmacao" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <Label htmlFor="senha-confirmacao" className="text-sm font-medium text-muted-foreground">
               Confirmar senha
             </Label>
             <Input

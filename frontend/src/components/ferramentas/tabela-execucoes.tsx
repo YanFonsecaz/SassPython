@@ -23,9 +23,9 @@ function statusBadge(status: string) {
     case "aguardando_aprovacao":
       return <Badge className="gap-1"><EyeIcon className="size-3" /> Aguardando</Badge>;
     case "aguardando_revisao":
-      return <Badge variant="secondary" className="gap-1"><EyeIcon className="size-3" /> Revisao</Badge>;
+      return <Badge variant="secondary" className="gap-1"><EyeIcon className="size-3" /> Revisão</Badge>;
     case "concluida":
-      return <Badge className="gap-1 bg-green-600 hover:bg-green-600"><CircleCheckIcon className="size-3" /> Concluida</Badge>;
+      return <Badge className="gap-1 bg-green-600 hover:bg-green-600"><CircleCheckIcon className="size-3" /> Concluída</Badge>;
     case "falhou":
       return <Badge variant="destructive" className="gap-1"><AlertTriangleIcon className="size-3" /> Falhou</Badge>;
     case "cancelada":
@@ -69,7 +69,7 @@ export function TabelaExecucoes({
     return (
       <div className="text-center py-12 space-y-3">
         <p className="text-muted-foreground">
-          Nenhuma execucao encontrada
+          Nenhuma execução encontrada
         </p>
         <Link
           href="/ferramentas/gerar-artigo"
@@ -84,10 +84,10 @@ export function TabelaExecucoes({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        {total} execucao{total !== 1 ? "es" : ""}
+        {total} execução{total !== 1 ? "ões" : ""}
       </p>
 
-      <div className="rounded-lg border">
+      <div className="rounded-lg border overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
@@ -101,7 +101,7 @@ export function TabelaExecucoes({
                 Etapa
               </th>
               <th className="text-left px-3 py-2 font-medium">
-                Creditos
+                Créditos
               </th>
               <th className="text-left px-3 py-2 font-medium">
                 Data

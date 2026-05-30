@@ -24,27 +24,18 @@ import { ComparadorPilarInlinks } from "@/components/ferramentas/comparador-pila
 import { InlinksResultado } from "@/components/ferramentas/inlinks-resultado";
 import { DistribuirInlinksResultado } from "@/components/ferramentas/distribuir-inlinks-resultado";
 import { cn } from "@/lib/utils";
+import { labelFerramenta } from "@/lib/ferramentas";
 import {
   CircleCheckIcon, AlertTriangleIcon, ArrowLeftIcon, CreditCardIcon,
 } from "lucide-react";
 import type { ExecucaoDetalhe, VersaoArtigo, InlinkAplicado, ResultadoDistribuirInlinks } from "@/types";
 
-function labelFerramenta(f: string): string {
-  switch (f) {
-    case "gerar_artigo": return "Gerar artigo";
-    case "inlinks_automaticos": return "Inlinks automaticos";
-    case "distribuir_inlinks": return "Distribuir inlinks";
-    case "core_web_vitals": return "Core Web Vitals";
-    default: return f;
-  }
-}
-
 function mensagemSucessoFerramenta(f: string): string {
   switch (f) {
-    case "distribuir_inlinks": return "Distribuicao concluida com sucesso";
+    case "distribuir_inlinks": return "Distribuição concluída com sucesso";
     case "inlinks_automaticos": return "Inlinks aplicados com sucesso";
-    case "core_web_vitals": return "Analise CWV concluida com sucesso";
-    default: return "Artigo concluido com sucesso";
+    case "core_web_vitals": return "Análise CWV concluída com sucesso";
+    default: return "Artigo concluído com sucesso";
   }
 }
 
@@ -149,16 +140,24 @@ export function ExecucaoDetalheConteudo() {
     loadDetalhe();
   }, [id, execucao?.status]);
 
-  // CWV: o resultado é renderizado no dashboard dedicado /core-web-vitals/url/{analise_id}.
-  // Redireciona automaticamente quando análise está pronta.
+  // CWV: o resultado vive nas rotas dedicadas de Core Web Vitals.
+  // - 1 URL: vai direto ao dashboard da URL.
+  // - várias URLs: vai ao histórico por cliente (lista de todas as URLs auditadas),
+  //   para não "perder" as demais URLs da execução.
   useEffect(() => {
     if (execucao?.ferramenta !== "core_web_vitals") return;
     if (execucao.status !== "concluida" && execucao.status !== "falhou") return;
     const analiseIds = (detalhe?.resultado_json?.analise_ids ?? []) as string[];
-    if (analiseIds.length > 0) {
+    const clienteId =
+      detalhe?.cliente_id ?? ((detalhe?.entrada_json?.cliente_id as string | undefined) || null);
+    if (analiseIds.length === 1) {
+      router.replace(`/ferramentas/core-web-vitals/url/${analiseIds[0]}`);
+    } else if (analiseIds.length > 1 && clienteId) {
+      router.replace(`/ferramentas/core-web-vitals/historico/${clienteId}`);
+    } else if (analiseIds.length > 0) {
       router.replace(`/ferramentas/core-web-vitals/url/${analiseIds[0]}`);
     }
-  }, [execucao?.ferramenta, execucao?.status, detalhe?.resultado_json, router]);
+  }, [execucao?.ferramenta, execucao?.status, detalhe?.resultado_json, detalhe?.cliente_id, detalhe?.entrada_json, router]);
 
   async function handleAprovar() {
     setEnviando(true);
