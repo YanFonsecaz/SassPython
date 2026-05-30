@@ -124,7 +124,12 @@ if FRONTEND_DIR.is_dir():
                 if not full_path.endswith("/"):
                     return RedirectResponse(f"/{full_path}/", status_code=301)
                 return FileResponse(str(index_path))
-        return FileResponse(str(FRONTEND_DIR / "index.html"))
+        # Rota não-casada: servir a página 404 estática (not-found.tsx) com status 404,
+        # em vez de devolver index.html (que mascarava o 404 e caía no início).
+        not_found = FRONTEND_DIR / "404.html"
+        if not_found.is_file():
+            return FileResponse(str(not_found), status_code=404)
+        return FileResponse(str(FRONTEND_DIR / "index.html"), status_code=404)
 
     @application.head("/{full_path:path}")
     async def serve_spa_head(request: Request, full_path: str):
