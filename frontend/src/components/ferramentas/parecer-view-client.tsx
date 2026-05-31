@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
@@ -18,9 +18,9 @@ const EditorParecer = dynamic(
 );
 
 export function ParecerViewClient() {
-  const params = useParams();
-  const router = useRouter();
-  const id = params.id as string;
+  // static export: o param vem da URL real (nao do "placeholder" prerenderizado)
+  const pathname = usePathname();
+  const id = pathname.split("/").filter(Boolean).pop() || "";
 
   const [parecer, setParecer] = useState<ParecerDoc | null>(null);
   const [html, setHtml] = useState("");
