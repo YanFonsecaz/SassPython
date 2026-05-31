@@ -95,6 +95,14 @@ services:
       - key: IMAGEM_MODEL
         value: gpt-image-1
 
+      # --- Parecer Tecnico (visao + redacao, sempre OpenAI) ---
+      - key: PARECER_ANALISADOR_MODEL
+        value: gpt-4o
+      - key: PARECER_DOCUMENTADOR_MODEL
+        value: gpt-4.1
+      - key: PARECER_WORKFLOW_TIMEOUT
+        value: "600"
+
       # --- Pesquisa externa ---
       - key: SERPAPI_KEY
         sync: false
