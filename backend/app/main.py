@@ -98,6 +98,7 @@ if FRONTEND_DIR.is_dir():
 
     _DYNAMIC_SEGMENTS = [
         (re.compile(r"^ferramentas/historico/[\w-]+$"), "ferramentas/historico/placeholder.html"),
+        (re.compile(r"^ferramentas/parecer/[\w-]+$"), "ferramentas/parecer/placeholder.html"),
         (re.compile(r"^clientes/[\w-]+$"), "clientes/placeholder.html"),
         (re.compile(r"^ferramentas/core-web-vitals/execucao/[\w-]+$"), "ferramentas/core-web-vitals/execucao/placeholder.html"),
         (re.compile(r"^ferramentas/core-web-vitals/historico/[\w-]+$"), "ferramentas/core-web-vitals/historico/placeholder.html"),
