@@ -104,6 +104,10 @@ class Settings(BaseSettings):
     cwv_pesquisador_max_por_analise: int = 5
     google_trends_enabled: bool = False
 
+    parecer_analisador_model: str = "gpt-4o"
+    parecer_documentador_model: str = "gpt-4.1"
+    parecer_workflow_timeout: int = 600
+
     imagem_model: str = "glm-image"
 
     pesquisa_cache_ttl_days: int = 7

@@ -150,8 +150,12 @@ async def executar_workflow_cwv(ctx, execucao_id: str):
     await _executar_job(ctx, "app.agents.cwv.workflow", "executar_workflow_cwv", execucao_id)
 
 
+async def executar_workflow_parecer(ctx, execucao_id: str):
+    await _executar_job(ctx, "app.agents.parecer.workflow", "executar_workflow_parecer", execucao_id)
+
+
 class WorkerSettings:
-    functions = [executar_workflow, retomar_workflow_job, executar_inlinks, executar_distribuir_inlinks, executar_workflow_cwv]  # noqa: RUF012
+    functions = [executar_workflow, retomar_workflow_job, executar_inlinks, executar_distribuir_inlinks, executar_workflow_cwv, executar_workflow_parecer]  # noqa: RUF012
     on_startup = ctx_startup
     on_shutdown = ctx_shutdown
     redis_settings = RedisSettings.from_dsn(settings.redis_url)

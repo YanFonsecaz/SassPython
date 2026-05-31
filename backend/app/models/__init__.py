@@ -14,6 +14,7 @@ from app.models.plano import Plano
 from app.models.reset_senha_token import ResetSenhaToken
 from app.models.sessao import Sessao
 from app.models.transacao_credito import TransacaoCredito
+from app.models.parecer import Parecer
 from app.models.usuario import Usuario
 from app.models.versao_artigo import VersaoArtigo
 
@@ -29,6 +30,7 @@ __all__ = [
     "HistoricoSenha",
     "MfaDispositivo",
     "PacoteCredito",
+    "Parecer",
     "PesquisaCache",
     "Plano",
     "ResetSenhaToken",

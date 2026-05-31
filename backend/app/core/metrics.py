@@ -66,3 +66,18 @@ cwv_kb_miss_total = Counter(
     "CWV KB misses (unmapped audit_ids)",
     ["audit_id"],
 )
+parecer_geracoes_total = Counter(
+    "parecer_geracoes_total",
+    "Parecer tecnico generation attempts",
+    ["status"],
+)
+parecer_imagens_total = Counter(
+    "parecer_imagens_total",
+    "Total images analyzed in parecer workflow",
+    ["status"],
+)
+parecer_workflow_duration = Histogram(
+    "parecer_workflow_duration_seconds",
+    "Parecer workflow duration",
+    buckets=(5, 10, 30, 60, 120, 300, 600),
+)

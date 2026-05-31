@@ -28,6 +28,10 @@ CUSTO_BASE_CWV = 15
 CUSTO_POR_URL_CWV = 1
 CUSTO_MAX_CWV = 100
 
+CUSTO_BASE_PARECER = 10
+CUSTO_POR_IMAGEM_PARECER = 3
+CUSTO_MAX_PARECER = 90
+
 
 CUSTOS_TABELA = [
     {"acao": "gerar_artigo_base", "custo_creditos": CUSTO_BASE, "chamadas_llm_estimadas": 5},
@@ -41,6 +45,8 @@ CUSTOS_TABELA = [
     {"acao": "distribuir_inlinks_por_candidata", "custo_creditos": CUSTO_POR_CANDIDATA_DISTRIBUIR, "chamadas_llm_estimadas": 0},
     {"acao": "cwv_base", "custo_creditos": CUSTO_BASE_CWV, "chamadas_llm_estimadas": 0},
     {"acao": "cwv_por_url", "custo_creditos": CUSTO_POR_URL_CWV, "chamadas_llm_estimadas": 0},
+    {"acao": "parecer_base", "custo_creditos": CUSTO_BASE_PARECER, "chamadas_llm_estimadas": 1},
+    {"acao": "parecer_por_imagem", "custo_creditos": CUSTO_POR_IMAGEM_PARECER, "chamadas_llm_estimadas": 1},
 ]
 
 
@@ -54,6 +60,10 @@ def calcular_custo_distribuir_inlinks(n_candidatas: int) -> int:
 
 def calcular_custo_cwv(n_urls: int) -> int:
     return min(CUSTO_BASE_CWV + n_urls * CUSTO_POR_URL_CWV, CUSTO_MAX_CWV)
+
+
+def calcular_custo_parecer(n_imagens: int) -> int:
+    return min(CUSTO_BASE_PARECER + n_imagens * CUSTO_POR_IMAGEM_PARECER, CUSTO_MAX_PARECER)
 
 
 async def criar_execucao(
@@ -219,6 +229,8 @@ def _obter_reserva_estimada(ferramenta: str, execucao: ExecucaoFerramenta) -> in
         return CUSTO_BASE_DISTRIBUIR_INLINKS
     if ferramenta == "core_web_vitals":
         return CUSTO_BASE_CWV
+    if ferramenta == "parecer_tecnico":
+        return CUSTO_BASE_PARECER
     return 0
 
 
