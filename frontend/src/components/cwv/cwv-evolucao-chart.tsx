@@ -115,15 +115,15 @@ interface PainelProps {
 
 /** Painel de cards: cada métrica num card com antes→agora, sparkline e veredito normalizado. */
 function PainelResumo({ ordenado }: PainelProps) {
-  const primeiro = ordenado[0];
-  const ultimo = ordenado[ordenado.length - 1];
-
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {METRICAS.map((m) => {
         const valores = ordenado.map((a) => a[m.campo] as number | null);
-        const vAntes = primeiro[m.campo] as number | null;
-        const vAgora = ultimo[m.campo] as number | null;
+        // "antes" = primeiro valor MEDIDO; "agora" = ultimo valor MEDIDO.
+        // Ignora analises sem o valor (ex.: falhas/parciais) que zeravam o "antes".
+        const medidos = valores.filter((v): v is number => v !== null && !Number.isNaN(v));
+        const vAntes = medidos.length > 0 ? medidos[0] : null;
+        const vAgora = medidos.length > 0 ? medidos[medidos.length - 1] : null;
         const delta = calcularDelta(vAgora, vAntes, m.cfg);
 
         // Veredito normalizado: verde = melhorou sempre, independente da métrica.
@@ -262,8 +262,10 @@ export function EvolucaoChart({ historico }: EvolucaoChartProps) {
 
           {METRICAS.map((m) => {
             const cfg = m.cfg;
-            const vAntes = antes[m.campo] as number | null;
-            const vAgora = agora[m.campo] as number | null;
+            const serie = ordenado.map((a) => a[m.campo] as number | null);
+            const medidos = serie.filter((v): v is number => v !== null && !Number.isNaN(v));
+            const vAntes = medidos.length > 0 ? medidos[0] : null;
+            const vAgora = medidos.length > 0 ? medidos[medidos.length - 1] : null;
             const delta = calcularDelta(vAgora, vAntes, cfg);
             const maxValor = Math.max(...dados.map((d) => d[m.campo] as number));
             const yMax = m.yMax ?? Math.max(maxValor * 1.1, cfg.poor * 1.2);
