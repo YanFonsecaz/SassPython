@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { FormularioInlinks } from "@/components/ferramentas/formulario-inlinks";
 import { FormularioDistribuirInlinks } from "@/components/ferramentas/formulario-distribuir-inlinks";
 import { InlinksSeletorModo, type ModoInlinks } from "@/components/ferramentas/inlinks-seletor-modo";
+import { ComoUsar } from "@/components/ferramentas/como-usar";
 
 const MODOS_VALIDOS: ModoInlinks[] = ["receber", "distribuir"];
 
@@ -40,10 +41,13 @@ export function InlinksPageUnificada() {
         title="Inlinks Internos"
         description="Links entre páginas do seu site que melhoram SEO e a leitura"
         action={
-          <Link href="/ferramentas" className={buttonVariants({ variant: "ghost", size: "sm" })}>
-            <ArrowLeftIcon className="size-4 mr-1" />
-            Voltar
-          </Link>
+          <div className="flex items-center gap-1">
+            <ComoUsar ferramenta="inlinks" />
+            <Link href="/ferramentas" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+              <ArrowLeftIcon className="size-4 mr-1" />
+              Voltar
+            </Link>
+          </div>
         }
       />
 

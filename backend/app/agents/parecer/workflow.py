@@ -16,7 +16,7 @@ async def executar_workflow_parecer(execucao_id: str, ctx=None):
     t0 = time.monotonic()
     async with async_session_factory() as session:
         ex = await ferramenta_service.buscar_execucao(session, execucao_id)
-        if not ex:
+        if not ex or ex.status in ("concluida", "falhou", "cancelada"):
             return
         entrada = dict(ex.entrada_json)
         usuario_id = str(ex.usuario_id)
@@ -130,7 +130,7 @@ async def executar_workflow_parecer(execucao_id: str, ctx=None):
             "erro": str(e),
         })
         await _falhar(execucao_id, usuario_id, custo, f"Erro ao gerar parecer: {e}")
-        raise
+        raise ErroPermanente(str(e)) from e
 
 
 def _construir_nota_map(entrada: dict) -> dict[int, str]:
@@ -152,11 +152,9 @@ async def _set_etapa(execucao_id: str, etapa: str) -> None:
 
 
 async def _falhar(execucao_id: str, usuario_id: str, custo: int, msg: str) -> None:
-    from app.services import credito_service, ferramenta_service
+    from app.services import ferramenta_service
     async with async_session_factory() as session:
         await ferramenta_service.finalizar_falha(session, execucao_id, msg, ferramenta="parecer_tecnico")
-        if custo > 0:
-            await credito_service.liberar_reserva(session, usuario_id, custo)
         await session.commit()
 
 

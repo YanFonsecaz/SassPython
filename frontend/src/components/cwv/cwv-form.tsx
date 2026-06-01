@@ -25,6 +25,7 @@ import type { TemplateTipo } from "@/lib/api/cwv";
 import { analisarCwv, buscarCustoCwv } from "@/lib/api/cwv";
 import Link from "next/link";
 import { TermoComAjuda } from "@/components/ui/termo-com-ajuda";
+import { ComoUsar } from "@/components/ferramentas/como-usar";
 
 const STEPS = [
   { label: "Cliente", icon: GlobeIcon },
@@ -143,9 +144,12 @@ export function CwvFormPage() {
         title="Core Web Vitals"
         description="Análise métricas de performance e receba um plano de ação por URL"
         action={
-          <Link href="/ferramentas" className={buttonVariants({ variant: "ghost", size: "sm" })}>
-            <ArrowLeftIcon className="size-4 mr-1" /> Voltar
-          </Link>
+          <div className="flex items-center gap-1">
+            <ComoUsar ferramenta="core-web-vitals" />
+            <Link href="/ferramentas" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+              <ArrowLeftIcon className="size-4 mr-1" /> Voltar
+            </Link>
+          </div>
         }
       />
 

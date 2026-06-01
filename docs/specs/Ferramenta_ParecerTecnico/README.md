@@ -29,6 +29,7 @@ problemas e **redige o parecer no padrão do documento**. O resultado volta para
 | 6 | [SPEC Histórico "Meus Pareceres"](SPEC_Parecer_Historico_UI.md) | Endpoint `historico`/`{id}` + lista + tela de reabrir/editar/re-baixar parecer salvo | a aplicar |
 | 7 | [SPEC Erros, Estados e Observabilidade](SPEC_Parecer_Cenarios_Erro_Estados_e_Observabilidade.md) | Falhas/parciais/validação + estados de UI + logs/métricas/tracing (production-readiness) | a aplicar |
 | 8 | [SPEC Testes e Verificação](SPEC_Parecer_Testes_e_Verificacao.md) | Pytest (renderer, agentes, rota, workflow) + E2E local + browser MCP | a aplicar |
+| 9 | [SPEC Correções pós code-review](SPEC_Parecer_Correcoes_Revisao.md) | 🐛 Bugs dos caminhos de falha: créditos em falha, retry/re-cobrança, `.docx` negrito, imagem↔descrição, polling + anotados P2 | a aplicar |
 
 ---
 

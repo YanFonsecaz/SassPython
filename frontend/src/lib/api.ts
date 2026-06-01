@@ -161,7 +161,9 @@ async function request<T>(
 
 async function parseError(resposta: Response): Promise<ApiError> {
   try {
-    return (await resposta.json()) as ApiError;
+    const data = await resposta.json();
+    if (data.detail && !data.detalhe) data.detalhe = data.detail;
+    return data as ApiError;
   } catch {
     return { detalhe: `Erro ${resposta.status}` };
   }

@@ -230,7 +230,7 @@ def _obter_reserva_estimada(ferramenta: str, execucao: ExecucaoFerramenta) -> in
     if ferramenta == "core_web_vitals":
         return CUSTO_BASE_CWV
     if ferramenta == "parecer_tecnico":
-        return CUSTO_BASE_PARECER
+        return execucao.creditos_cobrados or CUSTO_BASE_PARECER
     return 0
 
 

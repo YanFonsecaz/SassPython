@@ -74,7 +74,8 @@ class TestValidacaoBlocos:
         from app.routers.ferramentas_parecer import _validar_blocos
         from fastapi import HTTPException
 
-        fake_b64 = "A" * (5 * 1024 * 1024)
+        # base64 que DECODIFICA para >4 MB (6 MB de base64 -> ~4.5 MB decodificado)
+        fake_b64 = "A" * (6 * 1024 * 1024)
         with pytest.raises(HTTPException) as exc_info:
             _validar_blocos([{"texto": "t", "imagens": [f"data:image/png;base64,{fake_b64}"]}])
         assert exc_info.value.status_code == 413

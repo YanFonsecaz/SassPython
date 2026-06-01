@@ -125,5 +125,6 @@ class TestSemOpenaiKey:
             with pytest.raises(Exception):
                 await executar_workflow_parecer("exec-1")
 
+            # a liberacao da reserva e delegada ao finalizar_falha (sem liberar_reserva direto)
             mock_ff.assert_called_once()
-            mock_lr.assert_called_once()
+            mock_lr.assert_not_called()

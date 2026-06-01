@@ -137,28 +137,20 @@ def _add_paragraph(doc: Document, text: str, style: str = "Normal") -> None:
 
 def _render_paragraph(doc: Document, node) -> None:
     p = doc.add_paragraph(style="Normal")
-    _render_inline(p.add_run(), node)
+    _render_inline(p, node)
 
 
-def _render_inline(run, node) -> None:
+def _render_inline(paragraph, node) -> None:
     for child in node.iter(include_text=True):
-        ctag = child.tag or ""
+        ctag = (child.tag or "").lower()
+        text = child.text() or ""
+        if not text:
+            continue
+        run = paragraph.add_run(text)
         if ctag in ("strong", "b"):
-            t = child.text()
-            if t:
-                run.bold = True
-                run.text = (run.text or "") + t
+            run.bold = True
         elif ctag in ("em", "i"):
-            t = child.text()
-            if t:
-                run.italic = True
-                run.text = (run.text or "") + t
-        elif ctag.startswith("-"):
-            t = child.text()
-            if t:
-                run.text = (run.text or "") + t
-    if not run.text:
-        run.text = ""
+            run.italic = True
 
 
 def _render_table(doc: Document, node) -> None:

@@ -1,3 +1,18 @@
+let _webpSupportCache: boolean | null = null;
+
+function supportsWebp(): boolean {
+  if (_webpSupportCache !== null) return _webpSupportCache;
+  try {
+    const c = document.createElement("canvas");
+    c.width = 1;
+    c.height = 1;
+    _webpSupportCache = c.toDataURL("image/webp").startsWith("data:image/webp");
+  } catch {
+    _webpSupportCache = false;
+  }
+  return _webpSupportCache;
+}
+
 export async function comprimirImagem(
   file: File,
   maxLado = 1600,
@@ -15,12 +30,7 @@ export async function comprimirImagem(
   ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close();
 
-  const supportedTypes = ["image/webp", "image/jpeg", "image/png"];
-  let mimeType = "image/webp";
-  if (!canvas.toDataURL(mimeType, quality).startsWith("data:image/webp")) {
-    mimeType = "image/jpeg";
-  }
-
+  const mimeType = supportsWebp() ? "image/webp" : "image/jpeg";
   return canvas.toDataURL(mimeType, quality);
 }
 

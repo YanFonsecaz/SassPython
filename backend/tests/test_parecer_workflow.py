@@ -136,8 +136,11 @@ class TestWorkflowCompleto:
             with pytest.raises(Exception):
                 await executar_workflow_parecer(MOCK_EXEC_ID)
 
+            # _falhar delega a liberacao ao finalizar_falha (com a ferramenta),
+            # que libera o reservado real; NAO ha mais liberar_reserva direto (sem dupla liberacao).
             mock_finalizar_falha.assert_called_once()
-            mock_liberar_reserva.assert_called_once()
+            assert mock_finalizar_falha.call_args.kwargs.get("ferramenta") == "parecer_tecnico"
+            mock_liberar_reserva.assert_not_called()
 
     def test_construir_nota_map(self):
         from app.agents.parecer.workflow import _construir_nota_map

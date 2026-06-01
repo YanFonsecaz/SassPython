@@ -6,6 +6,7 @@ import { PenLineIcon, HistoryIcon, CreditCardIcon, ArrowRightIcon, FileTextIcon,
 import { buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard } from "@/components/ui/stat-card";
+import { ComoUsar } from "@/components/ferramentas/como-usar";
 import { labelFerramenta } from "@/lib/ferramentas";
 import { useAuth } from "@/hooks/use-auth";
 import { useCreditos } from "@/hooks/use-creditos";
@@ -69,68 +70,99 @@ export default function FerramentasPage() {
         />
         <StatCard
           label="Ferramentas ativas"
-          value="3"
+          value="4"
           icon={SparklesIcon}
         />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Link
-          href="/ferramentas/gerar-artigo"
-          className="group relative overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-brand/8 via-brand/3 to-transparent p-6 transition-all duration-300 hover:border-brand/50 hover:shadow-xl hover:-translate-y-0.5 animate-fade-in"
-        >
-          <div className="flex items-start gap-4">
-            <div className="flex items-center justify-center size-12 rounded-xl gradient-bg shadow-md shrink-0">
-              <PenLineIcon className="size-6 text-white" />
+        <div className="relative animate-fade-in">
+          <Link
+            href="/ferramentas/gerar-artigo"
+            className="group block overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-brand/8 via-brand/3 to-transparent p-6 transition-all duration-300 hover:border-brand/50 hover:shadow-xl hover:-translate-y-0.5"
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex items-center justify-center size-12 rounded-xl gradient-bg shadow-md shrink-0">
+                <PenLineIcon className="size-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-heading font-semibold text-base tracking-tight">Gerar Artigo SEO</h3>
+                <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                  Crie artigos otimizados para SEO com IA, seguindo personas e briefs personalizados.
+                </p>
+                <p className="text-xs font-medium text-brand-dark mt-3">20–38 créditos</p>
+              </div>
+              <ArrowRightIcon className="size-5 text-brand-dark group-hover:translate-x-1 transition-all shrink-0 mt-1" />
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-heading font-semibold text-base tracking-tight">Gerar Artigo SEO</h3>
-              <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                Crie artigos otimizados para SEO com IA, seguindo personas e briefs personalizados.
-              </p>
-              <p className="text-xs font-medium text-brand-dark mt-3">20–38 créditos</p>
-            </div>
-            <ArrowRightIcon className="size-5 text-brand-dark group-hover:translate-x-1 transition-all shrink-0 mt-1" />
-          </div>
-        </Link>
+          </Link>
+          <ComoUsar ferramenta="gerar-artigo" variant="icone" className="absolute bottom-3 right-3 z-10" />
+        </div>
 
-        <Link
-          href="/ferramentas/inlinks"
-          className="group relative overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-brand/8 via-brand/3 to-transparent p-6 transition-all duration-300 hover:border-brand/50 hover:shadow-xl hover:-translate-y-0.5 animate-fade-in"
-        >
-          <div className="flex items-start gap-4">
-            <div className="flex items-center justify-center size-12 rounded-xl gradient-bg shadow-md shrink-0">
-              <LinkIcon className="size-6 text-white" />
+        <div className="relative animate-fade-in">
+          <Link
+            href="/ferramentas/inlinks"
+            className="group block overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-brand/8 via-brand/3 to-transparent p-6 transition-all duration-300 hover:border-brand/50 hover:shadow-xl hover:-translate-y-0.5"
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex items-center justify-center size-12 rounded-xl gradient-bg shadow-md shrink-0">
+                <LinkIcon className="size-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-heading font-semibold text-base tracking-tight">Inlinks Internos</h3>
+                <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                  Crie links entre páginas do seu site. Receba links em um artigo OU distribua uma URL para várias páginas.
+                </p>
+                <p className="text-xs font-medium text-brand-dark mt-3">15–115 créditos</p>
+              </div>
+              <ArrowRightIcon className="size-5 text-brand-dark group-hover:translate-x-1 transition-all shrink-0 mt-1" />
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-heading font-semibold text-base tracking-tight">Inlinks Internos</h3>
-              <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                Crie links entre páginas do seu site. Receba links em um artigo OU distribua uma URL para várias páginas.
-              </p>
-              <p className="text-xs font-medium text-brand-dark mt-3">15–115 créditos</p>
-            </div>
-            <ArrowRightIcon className="size-5 text-brand-dark group-hover:translate-x-1 transition-all shrink-0 mt-1" />
-          </div>
-        </Link>
+          </Link>
+          <ComoUsar ferramenta="inlinks" variant="icone" className="absolute bottom-3 right-3 z-10" />
+        </div>
 
-        <Link
-          href="/ferramentas/core-web-vitals"
-          className="group relative overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-brand/8 via-brand/3 to-transparent p-6 transition-all duration-300 hover:border-brand/50 hover:shadow-xl hover:-translate-y-0.5 animate-fade-in"
-        >
-          <div className="flex items-start gap-4">
-            <div className="flex items-center justify-center size-12 rounded-xl gradient-bg shadow-md shrink-0">
-              <GaugeIcon className="size-6 text-white" />
+        <div className="relative animate-fade-in">
+          <Link
+            href="/ferramentas/core-web-vitals"
+            className="group block overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-brand/8 via-brand/3 to-transparent p-6 transition-all duration-300 hover:border-brand/50 hover:shadow-xl hover:-translate-y-0.5"
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex items-center justify-center size-12 rounded-xl gradient-bg shadow-md shrink-0">
+                <GaugeIcon className="size-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-heading font-semibold text-base tracking-tight">Core Web Vitals</h3>
+                <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                  Audite a performance das suas URLs e receba um plano de ação por página, com evolução ao longo do tempo.
+                </p>
+                <p className="text-xs font-medium text-brand-dark mt-3">15–50 créditos</p>
+              </div>
+              <ArrowRightIcon className="size-5 text-brand-dark group-hover:translate-x-1 transition-all shrink-0 mt-1" />
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-heading font-semibold text-base tracking-tight">Core Web Vitals</h3>
-              <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
-                Audite a performance das suas URLs e receba um plano de ação por página, com evolução ao longo do tempo.
-              </p>
-              <p className="text-xs font-medium text-brand-dark mt-3">15–50 créditos</p>
+          </Link>
+          <ComoUsar ferramenta="core-web-vitals" variant="icone" className="absolute bottom-3 right-3 z-10" />
+        </div>
+
+        <div className="relative animate-fade-in">
+          <Link
+            href="/ferramentas/parecer"
+            className="group block overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-brand/8 via-brand/3 to-transparent p-6 transition-all duration-300 hover:border-brand/50 hover:shadow-xl hover:-translate-y-0.5"
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex items-center justify-center size-12 rounded-xl gradient-bg shadow-md shrink-0">
+                <FileTextIcon className="size-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-heading font-semibold text-base tracking-tight">Parecer Técnico</h3>
+                <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                  Cole prints e descreva o problema; a IA gera um documento de correções de SEO pronto para enviar.
+                </p>
+                <p className="text-xs font-medium text-brand-dark mt-3">10–90 créditos</p>
+              </div>
+              <ArrowRightIcon className="size-5 text-brand-dark group-hover:translate-x-1 transition-all shrink-0 mt-1" />
             </div>
-            <ArrowRightIcon className="size-5 text-brand-dark group-hover:translate-x-1 transition-all shrink-0 mt-1" />
-          </div>
-        </Link>
+          </Link>
+          <ComoUsar ferramenta="parecer" variant="icone" className="absolute bottom-3 right-3 z-10" />
+        </div>
 
         <Link
           href="/ferramentas/historico"

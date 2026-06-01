@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { mensagemErroAmigavel } from "@/lib/api";
 import {
@@ -24,17 +24,28 @@ export function useParecer() {
   const [etapaAtual, setEtapaAtual] = useState<string | null>(null);
   const [html, setHtml] = useState<string>("");
   const erroRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const canceladoRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      canceladoRef.current = true;
+      if (erroRef.current) clearTimeout(erroRef.current);
+    };
+  }, []);
 
   const aguardarConclusao = useCallback(async (id: string): Promise<ParecerExecucao> => {
     const start = Date.now();
     return new Promise((resolve, reject) => {
+      let errosSeguidos = 0;
       const poll = async () => {
+        if (canceladoRef.current) return;
         if (Date.now() - start > POLL_TIMEOUT) {
           reject(new Error("Timeout ao gerar o parecer"));
           return;
         }
         try {
           const dados = await buscarExecucaoParecer(id);
+          errosSeguidos = 0;
           if (dados.status === "concluida" || dados.status === "falhou" || dados.status === "cancelada") {
             resolve(dados);
           } else {
@@ -42,6 +53,11 @@ export function useParecer() {
             erroRef.current = setTimeout(poll, POLL_INTERVAL);
           }
         } catch {
+          errosSeguidos += 1;
+          if (errosSeguidos >= 3) {
+            reject(new Error("Falha de comunicacao ao verificar status do parecer"));
+            return;
+          }
           erroRef.current = setTimeout(poll, POLL_INTERVAL);
         }
       };
@@ -93,6 +109,9 @@ export function useParecer() {
   }, [parecerId, html]);
 
   const reset = useCallback(() => {
+    if (erroRef.current) clearTimeout(erroRef.current);
+    erroRef.current = null;
+    canceladoRef.current = false;
     setEstado("idle");
     setExecucaoId(null);
     setParecerId(null);

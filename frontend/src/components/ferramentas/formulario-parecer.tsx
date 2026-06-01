@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useClientes } from "@/hooks/use-clientes";
 import { useCreditos } from "@/hooks/use-creditos";
 import { useParecer } from "@/hooks/use-parecer";
+import { ComoUsar } from "@/components/ferramentas/como-usar";
 import { mensagemErroAmigavel } from "@/lib/api";
 import { custoParecer, type BlocoEntrada } from "@/lib/api/parecer";
 import { cn } from "@/lib/utils";
@@ -78,9 +79,8 @@ export function FormularioParecer() {
       if (node.nodeType === Node.ELEMENT_NODE) {
         const el = node as HTMLElement;
         if (el.tagName === "IMG") {
-          flush();
           const src = el.getAttribute("src") || "";
-          if (src) blocos.push({ texto: "", imagens: [src] });
+          if (src) imagensAtuais.push(src);
           return;
         }
         if (el.tagName === "HR") return;
@@ -172,6 +172,7 @@ export function FormularioParecer() {
         description="Gere documentos de correção SEO a partir de prints e descrições"
         action={
           <div className="flex items-center gap-2">
+            <ComoUsar ferramenta="parecer" />
             <Link
               href="/ferramentas/parecer/historico"
               className={buttonVariants({ variant: "ghost", size: "sm" })}

@@ -1,3 +1,4 @@
+import base64
 import io
 import logging
 import re
@@ -51,7 +52,10 @@ def _validar_blocos(blocos: list[dict]) -> tuple[int, int]:
             if not DATA_URI_RE.match(img_uri):
                 raise HTTPException(status_code=422, detail="Esquema de imagem invalido. Use data:image/(png|jpeg|gif|webp);base64,")
             b64_part = img_uri.split(",", 1)[1] if "," in img_uri else ""
-            img_bytes = len(b64_part.encode())
+            try:
+                img_bytes = len(base64.b64decode(b64_part))
+            except Exception:
+                img_bytes = len(b64_part.encode())
             if img_bytes > IMG_MAX_BYTES:
                 raise HTTPException(status_code=413, detail="Uma das imagens excede 4 MB. Reduza o tamanho.")
             total_bytes += img_bytes
@@ -117,6 +121,7 @@ async def gerar_parecer(
     )
     db.add(execucao)
     await db.flush()
+    await db.commit()
 
     try:
         from app.core.redis_pool import get_redis_pool
@@ -124,13 +129,16 @@ async def gerar_parecer(
         job = await redis.enqueue_job("executar_workflow_parecer", str(execucao.id))
         execucao.job_id = job.job_id
         execucao.status = "enfileirado"
+        db.add(execucao)
         await db.flush()
+        await db.commit()
     except Exception as e:
         logger.error("Falha ao enfileirar parecer: %s", e)
-        await credito_service.liberar_reserva(db, str(usuario.id), custo)
-        execucao.status = "falhou"
-        execucao.erro_msg = "Falha ao enfileirar workflow"
-        await db.flush()
+        async with db.begin():
+            await credito_service.liberar_reserva(db, str(usuario.id), custo)
+            execucao.status = "falhou"
+            execucao.erro_msg = "Falha ao enfileirar workflow"
+            await db.flush()
 
     logger.info("parecer.gerar.enfileirado", extra={
         "event_type": "parecer.gerar.enfileirado",
@@ -152,6 +160,7 @@ async def buscar_execucao_parecer(
         select(ExecucaoFerramenta).where(
             ExecucaoFerramenta.id == execucao_id,
             ExecucaoFerramenta.usuario_id == usuario.id,
+            ExecucaoFerramenta.ferramenta == "parecer_tecnico",
         )
     )
     ex = resultado.scalar_one_or_none()
