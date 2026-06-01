@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,8 +14,8 @@ from app.models.usuario import Usuario
 from app.schemas.cwv import (
     AnalisarRequest,
     AnaliseResposta,
-    CustoCwvResponse,
     ComparacaoResposta,
+    CustoCwvResponse,
     HistoricoListResponse,
     PlataformaOverrideRequest,
 )
@@ -251,66 +252,65 @@ async def comparar_com_anterior(
     db: AsyncSession = Depends(get_db),
     usuario: Usuario = Depends(get_current_user),
 ) -> ComparacaoResposta:
-    from app.services.cwv_persistencia import buscar_analise_por_id, buscar_analise_anterior
+
     from app.schemas.cwv import MetricaComparada, ProblemaComparado
-    from datetime import datetime, timezone
-    from uuid import UUID
+    from app.services.cwv_persistencia import buscar_analise_anterior, buscar_analise_por_id
 
     # Buscar análise atual
     analise_atual = await buscar_analise_por_id(db, analise_id)
     if not analise_atual or str(analise_atual.usuario_id) != str(usuario.id):
         raise HTTPException(status_code=404, detail="Analise nao encontrada")
-    
+
     # Buscar problemas da análise atual
     from app.services.cwv_persistencia import buscar_problemas_analise
     problemas_atual = await buscar_problemas_analise(db, analise_id)
-    
+
     # Buscar análise anterior
     analise_anterior = await buscar_analise_anterior(
-        db, 
-        analise_atual.url_canonica, 
-        analise_atual.cliente_id, 
+        db,
+        analise_atual.url_canonica,
+        analise_atual.cliente_id,
         analise_atual.criado_em,
         estrategia=analise_atual.estrategia,
     )
-    
+
     dias_decorridos = None
     analise_anterior_id = None
     problemas_anterior = []
-    
+
     if analise_anterior:
         analise_anterior_id = str(analise_anterior.id)
         dias_decorridos = int((analise_atual.criado_em - analise_anterior.criado_em).total_seconds() / 86400)
         problemas_anterior = await buscar_problemas_analise(db, str(analise_anterior.id))
-    
+
     # Calcular deltas das métricas
     metricas = {}
-    
+
     # Métricas que menor valor é melhor (melhorou = True)
     menor_e_melhor = ["lcp_ms", "cls", "inp_ms", "fcp_ms", "tbt_ms", "ttfb_ms"]
     # Métrica que maior valor é melhor
     maior_e_melhor = ["score_performance"]
-    
+
     for metrica in menor_e_melhor + maior_e_melhor:
         valor_atual = getattr(analise_atual, metrica)
         valor_anterior = getattr(analise_anterior, metrica) if analise_anterior else None
-        
+
         if valor_atual is not None and valor_anterior is not None:
             delta = valor_atual - valor_anterior
             melhorou = None
-            
+
             if metrica in menor_e_melhor:
                 melhorou = delta < 0
             elif metrica == "score_performance":
                 melhorou = delta > 0
-            
+
             metricas[metrica] = MetricaComparada(
                 antes=valor_anterior,
                 depois=valor_atual,
                 delta=delta,
                 melhorou=melhorou
             )
-    
+
     def _chave(p):
         if p.kb_codigo:
             return p.kb_codigo
@@ -338,7 +338,7 @@ async def comparar_com_anterior(
         for p in problemas_atual
         if _chave(p) in set_anterior
     ]
-    
+
     return ComparacaoResposta(
         analise_atual_id=analise_id,
         analise_anterior_id=analise_anterior_id,
@@ -356,7 +356,6 @@ async def buscar_irma_cwv(
     db: AsyncSession = Depends(get_db),
     usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
-    from app.models.cwv_analise import CwvAnalise
     from app.services.cwv_persistencia import buscar_analise_irma, buscar_analise_por_id
 
     analise = await buscar_analise_por_id(db, analise_id)
@@ -432,3 +431,79 @@ async def _criar_execucao_cwv(
     db.add(execucao)
     await db.flush()
     return execucao
+
+
+@router.get("/core-web-vitals/problema/{problema_id}/docx")
+async def exportar_problema_docx(
+    problema_id: str,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+    _: None = Depends(rate_limit_autenticado("cwv_export", max_requests=30, window_seconds=300)),
+) -> StreamingResponse:
+    from app.models.cwv_analise import CwvAnalise
+    from app.services import cwv_persistencia
+
+    prob = await cwv_persistencia.buscar_problema_por_id(db, problema_id)
+    if not prob:
+        raise HTTPException(status_code=404, detail="Problema nao encontrado")
+    analise_result = await db.execute(select(CwvAnalise).where(CwvAnalise.id == prob.analise_id))
+    analise = analise_result.scalar_one_or_none()
+    if not analise or str(analise.usuario_id) != str(usuario.id):
+        raise HTTPException(status_code=404, detail="Problema nao encontrado")
+
+    prob_dict = {
+        "titulo": prob.titulo,
+        "severidade": prob.severidade,
+        "metricas_afetadas": prob.metricas_afetadas,
+        "contexto_especifico": prob.contexto_especifico,
+        "documentacao_md": prob.documentacao_md,
+    }
+    import io
+
+    from app.services.cwv_export import problema_para_html, slugify_titulo
+    from app.services.parecer_service import html_para_docx_bytes
+    docx = html_para_docx_bytes(problema_para_html(prob_dict))
+    nome = slugify_titulo(prob.titulo)
+    return StreamingResponse(
+        io.BytesIO(docx),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{nome}.docx"'},
+    )
+
+
+@router.get("/core-web-vitals/analise/{analise_id}/docx")
+async def exportar_relatorio_docx(
+    analise_id: str,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+    _: None = Depends(rate_limit_autenticado("cwv_export", max_requests=30, window_seconds=300)),
+) -> StreamingResponse:
+    from app.services import cwv_persistencia
+
+    analise_dict = await cwv_persistencia.buscar_analise_com_problemas(db, analise_id)
+    if not analise_dict or str(analise_dict.get("usuario_id")) != str(usuario.id):
+        raise HTTPException(status_code=404, detail="Analise nao encontrada")
+
+    problemas = analise_dict.get("problemas", [])
+    prob_dicts = [
+        {
+            "titulo": p["titulo"],
+            "severidade": p["severidade"],
+            "metricas_afetadas": p["metricas_afetadas"],
+            "contexto_especifico": p["contexto_especifico"],
+            "documentacao_md": p["documentacao_md"],
+        }
+        for p in problemas
+    ]
+    import io
+
+    from app.services.cwv_export import relatorio_para_html
+    from app.services.parecer_service import html_para_docx_bytes
+    docx = html_para_docx_bytes(relatorio_para_html(analise_dict, prob_dicts))
+    url_slug = analise_dict.get("url_canonica", "cwv").replace("https://", "").replace("http://", "")[:50].replace("/", "-").replace(".", "-")
+    nome = f"cwv-relatorio-{url_slug}"
+    return StreamingResponse(
+        io.BytesIO(docx),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{nome}.docx"'},
+    )

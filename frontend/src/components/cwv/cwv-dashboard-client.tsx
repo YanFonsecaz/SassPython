@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeftIcon, RefreshCwIcon, AlertTriangleIcon, SmartphoneIcon, MonitorIcon } from "lucide-react";
+import { toast } from "sonner";
+import { ArrowLeftIcon, RefreshCwIcon, AlertTriangleIcon, SmartphoneIcon, MonitorIcon, DownloadIcon, Loader2Icon } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
@@ -16,7 +17,8 @@ import { PlataformaOverrideDialog } from "@/components/cwv/cwv-plataforma-overri
 import { classificarAnalise } from "@/lib/cwv-estado";
 import { PencilIcon, SparklesIcon } from "lucide-react";
 import type { CwvAnaliseResposta, CwvAnaliseResumo, ComparacaoResposta } from "@/lib/api/cwv";
-import { buscarComparacao } from "@/lib/api/cwv";
+import { buscarComparacao, exportarRelatorioCwvDocx } from "@/lib/api/cwv";
+import { mensagemErroAmigavel } from "@/lib/api";
 import type { CwvEstrategia } from "@/components/cwv/cwv-url-client";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +43,7 @@ export function DashboardUrlClient({
 }: DashboardUrlClientProps) {
   const [reanalisarOpen, setReanalisarOpen] = useState(false);
   const [plataformaOpen, setPlataformaOpen] = useState(false);
+  const [exportandoRelatorio, setExportandoRelatorio] = useState(false);
   const [comparacao, setComparacao] = useState<ComparacaoResposta | null>(null);
   const [carregandoComparacao, setCarregandoComparacao] = useState(true);
   const [erroComparacao, setErroComparacao] = useState<string | null>(null);
@@ -65,6 +68,26 @@ export function DashboardUrlClient({
       setCarregandoComparacao(false);
     }
   }, [analiseAtual.id, historico.length]);
+
+  async function handleExportarRelatorio() {
+    setExportandoRelatorio(true);
+    try {
+      const blob = await exportarRelatorioCwvDocx(analiseAtual.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const slug = analiseAtual.url_canonica.replace(/^https?:\/\//, "").slice(0, 50).replace(/[/.]/g, "-");
+      a.download = `cwv-relatorio-${slug}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(mensagemErroAmigavel(e));
+    } finally {
+      setExportandoRelatorio(false);
+    }
+  }
 
   const analiseAnterior = historico.length >= 2 ? historico[1] : undefined;
   const estado = useMemo(() => classificarAnalise(analiseAtual), [analiseAtual]);
@@ -181,6 +204,10 @@ export function DashboardUrlClient({
               </div>
               <Button variant="outline" size="sm" onClick={() => setReanalisarOpen(true)}>
                 <RefreshCwIcon className="size-4 mr-1" /> Re-analisar
+              </Button>
+              <Button variant="outline" size="sm" disabled={exportandoRelatorio} onClick={handleExportarRelatorio}>
+                {exportandoRelatorio ? <Loader2Icon className="size-4 animate-spin mr-1" /> : <DownloadIcon className="size-4 mr-1" />}
+                Baixar relatorio (.docx)
               </Button>
             </div>
           </div>

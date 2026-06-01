@@ -1,8 +1,14 @@
 "use client";
 
+import { useState } from "react";
+import { toast } from "sonner";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DownloadIcon, Loader2Icon } from "lucide-react";
 import type { CwvProblemaResposta } from "@/lib/api/cwv";
+import { exportarProblemaCwvDocx } from "@/lib/api/cwv";
+import { mensagemErroAmigavel } from "@/lib/api";
 import { ProblemaDetalhes } from "./cwv-problema-detalhes";
 
 function SeveridadeIcon({ severidade }: { severidade: number }) {
@@ -17,6 +23,27 @@ interface PlanoAcaoProps {
 }
 
 export function PlanoAcaoAccordion({ problemas }: PlanoAcaoProps) {
+  const [exportandoId, setExportandoId] = useState<string | null>(null);
+
+  async function handleExportar(problemaId: string, titulo: string) {
+    setExportandoId(problemaId);
+    try {
+      const blob = await exportarProblemaCwvDocx(problemaId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cwv-${titulo.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60)}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(mensagemErroAmigavel(e));
+    } finally {
+      setExportandoId(null);
+    }
+  }
+
   if (problemas.length === 0) {
     return (
       <div className="rounded-lg border bg-success/5 border-success/20 p-6 text-center">
@@ -52,6 +79,17 @@ export function PlanoAcaoAccordion({ problemas }: PlanoAcaoProps) {
                   <span className="text-xs text-muted-foreground font-mono shrink-0">#{p.prioridade_ordem}</span>
                   <SeveridadeIcon severidade={p.severidade} />
                   <span className="text-sm font-medium flex-1 min-w-0 truncate">{p.titulo}</span>
+                  <div className="flex items-center gap-1 shrink">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2"
+                      disabled={exportandoId === p.id}
+                      onClick={(e) => { e.stopPropagation(); handleExportar(p.id, p.titulo); }}
+                    >
+                      {exportandoId === p.id ? <Loader2Icon className="size-3.5 animate-spin" /> : <DownloadIcon className="size-3.5" />}
+                    </Button>
+                  </div>
                   <div className="flex flex-wrap justify-end gap-1 shrink">
                     {(p.metricas_afetadas ?? []).map((m) => (
                       <Badge key={m} variant="outline" className="text-[10px] px-1.5">{m}</Badge>

@@ -113,8 +113,24 @@ def _render_node(doc: Document, node) -> None:
         _add_paragraph(doc, _node_text(node), style="Heading 1")
     elif tag == "h3":
         _add_paragraph(doc, _node_text(node), style="Heading 2")
+    elif tag in ("h4", "h5", "h6"):
+        _add_paragraph(doc, _node_text(node), style="Heading 3")
     elif tag == "p":
         _render_paragraph(doc, node)
+    elif tag == "pre" or tag == "code":
+        text = _node_text(node)
+        if text.strip():
+            p = doc.add_paragraph(style="Normal")
+            run = p.add_run(text)
+            run.font.name = "Courier New"
+            run.font.size = Pt(9)
+    elif tag == "blockquote":
+        text = node.text()
+        if text and text.strip():
+            p = doc.add_paragraph(style="Normal")
+            p.paragraph_format.left_indent = Inches(0.5)
+            run = p.add_run(text.strip())
+            run.italic = True
     elif tag == "table":
         _render_table(doc, node)
     elif tag in ("ul", "ol"):
@@ -128,6 +144,9 @@ def _render_node(doc: Document, node) -> None:
     else:
         for child in node.iter(include_text=False):
             _render_node(doc, child)
+        text = _node_text(node)
+        if text.strip():
+            _add_paragraph(doc, text)
 
 
 def _add_paragraph(doc: Document, text: str, style: str = "Normal") -> None:

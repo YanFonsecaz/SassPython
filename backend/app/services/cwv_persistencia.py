@@ -309,12 +309,19 @@ async def buscar_problemas_analise(session, analise_id: str) -> list[CwvProblema
     return list(resultado.scalars().all())
 
 
+async def buscar_problema_por_id(session, problema_id: str) -> CwvProblema | None:
+    resultado = await session.execute(
+        select(CwvProblema).where(CwvProblema.id == problema_id)
+    )
+    return resultado.scalar_one_or_none()
+
+
 async def buscar_analise_anterior(
     session, url_canonica: str, cliente_id: str, antes_de: datetime, estrategia: str | None = None
 ) -> CwvAnalise | None:
     """Retorna a análise imediatamente anterior à data dada para mesma URL+cliente+estratégia."""
     from sqlalchemy import select
-    
+
     where = [
         CwvAnalise.cliente_id == cliente_id,
         CwvAnalise.url_canonica == url_canonica,
@@ -323,7 +330,7 @@ async def buscar_analise_anterior(
     ]
     if estrategia:
         where.append(CwvAnalise.estrategia == estrategia)
-    
+
     resultado = await session.execute(
         select(CwvAnalise)
         .where(*where)
