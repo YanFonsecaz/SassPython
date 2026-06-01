@@ -178,3 +178,18 @@ class TestHtmlParaDocxBytes:
             assert normal.font.name == "Calibri"
         except KeyError:
             pass
+
+    def test_code_block_preservado(self):
+        # blocos de codigo (CWV "Como corrigir") nao podem ser perdidos
+        result = html_para_docx_bytes("<pre><code>const x = 1;</code></pre><p>fim</p>")
+        doc = Document(io.BytesIO(result))
+        texts = [p.text for p in doc.paragraphs]
+        assert any("const x = 1;" in t for t in texts)
+        assert any("fim" in t for t in texts)
+
+    def test_headings_h4_h6_preservados(self):
+        result = html_para_docx_bytes("<h4>Sub A</h4><h6>Sub B</h6>")
+        doc = Document(io.BytesIO(result))
+        texts = [p.text for p in doc.paragraphs]
+        assert any("Sub A" in t for t in texts)
+        assert any("Sub B" in t for t in texts)

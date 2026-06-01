@@ -43,6 +43,7 @@ Geradas após o e2e identificar bugs reais + gaps de cobertura.
 | # | SPEC | Tipo | Esforço |
 |---|---|---|---|
 | 11 | [Análise Mobile **e** Desktop](SPEC_CWV_Mobile_e_Desktop.md) | ✨ Toda análise roda Mobile+Desktop (2 análises/URL) + toggle no dashboard. **Sem migration** (schema já suporta). Custo passa a `15 + N×2`. | ~1–1,5 dia |
+| 12 | [Exportar documentação em `.docx`](SPEC_CWV_Export_Docx.md) | 📄 Baixar `.docx` **por problema** e **relatório completo** da URL — reaproveita o motor de `.docx` do Parecer. Sem migration, sem créditos. | ~0,5–1 dia |
 
 ---
 
