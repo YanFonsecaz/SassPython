@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 
 class GerarArtigoRequest(BaseModel):
     cliente_id: uuid.UUID
-    persona_id: str = Field(min_length=1, max_length=100)
+    persona_id: str = Field(default="", max_length=100)
     topico: str = Field(min_length=1, max_length=500)
     palavra_chave_principal: str = Field(min_length=1, max_length=200)
     palavras_chave_secundarias: list[str] = Field(default_factory=list, max_length=20)

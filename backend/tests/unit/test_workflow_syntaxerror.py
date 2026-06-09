@@ -23,7 +23,7 @@ def test_worker_imports():
 
     assert hasattr(app.worker, "WorkerSettings")
     ws = app.worker.WorkerSettings()
-    assert len(ws.functions) == 5
+    assert len(ws.functions) == 6
     assert ws.max_tries == 3
     assert ws.job_timeout > 0
 
