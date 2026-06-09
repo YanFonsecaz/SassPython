@@ -65,14 +65,23 @@ class PesquisadorAgent(BaseAgent):
             PesquisaCache.usuario_id == usuario_id,
             PesquisaCache.query_hash == query_hash,
             PesquisaCache.fonte == fonte,
-            PesquisaCache.expira_em > datetime.now(UTC),
         )
         resultado = await session.execute(stmt)
         cache = resultado.scalar_one_or_none()
-        if cache:
+        agora = datetime.now(UTC)
+        if cache and cache.expira_em > agora:
             return cache.resultados_json.get("dados", []), False, None
 
         dados = await buscar_fn(query)
+        nova_expira = agora + timedelta(days=settings.pesquisa_cache_ttl_days)
+
+        if cache is not None:
+            # Entrada existente porem expirada: atualiza no lugar para nao violar
+            # a unique constraint (usuario_id, query_hash, fonte) com um INSERT duplicado.
+            cache.query_original = query
+            cache.resultados_json = {"dados": dados}
+            cache.expira_em = nova_expira
+            return dados, False, None
 
         cache_entry = PesquisaCache(
             usuario_id=usuario_id,
@@ -80,7 +89,7 @@ class PesquisadorAgent(BaseAgent):
             query_original=query,
             resultados_json={"dados": dados},
             fonte=fonte,
-            expira_em=datetime.now(UTC) + timedelta(days=settings.pesquisa_cache_ttl_days),
+            expira_em=nova_expira,
         )
         return dados, False, cache_entry
 
