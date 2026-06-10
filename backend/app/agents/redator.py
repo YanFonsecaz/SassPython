@@ -2,9 +2,20 @@ import json
 import logging
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from app.agents.base import BaseAgent
 
 logger = logging.getLogger(__name__)
+
+
+class ArtigoRedigidoSchema(BaseModel):
+    titulo: str = Field(default="", description="Titulo (H1) do artigo")
+    conteudo_markdown: str = Field(default="", description="Corpo do artigo em markdown")
+    meta_description: str = Field(default="", description="Meta description SEO")
+    palavras_chave_usadas: list[str] = Field(default_factory=list, description="Palavras-chave utilizadas")
+    contagem_palavras: int = Field(default=0, description="Numero de palavras do artigo")
+    secoes_geradas: int = Field(default=0, description="Numero de secoes (H2/H3) geradas")
 
 REDATOR_SYSTEM_PROMPT = """Voce e um redator profissional de conteudo SEO Senior. Redija o artigo completo seguindo o brief fornecido.
 
@@ -40,15 +51,19 @@ class RedatorAgent(BaseAgent):
             "feedback": feedback,
         }
 
-        from langchain_core.output_parsers import JsonOutputParser
-        from langchain_core.prompts import ChatPromptTemplate
+        prompt = f"{REDATOR_SYSTEM_PROMPT}\n\nContexto (JSON):\n{json.dumps(contexto, ensure_ascii=False)}"
 
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", REDATOR_SYSTEM_PROMPT),
-            ("human", "{contexto}"),
-        ])
-        chain = prompt | self.llm | JsonOutputParser()
-        resultado = await self.invoke(chain, {"contexto": json.dumps(contexto, ensure_ascii=False)})
+        try:
+            estruturado: ArtigoRedigidoSchema = await self.invoke_structured(prompt, ArtigoRedigidoSchema)
+            resultado = estruturado.model_dump()
+        except Exception:
+            # Fallback tolerante: o LLM as vezes embrulha o JSON em cerca ```json,
+            # o que faz o JsonOutputParser estrito falhar (OUTPUT_PARSING_FAILURE).
+            logger.warning("Structured output falhou para redacao, usando JsonOutputParser fallback")
+            from langchain_core.output_parsers import JsonOutputParser
+
+            raw = await self.invoke_raw(prompt)
+            resultado = JsonOutputParser().invoke(raw.content)
 
         conteudo_md = resultado.get("conteudo_markdown", "")
         contagem = len(conteudo_md.split())
