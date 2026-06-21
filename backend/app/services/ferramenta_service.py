@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
 from app.models.execucao_ferramenta import ExecucaoFerramenta
@@ -14,7 +15,6 @@ logger = logging.getLogger(__name__)
 CUSTO_BASE = 15
 CUSTO_REVISAO = 3
 CUSTO_IMAGEM = 5
-CUSTO_MINIMO = CUSTO_BASE + CUSTO_IMAGEM
 
 CUSTO_BASE_INLINKS = 15
 CUSTO_POR_URL_INLINKS = 1
@@ -48,6 +48,22 @@ CUSTOS_TABELA = [
     {"acao": "parecer_base", "custo_creditos": CUSTO_BASE_PARECER, "chamadas_llm_estimadas": 1},
     {"acao": "parecer_por_imagem", "custo_creditos": CUSTO_POR_IMAGEM_PARECER, "chamadas_llm_estimadas": 1},
 ]
+
+
+def custo_maximo_estimado() -> int:
+    return (
+        CUSTO_BASE
+        + (settings.workflow_max_revisoes + settings.workflow_max_feedback) * CUSTO_REVISAO
+        + CUSTO_IMAGEM
+    )
+
+
+def calcular_custo_final(versao_atual: int, imagem_gerada: bool) -> int:
+    custo = CUSTO_BASE
+    custo += max(0, versao_atual - 1) * CUSTO_REVISAO
+    if imagem_gerada:
+        custo += CUSTO_IMAGEM
+    return custo
 
 
 def calcular_custo_inlinks(n_processadas: int) -> int:
@@ -212,17 +228,9 @@ async def atualizar_versao_revisao(
     return versao_artigo
 
 
-async def calcular_custo_final(execucao: ExecucaoFerramenta) -> int:
-    custo = CUSTO_BASE
-    custo += execucao.tentativas_revisao * CUSTO_REVISAO
-    custo += execucao.tentativas_feedback * CUSTO_REVISAO
-    custo += CUSTO_IMAGEM
-    return custo
-
-
 def _obter_reserva_estimada(ferramenta: str, execucao: ExecucaoFerramenta) -> int:
     if ferramenta == "gerar_artigo":
-        return CUSTO_MINIMO
+        return custo_maximo_estimado()
     if ferramenta in ("inlinks", "inlinks_automaticos"):
         return CUSTO_BASE_INLINKS
     if ferramenta == "distribuir_inlinks":
@@ -234,26 +242,44 @@ def _obter_reserva_estimada(ferramenta: str, execucao: ExecucaoFerramenta) -> in
     return 0
 
 
-async def finalizar_sucesso(db, execucao_id: str, resultado_json: dict[str, Any]) -> ExecucaoFerramenta:
+async def finalizar_sucesso(
+    db,
+    execucao_id: str,
+    resultado_json: dict[str, Any],
+    *,
+    versao_atual: int,
+    tentativas_revisao: int,
+    tentativas_feedback: int,
+) -> ExecucaoFerramenta:
     execucao = await buscar_execucao(db, execucao_id)
     if not execucao:
         raise ValueError(f"Execucao {execucao_id} nao encontrada")
 
-    custo = await calcular_custo_final(execucao)
-    from app.services import credito_service
+    execucao.tentativas_revisao = tentativas_revisao
+    execucao.tentativas_feedback = tentativas_feedback
 
+    imagem_gerada = bool(resultado_json.get("imagem_url"))
+    custo = calcular_custo_final(versao_atual, imagem_gerada)
+    reserva = custo_maximo_estimado()
+
+    from app.services import credito_service
     try:
         await credito_service.confirmar_debito(
             db,
             str(execucao.usuario_id),
-            reservado=CUSTO_MINIMO,
+            reservado=reserva,
             quantidade=custo,
-            descricao=f"Gerar artigo: {custo} creditos (base={CUSTO_BASE}, revisoes={execucao.tentativas_revisao}, feedbacks={execucao.tentativas_feedback}, imagem={CUSTO_IMAGEM})",
+            descricao=(
+                f"Gerar artigo: {custo} creditos (base={CUSTO_BASE}, "
+                f"versoes={versao_atual}, imagem={'sim' if imagem_gerada else 'nao'})"
+            ),
             ferramenta="gerar_artigo",
             execucao_id=str(execucao.id),
         )
-    except ValueError:
-        await credito_service.liberar_reserva(db, str(execucao.usuario_id), CUSTO_MINIMO)
+    except (ValueError, IntegrityError):
+        await db.rollback()
+        await credito_service.liberar_reserva(db, str(execucao.usuario_id), reserva)
+        execucao = await buscar_execucao(db, execucao_id)
         execucao.status = "falhou"
         execucao.erro_msg = "Saldo insuficiente no momento do debito"
         execucao.concluida_em = datetime.now(UTC)
@@ -265,7 +291,8 @@ async def finalizar_sucesso(db, execucao_id: str, resultado_json: dict[str, Any]
     execucao.resultado_json = resultado_json
     execucao.concluida_em = datetime.now(UTC)
     await db.flush()
-    logger.info("execucao_id=%s status=concluida creditos=%d", execucao_id, custo)
+    logger.info("execucao_id=%s status=concluida creditos=%d versoes=%d imagem=%s",
+                execucao_id, custo, versao_atual, imagem_gerada)
     return execucao
 
 

@@ -5,6 +5,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.agents.base import BaseAgent
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,11 @@ class RevisaoArtigoSchema(BaseModel):
 
 class RevisorAgent(BaseAgent):
     def __init__(self, usuario_id: str):
-        super().__init__(usuario_id)
+        super().__init__(
+            usuario_id,
+            temperature=settings.artigo_revisor_temperature,
+            model=settings.artigo_revisor_model,
+        )
 
     async def executar(self, estado: dict[str, Any], session) -> dict[str, Any]:
         artigo = estado.get("artigo", {})
@@ -96,5 +101,4 @@ Preencha: aprovado, score_qualidade, problemas, sugestoes, feedback_para_redator
         return {
             "revisao": revisao_dict,
             "aprovado_revisor": aprovado,
-            "tentativas_revisao": estado.get("tentativas_revisao", 0) + (0 if aprovado else 1),
         }

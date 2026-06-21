@@ -404,7 +404,7 @@ export function FormularioGerarArtigo({
               </div>
               <div className="pt-2 border-t border-brand/20">
                 <p className="text-sm">
-                  Seu saldo atual: <span className={cn("font-bold", saldo !== null && saldo < 20 ? "text-destructive" : "text-brand-dark")}>{saldo ?? "..."}</span> créditos
+                  Seu saldo atual: <span className={cn("font-bold", saldo !== null && saldo < 38 ? "text-destructive" : "text-brand-dark")}>{saldo ?? "..."}</span> créditos
                 </p>
               </div>
             </div>

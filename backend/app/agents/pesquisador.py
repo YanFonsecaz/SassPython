@@ -96,6 +96,9 @@ class PesquisadorAgent(BaseAgent):
     async def _buscar_serpapi(self, query: str) -> list[dict[str, Any]]:
         if not settings.serpapi_key:
             return []
+        return await asyncio.to_thread(self._buscar_serpapi_sync, query)
+
+    def _buscar_serpapi_sync(self, query: str) -> list[dict[str, Any]]:
         from serpapi import GoogleSearch
 
         search = GoogleSearch({
@@ -115,6 +118,9 @@ class PesquisadorAgent(BaseAgent):
     async def _buscar_google_trends(self, query: str) -> list[dict[str, Any]]:
         if not settings.google_trends_enabled:
             return []
+        return await asyncio.to_thread(self._buscar_google_trends_sync, query)
+
+    def _buscar_google_trends_sync(self, query: str) -> list[dict[str, Any]]:
         from pytrends.request import TrendReq
 
         pytrends = TrendReq(hl="pt-BR", tz=-3, timeout=(10, 25))
@@ -124,10 +130,12 @@ class PesquisadorAgent(BaseAgent):
             return []
         related = pytrends.related_queries()
         related_data = related.get(query[:50], {}).get("rising", [])
+        if related_data is None or related_data.empty:
+            return []
         return [
             {"termo": row.get("query", ""), "valor": int(row.get("value", 0))}
             for _, row in related_data.head(10).iterrows()
-        ] if related_data is not None and not related_data.empty else []
+        ]
 
     async def _buscar_conteudos_vetoriais(self, texto: str, usuario_id: str, session) -> tuple[list[dict[str, Any]], bool]:
         from app.core.graceful_degradation import buscar_conteudo_vetorial_com_keyword_fallback

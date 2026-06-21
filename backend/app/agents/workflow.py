@@ -135,34 +135,35 @@ async def node_gerar_imagem(estado: EstadoWorkflow, session) -> dict[str, Any]:
     return await agente.executar(estado, session)
 
 
+@workflow_node("marcar_aguardando", "Aguardando revisao do usuario...")
+async def node_marcar_aguardando(estado: EstadoWorkflow, session) -> dict[str, Any]:
+    from app.core.workflow_events import publish_event
+    from app.services import ferramenta_service
+
+    eid = estado["execucao_id"]
+    versao_atual = estado.get("versao_atual", 1)
+    aprovado = estado.get("aprovado_revisor", False)
+    score = estado.get("revisao", {}).get("score_qualidade", 0)
+
+    status = "aguardando_aprovacao" if aprovado else "aguardando_revisao"
+    if aprovado:
+        msg = f"Artigo versao {versao_atual} aprovado pela IA (score {score}/100). Aguardando sua revisao..."
+    else:
+        msg = f"Artigo versao {versao_atual} precisa de ajustes (score {score}/100). Aguardando seu feedback..."
+    await ferramenta_service.atualizar_execucao(session, eid, status=status)
+    await publish_event(eid, "aguardando", "aguardar_aprovacao", msg)
+    return {}
+
+
 async def node_aguardar_aprovacao(estado: EstadoWorkflow) -> dict[str, Any]:
     from app.core.workflow_events import publish_event
     from app.services import ferramenta_service
 
     eid = estado["execucao_id"]
-    async with async_session_factory() as session:
-        await _atualizar_etapa(eid, "aguardando_aprovacao", session)
-
-        versao_atual = estado.get("versao_atual", 1)
-        revisao = estado.get("revisao", {})
-        score = revisao.get("score_qualidade", 0)
-        aprovado = estado.get("aprovado_revisor", False)
-
-        if aprovado:
-            msg = f"Artigo versao {versao_atual} aprovado pela IA (score {score}/100). Aguardando sua revisao..."
-        else:
-            msg = f"Artigo versao {versao_atual} precisa de ajustes (score {score}/100). Aguardando seu feedback..."
-        await publish_event(eid, "node_start", "aguardar_aprovacao", msg)
-
-        if not estado.get("aprovado_usuario"):
-            status = "aguardando_aprovacao" if aprovado else "aguardando_revisao"
-            await ferramenta_service.atualizar_execucao(session, eid, status=status)
-            await session.commit()
-
     resume_value = interrupt({
         "tipo": "aprovacao_usuario",
-        "versao": versao_atual,
-        "score": score,
+        "versao": estado.get("versao_atual", 1),
+        "score": estado.get("revisao", {}).get("score_qualidade", 0),
     })
 
     aprovado_usuario = False
@@ -171,11 +172,14 @@ async def node_aguardar_aprovacao(estado: EstadoWorkflow) -> dict[str, Any]:
         aprovado_usuario = resume_value.get("aprovado_usuario", False)
         feedback_usuario = resume_value.get("feedback_usuario", "")
 
-    async with async_session_factory() as session2:
-        await ferramenta_service.atualizar_execucao(session2, eid, status="executando")
-        await session2.commit()
+    async with async_session_factory() as session:
+        await ferramenta_service.atualizar_execucao(session, eid, status="executando")
+        await session.commit()
 
-    await publish_event(eid, "node_complete", "aguardar_aprovacao", "Aprovado" if aprovado_usuario else "Feedback recebido, reiniciando revisao")
+    await publish_event(
+        eid, "node_complete", "aguardar_aprovacao",
+        "Aprovado" if aprovado_usuario else "Feedback recebido, reiniciando revisao",
+    )
 
     return {
         "aprovado_usuario": aprovado_usuario,
@@ -208,6 +212,7 @@ def criar_workflow(checkpointer=None):
     workflow.add_node("criar_brief", node_criar_brief)
     workflow.add_node("redigir", node_redigir)
     workflow.add_node("revisar", node_revisar)
+    workflow.add_node("marcar_aguardando", node_marcar_aguardando)
     workflow.add_node("aguardar_aprovacao", node_aguardar_aprovacao)
     workflow.add_node("salvar_vetorial", node_salvar_vetorial)
     workflow.add_node("gerar_imagem", node_gerar_imagem)
@@ -221,8 +226,10 @@ def criar_workflow(checkpointer=None):
     workflow.add_conditional_edges(
         "revisar",
         roteamento_revisor,
-        {"redigir": "redigir", "aguardar_aprovacao": "aguardar_aprovacao"},
+        {"redigir": "redigir", "aguardar_aprovacao": "marcar_aguardando"},
     )
+
+    workflow.add_edge("marcar_aguardando", "aguardar_aprovacao")
 
     workflow.add_conditional_edges(
         "aguardar_aprovacao",
@@ -334,8 +341,9 @@ async def executar_workflow_completo(execucao_id: str, ctx: dict[str, Any] | Non
         raise
 
     except TimeoutError:
+        minutos = settings.workflow_timeout_segundos // 60
         async with async_session_factory() as session:
-            await ferramenta_service.finalizar_falha(session, execucao_id, "Workflow excedeu o tempo limite de 5 minutos")
+            await ferramenta_service.finalizar_falha(session, execucao_id, f"Workflow excedeu o tempo limite de {minutos} minutos")
             await session.commit()
     except Exception as e:
         logger.error("Workflow falhou para execucao %s: %s", execucao_id, e)
@@ -351,18 +359,18 @@ async def _run_workflow(workflow, estado_inicial, config, execucao_id: str) -> N
     snapshot = await workflow.aget_state(config)
     estado_final = snapshot.values if snapshot else None
 
-    if estado_final and estado_final.get("aprovado_usuario") is None and estado_final.get("aprovado_revisor") is not False:
-        snapshot = await workflow.aget_state(config)
-        if snapshot and snapshot.values:
-            estado_final = snapshot.values
-
     async with async_session_factory() as session:
         from app.services import ferramenta_service
 
         execucao = await ferramenta_service.buscar_execucao(session, execucao_id)
         if execucao and execucao.status == "executando":
             resultado = _extrair_resultado(estado_final)
-            await ferramenta_service.finalizar_sucesso(session, execucao_id, resultado)
+            await ferramenta_service.finalizar_sucesso(
+                session, execucao_id, resultado,
+                versao_atual=(estado_final or {}).get("versao_atual", 1),
+                tentativas_revisao=(estado_final or {}).get("tentativas_revisao", 0),
+                tentativas_feedback=(estado_final or {}).get("tentativas_feedback", 0),
+            )
             await session.commit()
 
 
@@ -439,7 +447,12 @@ async def _run_resumed_workflow(workflow, resume_value, config, execucao_id: str
         execucao = await ferramenta_service.buscar_execucao(session, execucao_id)
         if execucao and execucao.status == "executando":
             resultado = _extrair_resultado(estado_final)
-            await ferramenta_service.finalizar_sucesso(session, execucao_id, resultado)
+            await ferramenta_service.finalizar_sucesso(
+                session, execucao_id, resultado,
+                versao_atual=(estado_final or {}).get("versao_atual", 1),
+                tentativas_revisao=(estado_final or {}).get("tentativas_revisao", 0),
+                tentativas_feedback=(estado_final or {}).get("tentativas_feedback", 0),
+            )
             await session.commit()
 
 

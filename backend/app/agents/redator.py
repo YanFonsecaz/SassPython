@@ -84,5 +84,4 @@ class RedatorAgent(BaseAgent):
         return {
             "artigo": resultado,
             "artigo_titulo": resultado.get("titulo", ""),
-            "versao_atual": versao,
         }

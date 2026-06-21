@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import time
 from datetime import UTC, datetime
 from typing import Any
 
@@ -56,12 +57,13 @@ async def gerar_artigo(
         if body.persona_id and not any(p.get("nome") == body.persona_id for p in personas):
             raise HTTPException(status_code=400, detail="Persona nao encontrada no cliente")
 
-    from app.services.ferramenta_service import CUSTO_MINIMO
+    from app.services.ferramenta_service import custo_maximo_estimado
 
+    reserva = custo_maximo_estimado()
     try:
-        await credito_service.reservar_creditos(db, str(usuario.id), CUSTO_MINIMO)
+        await credito_service.reservar_creditos(db, str(usuario.id), reserva)
     except ValueError as exc:
-        raise HTTPException(status_code=402, detail="Creditos insuficientes") from exc
+        raise HTTPException(status_code=402, detail=f"Creditos insuficientes (necessario reservar {reserva})") from exc
 
     entrada = body.model_dump()
     execucao = await ferramenta_service.criar_execucao(
@@ -81,7 +83,7 @@ async def gerar_artigo(
         await db.flush()
     except Exception as e:
         logger.error("Falha ao enfileirar workflow: %s", e)
-        await credito_service.liberar_reserva(db, str(usuario.id), CUSTO_MINIMO)
+        await credito_service.liberar_reserva(db, str(usuario.id), reserva)
         execucao.status = "falhou"
         execucao.erro_msg = "Falha ao enfileirar workflow"
         await db.flush()
@@ -147,7 +149,6 @@ async def stream_progresso(
 
             redis = await get_pubsub_client()
             pubsub = redis.pubsub()
-            pubsub = redis.pubsub()
             await pubsub.subscribe(channel_name)
             try:
                 async for message in pubsub.listen():
@@ -171,54 +172,53 @@ async def stream_progresso(
 
     redis_sub_task = asyncio.create_task(subscribe_redis())
 
+    reconcile_s = 5
+    max_stream_s = 1800
+    inicio = time.monotonic()
+    ultimo_reconcile = 0.0
+
     async def evento_stream():
+        nonlocal ultimo_reconcile
         try:
             while True:
-                done = False
-
-                async with async_session_factory() as session:
-                    execucao = await ferramenta_service.buscar_execucao(session, execucao_id)
-                    if not execucao:
-                        yield f"data: {json.dumps({'type': 'falhou', 'erro': 'Execucao nao encontrada'})}\n\n"
-                        break
-
-                    data = {
-                        "type": "status",
-                        "status": execucao.status,
-                        "etapa": execucao.etapa_atual,
-                        "timestamp": datetime.now(UTC).isoformat(),
-                    }
-                    yield f"data: {json.dumps(data)}\n\n"
-
-                    if execucao.status in ("concluida", "falhou", "cancelada"):
-                        final = {"type": execucao.status}
-                        if execucao.status == "falhou":
-                            final["erro"] = execucao.erro_msg
-                        elif execucao.status == "concluida":
-                            final["creditos_cobrados"] = execucao.creditos_cobrados
-                        yield f"data: {json.dumps(final)}\n\n"
-                        break
-
-                try:
-                    while True:
-                        msg = await asyncio.wait_for(redis_queue.get(), timeout=1.0)
-                        try:
-                            parsed = json.loads(msg) if isinstance(msg, str) else msg
-                            event_type = parsed.get("type", "")
-                            if event_type in ("node_start", "node_complete"):
-                                yield f"data: {json.dumps({'type': 'node_progress', 'node': parsed.get('node'), 'detail': parsed.get('detail'), 'timestamp': parsed.get('timestamp')})}\n\n"
-                                if parsed.get("type") == "node_complete" and parsed.get("node") == "aguardar_aprovacao":
-                                    done = True
-                                    break
-                        except (json.JSONDecodeError, TypeError):
-                            pass
-                except TimeoutError:
-                    pass
-
-                if done:
+                if time.monotonic() - inicio > max_stream_s:
                     break
 
-                await asyncio.sleep(1)
+                agora = time.monotonic()
+                if agora - ultimo_reconcile >= reconcile_s:
+                    ultimo_reconcile = agora
+                    async with async_session_factory() as session:
+                        execucao = await ferramenta_service.buscar_execucao(session, execucao_id)
+                        if not execucao:
+                            yield f"data: {json.dumps({'type': 'falhou', 'erro': 'Execucao nao encontrada'})}\n\n"
+                            break
+
+                        data = {
+                            "type": "status",
+                            "status": execucao.status,
+                            "etapa": execucao.etapa_atual,
+                            "timestamp": datetime.now(UTC).isoformat(),
+                        }
+                        yield f"data: {json.dumps(data)}\n\n"
+
+                        if execucao.status in ("concluida", "falhou", "cancelada"):
+                            final = {"type": execucao.status}
+                            if execucao.status == "falhou":
+                                final["erro"] = execucao.erro_msg
+                            elif execucao.status == "concluida":
+                                final["creditos_cobrados"] = execucao.creditos_cobrados
+                            yield f"data: {json.dumps(final)}\n\n"
+                            break
+
+                try:
+                    msg = await asyncio.wait_for(redis_queue.get(), timeout=1.0)
+                    parsed = json.loads(msg) if isinstance(msg, str) else msg
+                    if parsed.get("type") in ("node_start", "node_complete"):
+                        yield f"data: {json.dumps({'type': 'node_progress', 'node': parsed.get('node'), 'detail': parsed.get('detail'), 'timestamp': parsed.get('timestamp')})}\n\n"
+                        if parsed.get("type") == "node_complete" and parsed.get("node") == "aguardar_aprovacao":
+                            break
+                except TimeoutError:
+                    pass
         finally:
             if redis_sub_task:
                 redis_sub_task.cancel()

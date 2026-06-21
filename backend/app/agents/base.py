@@ -20,11 +20,12 @@ def _get_chat_model(provider: str, model: str, temperature: float, api_key: str)
 
 
 class BaseAgent:
-    def __init__(self, usuario_id: str, tools: list | None = None):
+    def __init__(self, usuario_id: str, tools: list | None = None, *, temperature: float | None = None, model: str | None = None):
         self.usuario_id = usuario_id
         self.llm = _get_chat_model(
-            settings.llm_provider, settings.llm_model,
-            settings.llm_temperature,
+            settings.llm_provider,
+            model or settings.llm_model,
+            settings.llm_temperature if temperature is None else temperature,
             settings.openai_api_key if settings.llm_provider == "openai" else settings.zhipuai_api_key,
         )
         self._tools = tools or []
