@@ -113,8 +113,8 @@ async def node_extrair_pilar(estado: EstadoInlinks) -> dict[str, Any]:
 
     if resultado.falhou:
         await publish_event(eid, "node_complete", "extrair_pilar", f"Falha ao extrair pilar: {resultado.erro}")
-
-    await publish_event(eid, "node_complete", "extrair_pilar", f"Pilar extraido: {resultado.tokens} tokens")
+    else:
+        await publish_event(eid, "node_complete", "extrair_pilar", f"Pilar extraido: {resultado.tokens} tokens")
     return {
         "pilar_resultado": {
             "url": resultado.url,
@@ -127,6 +127,29 @@ async def node_extrair_pilar(estado: EstadoInlinks) -> dict[str, Any]:
             "erro": resultado.erro,
         }
     }
+
+
+async def node_falha_pilar(estado: EstadoInlinks) -> dict[str, Any]:
+    from app.core.workflow_events import publish_event
+
+    eid = estado["execucao_id"]
+    pilar = estado.get("pilar_resultado", {})
+    erro = pilar.get("erro") or "Não foi possível extrair o conteúdo do pilar."
+    await publish_event(eid, "node_complete", "falha_pilar", f"Pilar indisponível: {erro}")
+    return {"resultado_final": {
+        "_pilar_falhou": True,
+        "erro": erro,
+        "n_candidatas_validas": 0,
+        "n_aplicadas": 0,
+        "inlinks": [],
+    }}
+
+
+def _pilar_ok(estado: EstadoInlinks) -> str:
+    pilar = estado.get("pilar_resultado", {})
+    if pilar.get("falhou") or not (pilar.get("conteudo_md") or "").strip():
+        return "falha_pilar"
+    return "extrair_candidatos"
 
 
 async def node_extrair_candidatos(estado: EstadoInlinks) -> dict[str, Any]:
@@ -696,6 +719,7 @@ def criar_workflow_inlinks(checkpointer=None):
 
     workflow.add_node("validar_urls", node_validar_e_normalizar)
     workflow.add_node("extrair_pilar", node_extrair_pilar)
+    workflow.add_node("falha_pilar", node_falha_pilar)
     workflow.add_node("extrair_candidatos", node_extrair_candidatos)
     workflow.add_node("enriquecer", node_enriquecer)
     workflow.add_node("match_rerank", node_match_rerank)
@@ -706,7 +730,11 @@ def criar_workflow_inlinks(checkpointer=None):
 
     workflow.set_entry_point("validar_urls")
     workflow.add_edge("validar_urls", "extrair_pilar")
-    workflow.add_edge("extrair_pilar", "extrair_candidatos")
+    workflow.add_conditional_edges(
+        "extrair_pilar", _pilar_ok,
+        {"falha_pilar": "falha_pilar", "extrair_candidatos": "extrair_candidatos"},
+    )
+    workflow.add_edge("falha_pilar", END)
     workflow.add_edge("extrair_candidatos", "enriquecer")
     workflow.add_edge("enriquecer", "match_rerank")
     workflow.add_edge("match_rerank", "inserir")
@@ -805,10 +833,26 @@ async def _finalizar_sucesso_inlinks(db, execucao_id: str, resultado_json: dict[
     if not execucao:
         raise ValueError(f"Execucao {execucao_id} nao encontrada")
 
+    reserva = ferramenta_service._obter_reserva_estimada("inlinks_automaticos", execucao)
+
+    if resultado_json.get("_pilar_falhou"):
+        await credito_service.liberar_reserva(db, str(execucao.usuario_id), reserva)
+        execucao.status = "falhou"
+        execucao.creditos_cobrados = 0
+        execucao.erro_msg = (
+            "Não foi possível extrair o conteúdo do pilar (URL inacessível, "
+            "bloqueio por robots.txt, ou conteúdo vazio). Verifique a URL/markdown do pilar."
+        )
+        execucao.resultado_json = resultado_json
+        execucao.concluida_em = datetime.now(UTC)
+        await db.flush()
+        logger.info("%s inlinks status=falhou (pilar nao extraido), reserva liberada", _log_prefix(execucao_id))
+        return
+
     n_processadas = resultado_json.get("n_candidatas_validas", 0)
 
     if n_processadas == 0:
-        await credito_service.liberar_reserva(db, str(execucao.usuario_id), ferramenta_service.CUSTO_BASE_INLINKS)
+        await credito_service.liberar_reserva(db, str(execucao.usuario_id), reserva)
         execucao.status = "concluida"
         execucao.creditos_cobrados = 0
         execucao.erro_msg = (
@@ -841,7 +885,7 @@ async def _finalizar_sucesso_inlinks(db, execucao_id: str, resultado_json: dict[
         await credito_service.confirmar_debito(
             db,
             str(execucao.usuario_id),
-            reservado=ferramenta_service.CUSTO_BASE_INLINKS,
+            reservado=reserva,
             quantidade=custo,
             descricao=(
                 f"Inlinks automaticos: {custo} creditos "
@@ -852,7 +896,7 @@ async def _finalizar_sucesso_inlinks(db, execucao_id: str, resultado_json: dict[
             execucao_id=execucao_id,
         )
     except ValueError:
-        await credito_service.liberar_reserva(db, str(execucao.usuario_id), ferramenta_service.CUSTO_BASE_INLINKS)
+        await credito_service.liberar_reserva(db, str(execucao.usuario_id), reserva)
         execucao.status = "falhou"
         execucao.erro_msg = "Saldo insuficiente"
         execucao.concluida_em = datetime.now(UTC)

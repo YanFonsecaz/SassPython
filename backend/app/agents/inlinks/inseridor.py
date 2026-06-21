@@ -1,8 +1,11 @@
+import asyncio
 import json
 import logging
 import re
 from dataclasses import dataclass
 from typing import Any
+
+from pydantic import BaseModel, Field
 
 from app.agents.base import BaseAgent
 from app.agents.inlinks.injector import (
@@ -37,6 +40,16 @@ _STOPWORDS_GENERICAS = {
     "como", "qual", "quais", "que", "tudo", "completo", "completa", "ideal", "melhor",
     "novo", "nova", "pratico", "prático",
 }
+
+
+class PropostaInsercaoSchema(BaseModel):
+    paragrafo_idx: int = Field(description="Indice local do paragrafo (0..N)")
+    trecho_original: str = Field(default="", description="Trecho copiado EXATAMENTE")
+    anchor_text: str = Field(default="")
+    palavra_chave_destino: str = Field(default="")
+    conector_antes: str = Field(default="")
+    conector_depois: str = Field(default="")
+    justificativa: str = Field(default="")
 
 
 def _normalize_token(s: str) -> str:
@@ -170,6 +183,7 @@ async def inserir_inlinks(
     if not pilar_markdown.strip() or not candidatos:
         return pilar_markdown, []
 
+    pilar_markdown = re.sub(r"\n{3,}", "\n\n", pilar_markdown)
     paragrafos = pilar_markdown.split("\n\n")
     candidatos_top = sorted(
         candidatos, key=lambda c: c.get("score_total", 0), reverse=True
@@ -181,9 +195,8 @@ async def inserir_inlinks(
     )
 
     todas_insercoes: list[dict[str, Any]] = []
-    propostas_por_candidato: list[tuple[dict[str, Any], dict[str, Any][str, Any] | None]] = []
 
-    for c in candidatos_top:
+    async def _processar_candidato(c: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any] | None]:
         contexto_paragrafos = await _selecionar_paragrafos_relevantes(
             paragrafos,
             c,
@@ -193,19 +206,18 @@ async def inserir_inlinks(
         )
         if not contexto_paragrafos:
             logger.info("Inseridor: candidato %s sem parágrafos elegíveis", c.get("url"))
-            propostas_por_candidato.append((c, None))
-            continue
+            return (c, None)
 
         proposta = await _propor_insercao_para_candidato(
             c, contexto_paragrafos, usuario_id,
             ancoras_preferidas=ancoras_preferidas,
             objetivo_linkagem=objetivo_linkagem,
         )
-        if not proposta:
-            propostas_por_candidato.append((c, None))
-            continue
+        return (c, proposta)
 
-        propostas_por_candidato.append((c, proposta))
+    propostas_por_candidato: list[tuple[dict[str, Any], dict[str, Any] | None]] = list(
+        await asyncio.gather(*(_processar_candidato(c) for c in candidatos_top))
+    )
 
     pares_para_validar: list[tuple[dict[str, Any], dict[str, Any]]] = []
     textos_batch: list[str] = []
@@ -239,8 +251,14 @@ async def inserir_inlinks(
         emb_anc = embs_batch[i * 4 + 2] if i * 4 + 2 < len(embs_batch) else None
         emb_tit = embs_batch[i * 4 + 3] if i * 4 + 3 < len(embs_batch) else None
 
-        cosine_contexto = cosine_seguro(emb_ctx, emb_dst) if emb_ctx is not None and emb_dst is not None else 1.0
-        cosine_ancora = cosine_seguro(emb_anc, emb_tit) if emb_anc is not None and emb_tit is not None else 1.0
+        if emb_ctx is None or emb_dst is None:
+            proposta["forcar_sugestao_manual"] = True
+            proposta["motivo_sugestao"] = "Não foi possível validar semanticamente (embedding indisponível)."
+            todas_insercoes.append(proposta)
+            continue
+
+        cosine_contexto = cosine_seguro(emb_ctx, emb_dst)
+        cosine_ancora = cosine_seguro(emb_anc, emb_tit) if (emb_anc is not None and emb_tit is not None) else 0.0
 
         # Se a validação dura por palavra-chave (_validar_palavra_chave_destino)
         # já passou, confiamos nela e relaxamos o piso de cosine âncora-destino.
@@ -283,17 +301,14 @@ async def inserir_inlinks(
 
 class _InseridorAgent(BaseAgent):
     def __init__(self, usuario_id: str):
-        super().__init__(usuario_id)
-        # Override do modelo apenas para o Inseridor — tarefa exige maior
-        # precisão de cópia literal e discernimento contextual entre candidatos.
         from app.config import settings
-        if settings.llm_provider == "openai" and settings.inseridor_llm_model:
-            from langchain_openai import ChatOpenAI
-            self.llm = ChatOpenAI(
-                model=settings.inseridor_llm_model,
-                temperature=settings.llm_temperature,
-                api_key=settings.openai_api_key,
-            )
+
+        model = settings.inseridor_llm_model if settings.llm_provider == "openai" else None
+        super().__init__(
+            usuario_id,
+            model=model,
+            temperature=settings.inlinks_inseridor_temperature,
+        )
 
     async def _invoke_llm(self, prompt: str) -> str:
         from langchain_core.messages import HumanMessage
@@ -427,23 +442,26 @@ async def _propor_insercao_para_candidato(
         len(contexto_paragrafos),
         prompt[:3000],
     )
+
+    parsed: dict[str, Any] | None = None
     try:
-        resposta = await agente._invoke_llm(prompt)
-        logger.info(
-            "Inseridor: resposta para %s: %s",
-            candidato.get("url", "?"),
-            (resposta or "")[:500],
-        )
-        parsed = _parse_proposta_unica(resposta)
+        parsed_obj = await agente.invoke_structured(prompt, PropostaInsercaoSchema)
+        parsed = parsed_obj.model_dump()
+        if not parsed.get("trecho_original"):
+            parsed = None
     except Exception as e:
-        logger.warning("Inseridor LLM falhou para %s: %s", candidato.get("url"), e)
-        return None
+        logger.warning("Inseridor structured falhou para %s: %s; tentando fallback parsing", candidato.get("url"), e)
+        try:
+            resposta = await agente._invoke_llm(prompt)
+            parsed = _parse_proposta_unica(resposta)
+        except Exception as e2:
+            logger.warning("Inseridor LLM fallback falhou para %s: %s", candidato.get("url"), e2)
+            return None
 
     if not parsed:
         logger.warning(
-            "Inseridor: LLM não propôs inserção para %s. Resposta: %s",
+            "Inseridor: LLM não propôs inserção para %s.",
             candidato.get("url"),
-            (resposta or "")[:400],
         )
         termos_kw = _termos_keyword_destino(candidato)
         motivo = (
@@ -915,17 +933,18 @@ def _aplicar_insercoes(
 
     inseridos: list[InlinkInserido] = []
 
+    shift = 0
     for v in sorted(validas, key=lambda x: x["global_offset"]):
         c = v["candidato"]
-        offset = v["global_offset"]
-
-        trecho_ctx = _extrair_trecho_contexto(texto, offset, offset + v["link_md_len"])
+        final_start = v["global_offset"] + shift
+        final_end = final_start + v["link_md_len"]
+        trecho_ctx = _extrair_trecho_contexto(texto, final_start, final_end)
 
         inseridos.append(InlinkInserido(
             url_destino=v["url"],
             anchor_text=v["anchor_text"],
             paragrafo_idx=v["paragrafo_idx"],
-            offset_chars=offset,
+            offset_chars=final_start,
             score_total=c.get("score_total", 0),
             score_semantico=c.get("score_semantico", 0),
             score_contexto=c.get("score_contexto", 0),
@@ -943,6 +962,7 @@ def _aplicar_insercoes(
                 and _ancora_preferida_match(v["anchor_text"], ancoras_preferidas)
             ),
         ))
+        shift += v["link_md_len"] - len(v["trecho_original"])
 
     for s in sugestoes:
         url = s.get("url_destino", "")

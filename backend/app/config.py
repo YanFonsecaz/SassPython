@@ -84,6 +84,11 @@ class Settings(BaseSettings):
     revisor_llm_model: str = "gpt-4.1"
     enriquecedor_llm_model: str = "gpt-4.1"
 
+    inlinks_inseridor_temperature: float = 0.0
+    inlinks_revisor_temperature: float = 0.1
+    inlinks_reranker_temperature: float = 0.2
+    inlinks_enriquecedor_temperature: float = 0.2
+
     cwv_analisador_llm_model: str = "gpt-4o-mini"
     cwv_analisador_llm_temperature: float = 0.1
     cwv_pesquisador_llm_model: str = "gpt-4.1"

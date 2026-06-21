@@ -92,12 +92,11 @@ Considere: relevância temática, complementariedade, intenção de busca, diver
 
 class _RerankerAgent(BaseAgent):
     def __init__(self, usuario_id: str):
-        super().__init__(usuario_id)
         from app.config import settings
-        if settings.llm_provider == "openai" and settings.reranker_llm_model:
-            from langchain_openai import ChatOpenAI
-            self.llm = ChatOpenAI(
-                model=settings.reranker_llm_model,
-                temperature=settings.llm_temperature,
-                api_key=settings.openai_api_key,
-            )
+
+        model = settings.reranker_llm_model if settings.llm_provider == "openai" else None
+        super().__init__(
+            usuario_id,
+            model=model,
+            temperature=settings.inlinks_reranker_temperature,
+        )

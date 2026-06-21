@@ -1,4 +1,4 @@
-from app.agents.inlinks.injector import _esta_em_cabecalho, injetar_inlinks, remover_links_rejeitados
+from app.agents.inlinks.injector import _esta_em_cabecalho, remover_links_rejeitados
 
 
 def test_remove_apenas_rejeitados():
@@ -51,23 +51,3 @@ def test_detecta_h1_a_h6():
 def test_nao_confunde_hashtag_inline():
     md = "Use a hashtag #python no Twitter."
     assert _esta_em_cabecalho(md, md.index("python")) is False
-
-
-def test_injector_pula_candidato_em_cabecalho():
-    md = (
-        "Antes do título.\n\n"
-        "## Por que é importante construir um portfólio desde o início?\n\n"
-        "Construir um portfólio leva tempo, mas vale a pena no longo prazo."
-    )
-    candidatos = [{
-        "url": "https://ex.com/portfolio",
-        "titulo": "Guia de portfólio",
-        "ancoras_opcoes": ["construir um portfólio"],
-        "score_total": 0.8,
-        "score_semantico": 0.85,
-        "score_contexto": 0.75,
-    }]
-    modificado, injetados = injetar_inlinks(md, candidatos)
-    assert "## Por que é importante construir um portfólio desde o início?" in modificado
-    assert "[Construir um portfólio](https://ex.com/portfolio)" in modificado
-    assert len(injetados) == 1

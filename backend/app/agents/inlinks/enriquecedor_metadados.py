@@ -3,9 +3,21 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from langsmith import traceable
+from pydantic import BaseModel, Field
+
 from app.agents.base import BaseAgent
 
 logger = logging.getLogger(__name__)
+
+
+class MetadadosSchema(BaseModel):
+    tipo: str = Field(default="blog")
+    categoria: str = Field(default="")
+    intencao: str = Field(default="informacional")
+    palavras_chave: list[str] = Field(default_factory=list)
+    entidades: list[str] = Field(default_factory=list)
+    resumo: str = Field(default="")
 
 
 @dataclass
@@ -18,40 +30,43 @@ class MetadadosConteudo:
     resumo: str = ""
 
 
+@traceable(name="enriquecedor_metadados", tags=["inlinks"])
 async def enriquecer_metadados(
     markdown: str, titulo: str, usuario_id: str
 ) -> MetadadosConteudo:
     agente = _EnriquecedorAgent(usuario_id)
     prompt = _build_prompt(markdown, titulo)
     try:
-        resposta = await agente._invoke_llm(prompt)
-        data = _parse(resposta)
-        return MetadadosConteudo(
-            tipo=data.get("tipo", "blog"),
-            categoria=data.get("categoria", ""),
-            intencao=data.get("intencao", "informacional"),
-            palavras_chave=data.get("palavras_chave", []) or [],
-            entidades=data.get("entidades", []) or [],
-            resumo=data.get("resumo", ""),
-        )
+        data_obj: MetadadosSchema = await agente.invoke_structured(prompt, MetadadosSchema)
+        data = data_obj.model_dump()
     except Exception as e:
-        logger.warning("Enriquecedor falhou: %s", e)
-        return MetadadosConteudo()
+        logger.warning("Enriquecedor structured falhou: %s; tentando fallback parsing", e)
+        try:
+            resposta = await agente._invoke_llm(prompt)
+            data = _parse(resposta)
+        except Exception as e2:
+            logger.warning("Enriquecedor fallback falhou: %s", e2)
+            return MetadadosConteudo()
+    return MetadadosConteudo(
+        tipo=data.get("tipo", "blog"),
+        categoria=data.get("categoria", ""),
+        intencao=data.get("intencao", "informacional"),
+        palavras_chave=data.get("palavras_chave", []) or [],
+        entidades=data.get("entidades", []) or [],
+        resumo=data.get("resumo", ""),
+    )
 
 
 class _EnriquecedorAgent(BaseAgent):
     def __init__(self, usuario_id: str):
-        super().__init__(usuario_id)
         from app.config import settings
 
-        if settings.llm_provider == "openai" and settings.enriquecedor_llm_model:
-            from langchain_openai import ChatOpenAI
-
-            self.llm = ChatOpenAI(
-                model=settings.enriquecedor_llm_model,
-                temperature=settings.llm_temperature,
-                api_key=settings.openai_api_key,
-            )
+        model = settings.enriquecedor_llm_model if settings.llm_provider == "openai" else None
+        super().__init__(
+            usuario_id,
+            model=model,
+            temperature=settings.inlinks_enriquecedor_temperature,
+        )
 
     async def _invoke_llm(self, prompt: str) -> str:
         from langchain_core.messages import HumanMessage

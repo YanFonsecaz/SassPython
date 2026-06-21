@@ -231,10 +231,12 @@ async def atualizar_versao_revisao(
 def _obter_reserva_estimada(ferramenta: str, execucao: ExecucaoFerramenta) -> int:
     if ferramenta == "gerar_artigo":
         return custo_maximo_estimado()
+    entrada = execucao.entrada_json or {}
+    n_urls = len(entrada.get("candidatas_urls", []) or [])
     if ferramenta in ("inlinks", "inlinks_automaticos"):
-        return CUSTO_BASE_INLINKS
+        return calcular_custo_inlinks(n_urls)
     if ferramenta == "distribuir_inlinks":
-        return CUSTO_BASE_DISTRIBUIR_INLINKS
+        return calcular_custo_distribuir_inlinks(n_urls)
     if ferramenta == "core_web_vitals":
         return CUSTO_BASE_CWV
     if ferramenta == "parecer_tecnico":
@@ -357,8 +359,10 @@ async def finalizar_sucesso_distribuir_inlinks(db, execucao_id: str, resultado_j
     if not execucao:
         raise ValueError(f"Execucao {execucao_id} nao encontrada")
 
+    reserva = _obter_reserva_estimada("distribuir_inlinks", execucao)
+
     if resultado_json.get("alvo_invalido"):
-        await credito_service.liberar_reserva(db, str(execucao.usuario_id), CUSTO_BASE_DISTRIBUIR_INLINKS)
+        await credito_service.liberar_reserva(db, str(execucao.usuario_id), reserva)
         execucao.status = "concluida"
         execucao.creditos_cobrados = 0
         execucao.erro_msg = resultado_json.get("motivo_alvo") or (
@@ -374,7 +378,7 @@ async def finalizar_sucesso_distribuir_inlinks(db, execucao_id: str, resultado_j
     n_processadas = resultado_json.get("n_candidatas_validas", 0)
 
     if n_processadas == 0:
-        await credito_service.liberar_reserva(db, str(execucao.usuario_id), CUSTO_BASE_DISTRIBUIR_INLINKS)
+        await credito_service.liberar_reserva(db, str(execucao.usuario_id), reserva)
         execucao.status = "concluida"
         execucao.creditos_cobrados = 0
         execucao.erro_msg = (
@@ -391,7 +395,7 @@ async def finalizar_sucesso_distribuir_inlinks(db, execucao_id: str, resultado_j
     n_sugestoes = resultado_json.get("n_sugestoes", 0)
 
     if n_aplicadas + n_sugestoes == 0:
-        await credito_service.liberar_reserva(db, str(execucao.usuario_id), CUSTO_BASE_DISTRIBUIR_INLINKS)
+        await credito_service.liberar_reserva(db, str(execucao.usuario_id), reserva)
         execucao.status = "concluida"
         execucao.creditos_cobrados = 0
         execucao.erro_msg = (
@@ -414,14 +418,14 @@ async def finalizar_sucesso_distribuir_inlinks(db, execucao_id: str, resultado_j
         await credito_service.confirmar_debito(
             db,
             str(execucao.usuario_id),
-            reservado=CUSTO_BASE_DISTRIBUIR_INLINKS,
+            reservado=reserva,
             quantidade=custo,
             descricao=f"Distribuir inlinks: {custo} creditos (candidatas={n_processadas})",
             ferramenta="distribuir_inlinks",
             execucao_id=execucao_id,
         )
     except ValueError:
-        await credito_service.liberar_reserva(db, str(execucao.usuario_id), CUSTO_BASE_DISTRIBUIR_INLINKS)
+        await credito_service.liberar_reserva(db, str(execucao.usuario_id), reserva)
         execucao.status = "falhou"
         execucao.erro_msg = "Saldo insuficiente"
         execucao.concluida_em = datetime.now(UTC)

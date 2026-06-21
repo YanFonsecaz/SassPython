@@ -34,14 +34,13 @@ async def criar_distribuir_inlinks(
         if _normalizar_url(url) == alvo_norm:
             raise HTTPException(status_code=422, detail="A URL alvo nao pode estar na lista de candidatas")
 
-    calcular_custo_distribuir_inlinks(len(body.candidatas_urls))
-
     from app.services import credito_service
 
+    reserva = calcular_custo_distribuir_inlinks(len(body.candidatas_urls))
     try:
-        await credito_service.reservar_creditos(db, str(usuario.id), CUSTO_BASE_DISTRIBUIR_INLINKS)
+        await credito_service.reservar_creditos(db, str(usuario.id), reserva)
     except ValueError as exc:
-        raise HTTPException(status_code=402, detail="Creditos insuficientes") from exc
+        raise HTTPException(status_code=402, detail=f"Creditos insuficientes (necessario reservar {reserva})") from exc
 
     entrada = body.model_dump()
     execucao = await _criar_execucao_distribuir(db, str(usuario.id), entrada)
@@ -56,7 +55,7 @@ async def criar_distribuir_inlinks(
         await db.flush()
     except Exception as e:
         logger.error("Falha ao enfileirar distribuir inlinks: %s", e)
-        await credito_service.liberar_reserva(db, str(usuario.id), CUSTO_BASE_DISTRIBUIR_INLINKS)
+        await credito_service.liberar_reserva(db, str(usuario.id), reserva)
         execucao.status = "falhou"
         execucao.erro_msg = "Falha ao enfileirar workflow"
         await db.flush()

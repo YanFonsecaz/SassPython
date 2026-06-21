@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=16)
 def _get_chat_model(provider: str, model: str, temperature: float, api_key: str):
     if provider == "openai":
         from langchain_openai import ChatOpenAI

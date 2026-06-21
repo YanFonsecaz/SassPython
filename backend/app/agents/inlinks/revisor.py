@@ -110,22 +110,21 @@ Revise cada inlink informando indice, status ("aplicado" ou "rejeitado_revisor")
                 il["status"] = "aplicado"
                 il["motivo_rejeicao"] = None
     except Exception as e:
-        logger.warning("Revisor LLM falhou, mantendo todos aplicados: %s", e)
+        logger.warning("Revisor LLM falhou; rebaixando inlinks para sugestao manual: %s", e)
         for il in inlinks_revisaveis:
-            il["status"] = "aplicado"
-            il["motivo_rejeicao"] = None
+            il["status"] = "sugestao_manual"
+            il["motivo_rejeicao"] = "Revisão automática indisponível — confira manualmente."
 
     return inlinks
 
 
 class _RevisorAgent(BaseAgent):
     def __init__(self, usuario_id: str):
-        super().__init__(usuario_id)
         from app.config import settings
-        if settings.llm_provider == "openai" and settings.revisor_llm_model:
-            from langchain_openai import ChatOpenAI
-            self.llm = ChatOpenAI(
-                model=settings.revisor_llm_model,
-                temperature=settings.llm_temperature,
-                api_key=settings.openai_api_key,
-            )
+
+        model = settings.revisor_llm_model if settings.llm_provider == "openai" else None
+        super().__init__(
+            usuario_id,
+            model=model,
+            temperature=settings.inlinks_revisor_temperature,
+        )
