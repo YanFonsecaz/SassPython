@@ -188,8 +188,23 @@ async def node_aguardar_aprovacao(estado: EstadoWorkflow) -> dict[str, Any]:
     }
 
 
+def _teto_versoes() -> int:
+    """Teto absoluto de versoes (redacoes) que o workflow pode gerar.
+
+    Guarda dura contra loop: independe dos contadores de tentativas. Cobre o
+    pior caminho legitimo (loop de revisao automatica + rodadas de feedback)
+    com folga de +1 para a versao inicial. Se `versao_atual` (incrementado a
+    cada `redigir`) atingir este teto, o roteamento NUNCA mais volta para
+    `redigir` — garantindo terminacao mesmo se os contadores divergirem (ex.:
+    retomada sobre checkpoint de topologia antiga, ou edge case de resume).
+    """
+    return settings.workflow_max_revisoes + settings.workflow_max_feedback + 1
+
+
 def roteamento_revisor(estado: EstadoWorkflow) -> str:
     if estado.get("aprovado_revisor", False):
+        return "aguardar_aprovacao"
+    if estado.get("versao_atual", 0) >= _teto_versoes():
         return "aguardar_aprovacao"
     if estado.get("tentativas_revisao", 0) < settings.workflow_max_revisoes:
         return "redigir"
@@ -198,6 +213,8 @@ def roteamento_revisor(estado: EstadoWorkflow) -> str:
 
 def roteamento_usuario(estado: EstadoWorkflow) -> str:
     if estado.get("aprovado_usuario", False):
+        return "salvar_vetorial"
+    if estado.get("versao_atual", 0) >= _teto_versoes():
         return "salvar_vetorial"
     if estado.get("tentativas_feedback", 0) < settings.workflow_max_feedback:
         return "redigir"

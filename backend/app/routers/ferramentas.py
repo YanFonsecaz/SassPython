@@ -215,8 +215,6 @@ async def stream_progresso(
                     parsed = json.loads(msg) if isinstance(msg, str) else msg
                     if parsed.get("type") in ("node_start", "node_complete"):
                         yield f"data: {json.dumps({'type': 'node_progress', 'node': parsed.get('node'), 'detail': parsed.get('detail'), 'timestamp': parsed.get('timestamp')})}\n\n"
-                        if parsed.get("type") == "node_complete" and parsed.get("node") == "aguardar_aprovacao":
-                            break
                 except TimeoutError:
                     pass
         finally:
