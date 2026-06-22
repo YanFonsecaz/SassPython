@@ -9,21 +9,48 @@ interface SSEOptions {
   onComplete?: () => void;
 }
 
+const EVENTOS_TERMINAIS = ["concluida", "falhou", "cancelada"];
+
+/**
+ * Conexão SSE resiliente.
+ *
+ * O stream pode encerrar sem um evento terminal — por idle/timeout de proxy
+ * (ex.: Render), queda de rede, ou o teto de duração do backend. Quando isso
+ * acontece e a execução ainda não terminou, RECONECTAMOS automaticamente (com
+ * backoff), em vez de congelar a UI no último estado recebido. Receber dados
+ * zera o contador de falhas; só desistimos (onError) após várias falhas
+ * seguidas SEM dados (ex.: token inválido / backend fora).
+ */
 export function createSSEConnection(
   path: string,
   onMessage: SSECallback,
   options: SSEOptions = {}
 ): { close: () => void } {
   const controller = new AbortController();
-  let retries = 0;
-  const maxRetries = 3;
+  let finalizado = false;
+  let falhasSeguidas = 0;
+  const maxFalhas = 5;
+
+  function agendarReconexao() {
+    if (controller.signal.aborted || finalizado) return;
+    falhasSeguidas++;
+    if (falhasSeguidas > maxFalhas) {
+      options.onError?.(new Event("error"));
+      return;
+    }
+    const delay = Math.min(1000 * falhasSeguidas, 5000);
+    setTimeout(() => {
+      if (!controller.signal.aborted && !finalizado) connect();
+    }, delay);
+  }
 
   async function connect() {
+    if (controller.signal.aborted || finalizado) return;
+
     const token = getAccessToken();
-    if (!token && retries < maxRetries) {
-      retries++;
-      await new Promise((r) => setTimeout(r, 1000 * retries));
-      if (!controller.signal.aborted) connect();
+    if (!token) {
+      // token ainda não disponível (ou expirou) — tenta de novo com backoff
+      agendarReconexao();
       return;
     }
 
@@ -33,14 +60,14 @@ export function createSSEConnection(
       const response = await fetch(url.toString(), {
         headers: {
           Accept: "text/event-stream",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         },
         credentials: "include",
         signal: controller.signal,
       });
 
       if (!response.ok || !response.body) {
-        options.onError?.(new Event("error"));
+        agendarReconexao();
         return;
       }
 
@@ -52,36 +79,35 @@ export function createSSEConnection(
         const { done, value } = await reader.read();
         if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
+        falhasSeguidas = 0; // conexão saudável recebendo dados
 
+        buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
 
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const jsonStr = line.slice(6);
-            if (jsonStr.trim()) {
-              try {
-                const data = JSON.parse(jsonStr) as Record<string, unknown>;
-                onMessage(data);
-
-                const type = data.type as string;
-                if (["concluida", "falhou", "cancelada"].includes(type)) {
-                  options.onComplete?.();
-                  return;
-                }
-              } catch {
-                // ignore parse errors
-              }
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6);
+          if (!jsonStr.trim()) continue;
+          try {
+            const data = JSON.parse(jsonStr) as Record<string, unknown>;
+            onMessage(data);
+            if (EVENTOS_TERMINAIS.includes(data.type as string)) {
+              finalizado = true;
+              options.onComplete?.();
+              return;
             }
+          } catch {
+            // ignore parse errors
           }
         }
       }
 
-      options.onComplete?.();
+      // Stream encerrou sem evento terminal (idle/timeout de proxy) → reconecta.
+      agendarReconexao();
     } catch {
       if (!controller.signal.aborted) {
-        options.onError?.(new Event("error"));
+        agendarReconexao();
       }
     }
   }

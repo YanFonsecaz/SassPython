@@ -109,7 +109,11 @@ export function ExecucaoDetalheConteudo() {
   const [tab, setTab] = useState("artigo");
 
   const ultimaVersao: VersaoArtigo | null = useMemo(() => {
-    return versoes.length > 0 ? versoes[versoes.length - 1] : null;
+    if (versoes.length === 0) return null;
+    // A lista vem ordenada por versao desc (mais nova primeiro). Pegamos a versao
+    // de MAIOR numero de forma robusta — independente da ordenacao da API — para
+    // o painel de aprovacao/preview sempre mostrar a versao atual, nao a inicial.
+    return versoes.reduce((a, b) => (b.versao > a.versao ? b : a));
   }, [versoes]);
 
   useEffect(() => {
