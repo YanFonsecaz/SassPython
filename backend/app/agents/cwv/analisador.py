@@ -21,15 +21,14 @@ class ListaProblemas(BaseModel):
 
 class CWVAnalisadorAgent(BaseAgent):
     def __init__(self, usuario_id: str):
-        super().__init__(usuario_id)
         from app.config import settings
-        if settings.llm_provider == "openai" and settings.cwv_analisador_llm_model:
-            from langchain_openai import ChatOpenAI
-            self.llm = ChatOpenAI(
-                model=settings.cwv_analisador_llm_model,
-                temperature=settings.cwv_analisador_llm_temperature,
-                api_key=settings.openai_api_key,
-            )
+
+        model = settings.cwv_analisador_llm_model if settings.llm_provider == "openai" else None
+        super().__init__(
+            usuario_id,
+            model=model,
+            temperature=settings.cwv_analisador_llm_temperature,
+        )
 
     async def analisar(
         self, *, audits_falhos: list[dict], plataforma: str, metricas: dict

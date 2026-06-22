@@ -396,9 +396,11 @@ async def override_plataforma_cwv(
 
     agente = CWVDocumentadorAgent()
     atualizados = 0
+    n_sem_kb = 0
     for p in problemas:
-        entrada_kb = buscar_entrada(p.kb_codigo)
+        entrada_kb = buscar_entrada(p.kb_codigo) if p.kb_codigo else None
         if entrada_kb is None:
+            n_sem_kb += 1
             continue
         p.documentacao_md = agente._gerar_doc(
             entrada_kb, nova_plataforma, p.contexto_especifico or {}
@@ -406,7 +408,11 @@ async def override_plataforma_cwv(
         atualizados += 1
 
     await db.commit()
-    return {"plataforma": nova_plataforma, "n_problemas_atualizados": atualizados}
+    return {
+        "plataforma": nova_plataforma,
+        "n_problemas_atualizados": atualizados,
+        "n_sem_kb": n_sem_kb,
+    }
 
 
 async def _criar_execucao_cwv(
@@ -458,11 +464,12 @@ async def exportar_problema_docx(
         "contexto_especifico": prob.contexto_especifico,
         "documentacao_md": prob.documentacao_md,
     }
+    import asyncio
     import io
 
     from app.services.cwv_export import problema_para_html, slugify_titulo
     from app.services.parecer_service import html_para_docx_bytes
-    docx = html_para_docx_bytes(problema_para_html(prob_dict))
+    docx = await asyncio.to_thread(html_para_docx_bytes, problema_para_html(prob_dict))
     nome = slugify_titulo(prob.titulo)
     return StreamingResponse(
         io.BytesIO(docx),
@@ -495,11 +502,12 @@ async def exportar_relatorio_docx(
         }
         for p in problemas
     ]
+    import asyncio
     import io
 
     from app.services.cwv_export import relatorio_para_html
     from app.services.parecer_service import html_para_docx_bytes
-    docx = html_para_docx_bytes(relatorio_para_html(analise_dict, prob_dicts))
+    docx = await asyncio.to_thread(html_para_docx_bytes, relatorio_para_html(analise_dict, prob_dicts))
     url_slug = analise_dict.get("url_canonica", "cwv").replace("https://", "").replace("http://", "")[:50].replace("/", "-").replace(".", "-")
     nome = f"cwv-relatorio-{url_slug}"
     return StreamingResponse(

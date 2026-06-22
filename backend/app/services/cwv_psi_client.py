@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 
 PSI_ENDPOINT = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
 TIMEOUT_SECONDS = 90
+_PSI_MAX_RETRY = 2
+
+_PSI_CLIENT: httpx.AsyncClient | None = None
 
 
 class PSIError(Exception):
@@ -22,14 +25,40 @@ def _psi_keys() -> list[str]:
     return [k for k in keys if k]
 
 
+def _get_client() -> httpx.AsyncClient:
+    global _PSI_CLIENT
+    if _PSI_CLIENT is None or _PSI_CLIENT.is_closed:
+        _PSI_CLIENT = httpx.AsyncClient(
+            timeout=TIMEOUT_SECONDS,
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+        )
+    return _PSI_CLIENT
+
+
 async def _fetch_psi_once(url: str, estrategia: str, api_key: str | None) -> dict:
     params = {"url": url, "strategy": estrategia, "category": "performance"}
     if api_key:
         params["key"] = api_key
-    async with httpx.AsyncClient(timeout=TIMEOUT_SECONDS) as client:
-        resp = await client.get(PSI_ENDPOINT, params=params)
-        resp.raise_for_status()
+    resp = await _get_client().get(PSI_ENDPOINT, params=params)
+    resp.raise_for_status()
     return resp.json()
+
+
+async def _fetch_com_retry(url: str, estrategia: str, key: str | None) -> dict:
+    for tentativa in range(_PSI_MAX_RETRY + 1):
+        try:
+            return await _fetch_psi_once(url, estrategia, key)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code >= 500 and tentativa < _PSI_MAX_RETRY:
+                await asyncio.sleep(2 ** tentativa)
+                continue
+            raise
+        except httpx.RequestError:
+            if tentativa < _PSI_MAX_RETRY:
+                await asyncio.sleep(2 ** tentativa)
+                continue
+            raise
+    raise PSIError("Retry esgotado (inexpectado)")
 
 
 async def fetch_psi(url: str, estrategia: str = "mobile") -> dict:
@@ -37,7 +66,7 @@ async def fetch_psi(url: str, estrategia: str = "mobile") -> dict:
     ultimo_erro: Exception | None = None
     for i, key in enumerate(keys):
         try:
-            data = await _fetch_psi_once(url, estrategia, key)
+            data = await _fetch_com_retry(url, estrategia, key)
             if "lighthouseResult" not in data:
                 raise PSIError(f"Resposta PSI sem lighthouseResult: {data.get('error', {}).get('message', 'desconhecido')}")
             cwv_psi_request_total.labels(key_index=str(i + 1), status="ok").inc()

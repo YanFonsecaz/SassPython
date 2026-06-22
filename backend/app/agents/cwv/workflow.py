@@ -87,6 +87,7 @@ async def node_detectar_plataformas(estado: EstadoCWV) -> dict[str, Any]:
     await publish_event(eid, "node_start", "detectar_plataformas", "Detectando plataformas...")
 
     plataformas: dict[str, str] = {}
+    psi_sem_payload: dict[str, dict] = {}
     for _, url, estrategia in estado["jobs"]:
         chave = _chave(url, estrategia)
         r = estado["psi_resultados"].get(chave, {})
@@ -94,12 +95,13 @@ async def node_detectar_plataformas(estado: EstadoCWV) -> dict[str, Any]:
             plataformas[chave] = detectar_plataforma(r["payload"])
         else:
             plataformas[chave] = "desconhecida"
+        psi_sem_payload[chave] = {k: v for k, v in r.items() if k != "payload"}
 
     contagem: dict[str, int] = {}
     for p in plataformas.values():
         contagem[p] = contagem.get(p, 0) + 1
     await publish_event(eid, "node_complete", "detectar_plataformas", f"Plataformas: {contagem}")
-    return {"plataformas": plataformas}
+    return {"plataformas": plataformas, "psi_resultados": psi_sem_payload}
 
 
 async def node_analisar_seo(estado: EstadoCWV) -> dict[str, Any]:
@@ -189,27 +191,30 @@ def _chave_label(chave: str) -> str:
 
 async def node_pesquisar_outros(estado: EstadoCWV) -> dict[str, Any]:
     from app.agents.cwv.pesquisador import CWVPesquisadorAgent
+    from app.core.metrics import cwv_pesquisador_invocacoes
     from app.core.workflow_events import publish_event
 
     eid = estado["execucao_id"]
     usuario_id = estado["usuario_id"]
-    novo: dict[str, list[dict]] = {}
-    total_pesquisas = 0
 
+    tarefas: list[tuple[str, dict, str]] = []
+    agentes: dict[str, CWVPesquisadorAgent] = {}
     for chave, problemas in estado["problemas_por_url"].items():
         sem_kb = [p for p in problemas if p.get("kb_codigo") is None][:settings.cwv_pesquisador_max_por_analise]
         if not sem_kb:
-            novo[chave] = problemas
             continue
-
-        from app.core.metrics import cwv_pesquisador_invocacoes
-
         plataforma = estado["plataformas"].get(chave, "outros")
-        pesquisador = CWVPesquisadorAgent(usuario_id=usuario_id, plataforma=plataforma)
-        cwv_pesquisador_invocacoes.inc(len(sem_kb))
-        await publish_event(eid, "node_progress", "pesquisar_outros", f"Pesquisando {len(sem_kb)} problemas residuais: {_chave_label(chave)}")
-
+        if plataforma not in agentes:
+            agentes[plataforma] = CWVPesquisadorAgent(usuario_id=usuario_id, plataforma=plataforma)
         for p in sem_kb:
+            tarefas.append((chave, p, plataforma))
+
+    if tarefas:
+        cwv_pesquisador_invocacoes.inc(len(tarefas))
+        await publish_event(eid, "node_start", "pesquisar_outros", f"Pesquisando {len(tarefas)} problemas residuais em paralelo...")
+
+    async def _pesquisar_um(_chave: str, p: dict, plataforma: str) -> int:
+        async with SEMAFORO_LLM:
             ctx = p.get("contexto_especifico", {})
             audit_dict = {
                 "id": p.get("audit_id") or ctx.get("audit_id"),
@@ -220,18 +225,23 @@ async def node_pesquisar_outros(estado: EstadoCWV) -> dict[str, Any]:
                 "savings_bytes": ctx.get("savings_bytes"),
             }
             try:
-                nova_doc = await pesquisador.documentar(audit=audit_dict, plataforma=plataforma)
+                nova_doc = await agentes[plataforma].documentar(audit=audit_dict, plataforma=plataforma)
                 if nova_doc:
                     p["documentacao_md"] = nova_doc
                     p["pesquisado"] = True
-                    total_pesquisas += 1
+                    return 1
             except Exception as e:
                 logger.warning("Pesquisador falhou para audit %s: %s", ctx.get("audit_id"), e)
+            return 0
 
-        novo[chave] = problemas
+    if tarefas:
+        resultados = await asyncio.gather(*[_pesquisar_um(c, p, pl) for c, p, pl in tarefas])
+        total_pesquisas = sum(resultados)
+    else:
+        total_pesquisas = 0
 
     await publish_event(eid, "node_complete", "pesquisar_outros", f"{total_pesquisas} problemas pesquisados")
-    return {"problemas_por_url": novo}
+    return {"problemas_por_url": estado["problemas_por_url"]}
 
 
 async def node_priorizar(estado: EstadoCWV) -> dict[str, Any]:
@@ -333,8 +343,9 @@ async def executar_workflow_cwv(execucao_id: str, ctx: dict[str, Any] | None = N
                 cliente = await session.get(Cliente, execucao.cliente_id)
                 if cliente is None:
                     logger.error("%s Cliente %s removido durante execucao", _log_prefix(execucao_id), execucao.cliente_id)
+                    reserva_cliente = ferramenta_service._obter_reserva_estimada("core_web_vitals", execucao)
                     await credito_service.liberar_reserva(
-                        session, str(execucao.usuario_id), ferramenta_service.CUSTO_BASE_CWV
+                        session, str(execucao.usuario_id), reserva_cliente
                     )
                     execucao.status = "falhou"
                     execucao.erro_msg = "Cliente foi removido apos o inicio da analise"
@@ -379,26 +390,27 @@ async def executar_workflow_cwv(execucao_id: str, ctx: dict[str, Any] | None = N
         }
 
         workflow = construir_workflow()
-        config = {"configurable": {"thread_id": f"cwv_{execucao_id}"}}
 
         await asyncio.wait_for(
-            _run_workflow_cwv(workflow, estado_inicial, config, execucao_id),
+            _run_workflow_cwv(workflow, estado_inicial, None, execucao_id),
             timeout=settings.cwv_workflow_timeout,
         )
 
     except asyncio.CancelledError:
         logger.info("%s Workflow CWV cancelado", _log_prefix(execucao_id))
         async with async_session_factory() as session:
-            reserva = ferramenta_service._obter_reserva_estimada("core_web_vitals", execucao)
-            if reserva > 0:
-                await credito_service.liberar_reserva(session, str(execucao.usuario_id), reserva)
-            await ferramenta_service.atualizar_execucao(
-                session, execucao_id, status="cancelada", creditos_cobrados=0,
-            )
-            exec_ref = await ferramenta_service.buscar_execucao(session, execucao_id)
-            if exec_ref:
-                exec_ref.resultado_json = {**(exec_ref.resultado_json or {}), "motivo_falha": "cancelada"}
-            await session.commit()
+            execucao = await ferramenta_service.buscar_execucao(session, execucao_id)
+            if execucao and execucao.status in ("executando", "enfileirado", "pendente"):
+                reserva = ferramenta_service._obter_reserva_estimada("core_web_vitals", execucao)
+                if reserva > 0:
+                    await credito_service.liberar_reserva(session, str(execucao.usuario_id), reserva)
+                await ferramenta_service.atualizar_execucao(
+                    session, execucao_id, status="cancelada", creditos_cobrados=0,
+                )
+                exec_ref = await ferramenta_service.buscar_execucao(session, execucao_id)
+                if exec_ref:
+                    exec_ref.resultado_json = {**(exec_ref.resultado_json or {}), "motivo_falha": "cancelada"}
+                await session.commit()
         raise
 
     except TimeoutError:
@@ -432,6 +444,8 @@ async def _run_workflow_cwv(workflow, estado_inicial, config, execucao_id: str):
         if not execucao or execucao.status != "executando":
             return
 
+        reserva = ferramenta_service._obter_reserva_estimada("core_web_vitals", execucao)
+
         analises_ids = []
         if estado_final:
             analises_ids = estado_final.get("analises_persistidas", [])
@@ -447,7 +461,7 @@ async def _run_workflow_cwv(workflow, estado_inicial, config, execucao_id: str):
 
         # SPEC 10 Cenário #6: PSI falhou em TODAS as URLs → não cobra base, libera reserva
         if n_sucesso == 0 and n_total_jobs > 0:
-            await credito_service.liberar_reserva(session, str(execucao.usuario_id), custo_base)
+            await credito_service.liberar_reserva(session, str(execucao.usuario_id), reserva)
             execucao.status = "falhou"
             execucao.creditos_cobrados = 0
             execucao.erro_msg = "Nenhuma URL pode ser analisada (PSI indisponivel ou todas as URLs invalidas)"
@@ -468,14 +482,14 @@ async def _run_workflow_cwv(workflow, estado_inicial, config, execucao_id: str):
             await credito_service.confirmar_debito(
                 session,
                 str(execucao.usuario_id),
-                reservado=custo_base,
+                reservado=reserva,
                 quantidade=custo,
                 descricao=f"Core Web Vitals: {custo} creditos (base={custo_base}, urls={n_sucesso})",
                 ferramenta="core_web_vitals",
                 execucao_id=execucao_id,
             )
         except ValueError:
-            await credito_service.liberar_reserva(session, str(execucao.usuario_id), custo_base)
+            await credito_service.liberar_reserva(session, str(execucao.usuario_id), reserva)
             execucao.status = "falhou"
             execucao.erro_msg = "Saldo insuficiente"
             execucao.resultado_json = {"motivo_falha": "saldo_insuficiente"}

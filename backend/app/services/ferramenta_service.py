@@ -238,7 +238,9 @@ def _obter_reserva_estimada(ferramenta: str, execucao: ExecucaoFerramenta) -> in
     if ferramenta == "distribuir_inlinks":
         return calcular_custo_distribuir_inlinks(n_urls)
     if ferramenta == "core_web_vitals":
-        return CUSTO_BASE_CWV
+        upt = entrada.get("urls_por_template", {}) or {}
+        n_urls_cwv = sum(len(v) for v in upt.values() if isinstance(v, list))
+        return calcular_custo_cwv(n_urls_cwv * 2)
     if ferramenta == "parecer_tecnico":
         return execucao.creditos_cobrados or CUSTO_BASE_PARECER
     return 0

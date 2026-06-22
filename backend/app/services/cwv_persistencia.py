@@ -62,7 +62,7 @@ async def persistir_analise(
         fcp_ms=parsed.get("fcp_ms"),
         ttfb_ms=parsed.get("ttfb_ms"),
         tbt_ms=parsed.get("tbt_ms"),
-        raw_psi_json=psi_resultado.get("payload", {}),
+        raw_psi_json={},
         status="sucesso",
         audits_totais=parsed.get("audits_totais", 0),
         n_network_requests=parsed.get("n_network_requests", 0),

@@ -46,17 +46,15 @@ class CWVPesquisadorAgent(BaseAgent):
         tools = [buscar_web, fetch_url]
         if plataforma.lower() in FRAMEWORKS_SUPORTADOS_CTX7 and settings.api_context7_key:
             tools.append(buscar_docs_lib)
-        super().__init__(usuario_id, tools=tools)
-        self.plataforma = plataforma
 
-        if settings.llm_provider == "openai" and settings.cwv_pesquisador_llm_model:
-            from langchain_openai import ChatOpenAI
-            llm = ChatOpenAI(
-                model=settings.cwv_pesquisador_llm_model,
-                temperature=settings.cwv_pesquisador_llm_temperature,
-                api_key=settings.openai_api_key,
-            )
-            self.llm = llm.bind_tools(tools) if tools else llm
+        model = settings.cwv_pesquisador_llm_model if settings.llm_provider == "openai" else None
+        super().__init__(
+            usuario_id,
+            tools=tools,
+            model=model,
+            temperature=settings.cwv_pesquisador_llm_temperature,
+        )
+        self.plataforma = plataforma
 
     async def documentar(self, *, audit: dict, plataforma: str) -> str | None:
         prompt_user = (
