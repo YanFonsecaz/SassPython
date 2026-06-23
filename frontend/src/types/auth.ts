@@ -55,7 +55,11 @@ export interface UsuarioResponse {
 }
 
 export interface ApiError {
-  detalhe: string;
+  detalhe?: string;
+  detail?: string;
+  status?: number;
+  errors?: Array<{ loc?: string[]; msg?: string; message?: string }>;
+  errors_map?: Record<string, string>;
 }
 
 export interface AlterarSenhaRequest {

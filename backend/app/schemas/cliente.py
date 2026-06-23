@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import datetime
 from typing import Any
@@ -29,6 +30,27 @@ class ConfigJsonSchema(BaseModel):
     personas: list[PersonaSchema] = Field(default_factory=list)
 
 
+def normalizar_site_url(v: str | None) -> str | None:
+    """Normaliza a URL do site do cliente.
+
+    Tolerante com erros comuns de digitacao:
+      - None/"" -> None
+      - sem protocolo -> adiciona https:// (ex: "exemplo.com.br")
+      - sem barra final -> adiciona "/" ao final
+    """
+    if v is None:
+        return None
+    v = v.strip()
+    if not v:
+        return None
+    # Aceita http:// ou https://. Se faltar protocolo, assume https://.
+    if not v.startswith(("http://", "https://")):
+        v = f"https://{v}"
+    if not v.endswith("/"):
+        v = f"{v}/"
+    return v
+
+
 class ClienteCreateRequest(BaseModel):
     nome: str = Field(min_length=2, max_length=255)
     site_url: str | None = Field(default=None, max_length=500)
@@ -37,13 +59,9 @@ class ClienteCreateRequest(BaseModel):
     @field_validator("site_url")
     @classmethod
     def validar_url(cls, v: str | None) -> str | None:
-        if v is None:
-            return None
-        v = v.strip()
-        if not v.startswith(("http://", "https://")):
-            raise ValueError("URL deve comecar com http:// ou https://")
-        if not v.endswith("/"):
-            v = v + "/"
+        v = normalizar_site_url(v)
+        if v is not None and not re.match(r"^https?://[^\s/]+\.", v):
+            raise ValueError("URL invalida: informe um dominio valido (ex: exemplo.com.br)")
         return v
 
     @field_validator("config_json")
@@ -63,13 +81,9 @@ class ClienteUpdateRequest(BaseModel):
     @field_validator("site_url")
     @classmethod
     def validar_url(cls, v: str | None) -> str | None:
-        if v is None:
-            return None
-        v = v.strip()
-        if not v.startswith(("http://", "https://")):
-            raise ValueError("URL deve comecar com http:// ou https://")
-        if not v.endswith("/"):
-            v = v + "/"
+        v = normalizar_site_url(v)
+        if v is not None and not re.match(r"^https?://[^\s/]+\.", v):
+            raise ValueError("URL invalida: informe um dominio valido (ex: exemplo.com.br)")
         return v
 
 

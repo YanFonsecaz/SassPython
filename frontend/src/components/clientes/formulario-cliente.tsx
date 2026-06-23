@@ -121,6 +121,9 @@ export function FormularioCliente({
           onChange={(e) => setSiteUrl(e.target.value)}
           disabled={enviando}
         />
+        <p className="text-xs text-muted-foreground">
+          Pode colar com ou sem "https://" — ajustamos automaticamente.
+        </p>
       </div>
 
       <div className="space-y-4">

@@ -160,13 +160,21 @@ async function request<T>(
 }
 
 async function parseError(resposta: Response): Promise<ApiError> {
+  let data: Record<string, unknown> = {};
   try {
-    const data = await resposta.json();
+    data = await resposta.json();
     if (data.detail && !data.detalhe) data.detalhe = data.detail;
-    return data as ApiError;
+    // FastAPI/Pydantic devolve { detail: [{ loc, msg, type }] } em 422.
+    // Normaliza pra um campo unico esperado por mensagemErroAmigavel.
+    if (Array.isArray(data.detail)) {
+      data.errors = data.detail as ApiError["errors"];
+      data.detail = undefined;
+      delete data.detail;
+    }
   } catch {
-    return { detalhe: `Erro ${resposta.status}` };
+    data = { detalhe: `Erro ${resposta.status}` };
   }
+  return { ...(data as ApiError), status: resposta.status };
 }
 
 export const api = {
@@ -188,19 +196,58 @@ export const api = {
 
 export function mensagemErroAmigavel(err: unknown): string {
   if (!err || typeof err !== "object") return "Algo deu errado. Tente novamente.";
-  const e = err as { status?: number; detalhe?: string };
+  const e = err as {
+    status?: number;
+    detalhe?: string;
+    detail?: string;
+    errors?: Array<{ loc?: string[]; msg?: string; message?: string }>;
+    errors_map?: Record<string, string>;
+  };
+
   const MAPA_STATUS: Record<number, string> = {
+    400: "Requisição inválida. Verifique os dados e tente novamente.",
     401: "Sessão expirada. Faça login novamente.",
     402: "Saldo insuficiente de créditos.",
     403: "Você não tem permissão para isso.",
     404: "Recurso não encontrado.",
+    409: "Conflito: o recurso já existe.",
+    422: "Dados inválidos. Verifique os campos destacados.",
     429: "Muitas requisições. Aguarde alguns minutos e tente novamente.",
     500: "Erro interno do servidor. Tente novamente mais tarde.",
     502: "Servidor indisponível. Tente novamente em instantes.",
     503: "Serviço temporariamente indisponível. Tente novamente.",
   };
+
+  // Prioridade 1: detalhe explicito do backend (HTTPException.detail)
+  const detalhe = e.detalhe || e.detail;
+  if (detalhe && /^[A-ZÀ-ÿ]/.test(detalhe) && detalhe.length < 200) return detalhe;
+
+  // Prioridade 2: erros de validacao do Pydantic (422) ou erros estruturados
+  const erros = e.errors || [];
+  if (erros.length > 0) {
+    const partes = erros.map((errItem) => {
+      const campo = errItem.loc && errItem.loc.length > 0
+        ? errItem.loc[errItem.loc.length - 1]
+        : null;
+      const msg = errItem.msg || errItem.message || "invalido";
+      return campo ? `${campo}: ${msg}` : msg;
+    });
+    // Limita o tamanho pra nao estourar a UI
+    const texto = partes.slice(0, 3).join("; ");
+    const sufixo = partes.length > 3 ? ` (e mais ${partes.length - 3})` : "";
+    return `${texto}${sufixo}`.replace(/^./, (c) => c.toUpperCase());
+  }
+
+  if (e.errors_map && Object.keys(e.errors_map).length > 0) {
+    return Object.entries(e.errors_map)
+      .map(([campo, msg]) => `${campo}: ${msg}`)
+      .join("; ")
+      .replace(/^./, (c) => c.toUpperCase());
+  }
+
+  // Prioridade 3: mapa de status (fallback generico por HTTP code)
   if (e.status && MAPA_STATUS[e.status]) return MAPA_STATUS[e.status];
-  if (e.detalhe && /^[A-ZÀ-ÿ]/.test(e.detalhe) && e.detalhe.length < 120) return e.detalhe;
+
   return "Algo deu errado. Tente novamente.";
 }
 
