@@ -65,6 +65,7 @@ async def executar_workflow_parecer(execucao_id: str, ctx=None):
             cliente_nome=entrada.get("cliente_nome", "Cliente"),
             blocos=entrada.get("blocos", []),
             achados=achados,
+            titulo_sugerido=entrada.get("titulo_sugerido") or "",
         )
 
         from app.services.parecer_service import estrutura_para_html

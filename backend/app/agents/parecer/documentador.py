@@ -37,6 +37,7 @@ async def gerar_parecer_estruturado(
     cliente_nome: str,
     blocos: list[dict],
     achados: list,
+    titulo_sugerido: str = "",
 ) -> ParecerEstruturado:
     llm = get_modelo_redacao().with_structured_output(ParecerEstruturado, method="function_calling")
 
@@ -56,9 +57,16 @@ async def gerar_parecer_estruturado(
             f"  Confianca: {a.confianca:.0%}"
         )
 
+    titulo_linha = (
+        f"Titulo sugerido pelo usuario (use como base para o 'subtitulo'/foco do parecer): {titulo_sugerido}\n\n"
+        if titulo_sugerido.strip()
+        else ""
+    )
+
     contexto = (
         f"Nome do cliente: {cliente_nome}\n\n"
-        f"Notas do analista (blocos de texto):\n"
+        + titulo_linha
+        + f"Notas do analista (blocos de texto):\n"
         + "\n---\n".join(blocos_texto)
         + "\n\nAnalise das imagens:\n"
         + "\n---\n".join(achados_texto)
