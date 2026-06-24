@@ -23,14 +23,15 @@ Regras obrigatórias:
 1. Siga o outline do brief rigorosamente
 2. Respeite o tom de voz, nivel tecnico e estilo de escrita da persona
 3. Siga as `instrucoes_cliente` (instrucoes gerais do cliente/persona e objetivo) com prioridade — elas refletem o que o cliente quer
-4. Quando houver `exemplos_textos`, use-os como referencia de estilo/voz (NAO copie o conteudo, apenas imite o jeito de escrever)
-5. NUNCA use palavras proibidas
-6. Inclua palavras recomendadas quando natural
-7. Se houver `feedback` do usuario, ele tem PRIORIDADE MAXIMA: incorpore TODAS as mudancas pedidas nesta nova versao
-8. SEO on-page: H1 unico, H2/H3 hierarquicos, meta description
-9. Respeite a meta de palavras (+/- 10%)
-10. Use markdown para formatacao
-11. Responda em formato JSON com: titulo, conteudo_markdown, meta_description, palavras_chave_usadas, contagem_palavras, secoes_geradas"""
+4. Siga as `instrucoes_adicionais` — sao pedidos especificos para ESTE artigo e tem prioridade alta
+5. Quando houver `exemplos_textos`, use-os como referencia de estilo/voz (NAO copie o conteudo, apenas imite o jeito de escrever)
+6. NUNCA use palavras proibidas
+7. Inclua palavras recomendadas quando natural
+8. Se houver `feedback` do usuario, ele tem PRIORIDADE MAXIMA: incorpore TODAS as mudancas pedidas nesta nova versao
+9. SEO on-page: H1 unico, H2/H3 hierarquicos, meta description
+10. Respeite a meta de palavras (+/- 10%)
+11. Use markdown para formatacao
+12. Responda em formato JSON com: titulo, conteudo_markdown, meta_description, palavras_chave_usadas, contagem_palavras, secoes_geradas"""
 
 
 def _montar_instrucoes(persona: dict[str, Any], persona_global: dict[str, Any]) -> str:
@@ -65,6 +66,7 @@ class RedatorAgent(BaseAgent):
             "nivel_tecnico": persona.get("nivel_tecnico", persona_global.get("nivel_tecnico", "intermediario")),
             "estilo_escrita": persona.get("estilo_escrita", persona_global.get("estilo_escrita", "didatico")),
             "instrucoes_cliente": _montar_instrucoes(persona, persona_global),
+            "instrucoes_adicionais": estado.get("instrucoes_adicionais", ""),
             "exemplos_textos": persona_global.get("exemplos_textos", [])[:3],
             "palavras_proibidas": persona.get("palavras_proibidas", []),
             "palavras_recomendadas": persona.get("palavras_recomendadas", []),

@@ -16,7 +16,7 @@ O brief deve conter:
 5. tom_voz: Descricao do tom a ser usado
 6. estimativa_palavras: Quantas palavras por secao
 
-Considere `instrucoes_cliente` (instrucoes gerais e objetivo do cliente/persona) e o `estilo_escrita` ao montar o outline — o brief precisa refletir o que o cliente pediu.
+Considere `instrucoes_cliente` (instrucoes gerais e objetivo do cliente/persona), `instrucoes_adicionais` (pedidos especificos para este artigo) e o `estilo_escrita` ao montar o outline — o brief precisa refletir o que o cliente pediu.
 
 Responda em formato JSON valido."""
 
@@ -47,6 +47,7 @@ class CriadorBriefAgent(BaseAgent):
             "nivel_tecnico": persona.get("nivel_tecnico", persona_global.get("nivel_tecnico", "intermediario")),
             "estilo_escrita": persona.get("estilo_escrita", persona_global.get("estilo_escrita", "didatico")),
             "instrucoes_cliente": _montar_instrucoes(persona, persona_global),
+            "instrucoes_adicionais": estado.get("instrucoes_adicionais", ""),
             "palavras_proibidas": persona.get("palavras_proibidas", []),
             "palavras_recomendadas": persona.get("palavras_recomendadas", []),
             "conteudos_referencia": json.dumps(conteudos[:3], ensure_ascii=False)[:1500],
