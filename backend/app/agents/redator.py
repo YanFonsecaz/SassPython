@@ -21,13 +21,32 @@ REDATOR_SYSTEM_PROMPT = """Voce e um redator profissional de conteudo SEO Senior
 
 Regras obrigatórias:
 1. Siga o outline do brief rigorosamente
-2. Respeite o tom de voz e nivel tecnico da persona
-3. NUNCA use palavras proibidas
-4. Inclua palavras recomendadas quando natural
-5. SEO on-page: H1 unico, H2/H3 hierarquicos, meta description
-6. Respeite a meta de palavras (+/- 10%)
-7. Use markdown para formatacao
-8. Responda em formato JSON com: titulo, conteudo_markdown, meta_description, palavras_chave_usadas, contagem_palavras, secoes_geradas"""
+2. Respeite o tom de voz, nivel tecnico e estilo de escrita da persona
+3. Siga as `instrucoes_cliente` (instrucoes gerais do cliente/persona e objetivo) com prioridade — elas refletem o que o cliente quer
+4. Quando houver `exemplos_textos`, use-os como referencia de estilo/voz (NAO copie o conteudo, apenas imite o jeito de escrever)
+5. NUNCA use palavras proibidas
+6. Inclua palavras recomendadas quando natural
+7. Se houver `feedback` do usuario, ele tem PRIORIDADE MAXIMA: incorpore TODAS as mudancas pedidas nesta nova versao
+8. SEO on-page: H1 unico, H2/H3 hierarquicos, meta description
+9. Respeite a meta de palavras (+/- 10%)
+10. Use markdown para formatacao
+11. Responda em formato JSON com: titulo, conteudo_markdown, meta_description, palavras_chave_usadas, contagem_palavras, secoes_geradas"""
+
+
+def _montar_instrucoes(persona: dict[str, Any], persona_global: dict[str, Any]) -> str:
+    """Junta as instrucoes que o cliente preencheu (global + persona + objetivo).
+
+    Esses campos vinham sendo descartados: o usuario preenchia "Instrucoes gerais"
+    e "Objetivo" na UI mas nada chegava ao redator/brief.
+    """
+    partes = [
+        persona_global.get("instrucoes_gerais", ""),
+        persona.get("instrucoes_gerais", ""),
+    ]
+    objetivo = persona.get("objetivo", "")
+    if objetivo:
+        partes.append(f"Objetivo desta persona: {objetivo}")
+    return "\n".join(p.strip() for p in partes if p and p.strip())
 
 
 class RedatorAgent(BaseAgent):
@@ -36,14 +55,17 @@ class RedatorAgent(BaseAgent):
         conteudos = estado.get("conteudos_selecionados", [])
         persona = estado.get("persona_selecionada", {})
         config_json = estado.get("cliente_config", {})
+        persona_global = config_json.get("persona_global", {})
         feedback = estado.get("feedback_usuario", "")
 
         contexto = {
             "brief": json.dumps(brief, ensure_ascii=False),
             "conteudos_referencia": json.dumps(conteudos[:3], ensure_ascii=False)[:1500],
-            "tom_voz": persona.get("tom_voz", config_json.get("persona_global", {}).get("tom_voz", "profissional")),
-            "nivel_tecnico": persona.get("nivel_tecnico", config_json.get("persona_global", {}).get("nivel_tecnico", "intermediario")),
-            "estilo_escrita": persona.get("estilo_escrita", config_json.get("persona_global", {}).get("estilo_escrita", "didatico")),
+            "tom_voz": persona.get("tom_voz", persona_global.get("tom_voz", "profissional")),
+            "nivel_tecnico": persona.get("nivel_tecnico", persona_global.get("nivel_tecnico", "intermediario")),
+            "estilo_escrita": persona.get("estilo_escrita", persona_global.get("estilo_escrita", "didatico")),
+            "instrucoes_cliente": _montar_instrucoes(persona, persona_global),
+            "exemplos_textos": persona_global.get("exemplos_textos", [])[:3],
             "palavras_proibidas": persona.get("palavras_proibidas", []),
             "palavras_recomendadas": persona.get("palavras_recomendadas", []),
             "meta_palavras": estado.get("meta_palavras", 2000),
