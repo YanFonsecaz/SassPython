@@ -39,7 +39,18 @@ class PesquisadorAgent(BaseAgent):
         from langchain_core.prompts import ChatPromptTemplate
 
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "Voce e um pesquisador de conteudo SEO. Resuma os achados de pesquisa em insights acionaveis para criacao de conteudo. Foque em: tendencias, gaps de conteudo, oportunidades de SEO. Responda em portugues."),
+            ("system",
+             "Voce e um pesquisador de conteudo SEO. A partir dos achados (resultados web, "
+             "tendencias e conteudos similares), produza insights ACIONAVEIS para orientar a "
+             "redacao de um artigo.\n"
+             "Regras:\n"
+             "- Responda em portugues (pt-BR).\n"
+             "- Saida em 4-7 bullets curtos, sem introducao nem conclusao.\n"
+             "- Cada bullet deve ancorar em um dado concreto dos achados (um termo em alta, um "
+             "titulo concorrente, um gap observado). NAO invente dados que nao estejam nos achados.\n"
+             "- Cubra: angulos/temas a abordar, gaps que os concorrentes deixam, termos/tendencias "
+             "a aproveitar e possivel diferenciacao.\n"
+             "- Maximo ~180 palavras."),
             ("human", "{query}"),
         ])
         chain = prompt | self.llm

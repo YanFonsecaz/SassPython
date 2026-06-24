@@ -43,7 +43,15 @@ class AnalisadorAgent(BaseAgent):
         from langchain_core.prompts import ChatPromptTemplate
 
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "Voce e um analista de conteudo SEO. Analise os conteudos selecionados e forneça um resumo estrategico em portugues. Foque em: oportunidades, gaps, temas recorrentes, diferenciacao."),
+            ("system",
+             "Voce e um analista de conteudo SEO. Analise os conteudos ja selecionados e produza "
+             "um resumo estrategico para orientar a redacao.\n"
+             "Regras:\n"
+             "- Responda em portugues (pt-BR).\n"
+             "- Saida em 3-6 bullets curtos, sem introducao.\n"
+             "- Aponte: temas recorrentes a cobrir, gaps/angulos ausentes e oportunidades de "
+             "diferenciacao. Baseie-se APENAS nos conteudos fornecidos; nao invente.\n"
+             "- Maximo ~150 palavras."),
             ("human", "Topico: {topico}\nPalavra-chave: {kw}\nConteudos:\n{conteudos}"),
         ])
         chain = prompt | self.llm

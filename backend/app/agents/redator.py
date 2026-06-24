@@ -17,7 +17,7 @@ class ArtigoRedigidoSchema(BaseModel):
     contagem_palavras: int = Field(default=0, description="Numero de palavras do artigo")
     secoes_geradas: int = Field(default=0, description="Numero de secoes (H2/H3) geradas")
 
-REDATOR_SYSTEM_PROMPT = """Voce e um redator profissional de conteudo SEO Senior. Redija o artigo completo seguindo o brief fornecido.
+REDATOR_SYSTEM_PROMPT = """Voce e um redator profissional de conteudo SEO Senior. Redija o artigo completo em portugues (pt-BR) seguindo o brief fornecido.
 
 Regras obrigatórias:
 1. Siga o outline do brief rigorosamente

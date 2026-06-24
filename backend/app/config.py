@@ -123,6 +123,7 @@ class Settings(BaseSettings):
 
     artigo_revisor_temperature: float = 0.1
     artigo_revisor_model: str | None = None
+    artigo_revisor_score_min: int = 70
 
     arq_max_jobs: int = 20
     arq_job_timeout: int = 2400
