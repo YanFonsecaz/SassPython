@@ -177,9 +177,76 @@ async function parseError(resposta: Response): Promise<ApiError> {
   return { ...(data as ApiError), status: resposta.status };
 }
 
+// Baixa binarios (ex.: .docx) reaproveitando a mesma logica de auth de
+// request(): renova o token via getValidToken() e, em 401, refaz o refresh e
+// repete a requisicao. Retorna Blob em vez de JSON.
+async function requestBlob(
+  caminho: string,
+  opcoes: RequestOptions = {}
+): Promise<Blob> {
+  const { method = "GET", body, headers = {}, noAuth = false, noRefresh = false } = opcoes;
+
+  let token: string | null = null;
+  if (!noAuth) {
+    token = noRefresh ? accessToken : await getValidToken();
+  }
+
+  const reqHeaders: Record<string, string> = { ...headers };
+  if (body !== undefined) reqHeaders["Content-Type"] = "application/json";
+  if (token) reqHeaders["Authorization"] = `Bearer ${token}`;
+
+  const csrf = csrfToken || readCsrfCookie();
+  if (csrf && method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
+    reqHeaders["X-CSRF-Token"] = csrf;
+  }
+
+  const enviar = (headersReq: Record<string, string>) =>
+    fetch(`${API_BASE}${caminho}`, {
+      method,
+      headers: headersReq,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      credentials: "include",
+    });
+
+  const resposta = await enviar(reqHeaders);
+
+  if (resposta.status === 401 && !noRefresh && !noAuth) {
+    if (!isRefreshing) {
+      isRefreshing = true;
+      refreshPromise = refreshAccessToken().finally(() => {
+        isRefreshing = false;
+        refreshPromise = null;
+      });
+    }
+    const novoToken = await refreshPromise;
+    if (novoToken) {
+      reqHeaders["Authorization"] = `Bearer ${novoToken}`;
+      const retry = await enviar(reqHeaders);
+      if (!retry.ok) {
+        const err = await parseError(retry);
+        throw err;
+      }
+      return retry.blob();
+    }
+    accessToken = null;
+    if (onAuthExpired) onAuthExpired();
+    throw { detalhe: "Sessao expirada", status: 401 } as ApiError;
+  }
+
+  if (!resposta.ok) {
+    const err = await parseError(resposta);
+    throw err;
+  }
+
+  return resposta.blob();
+}
+
 export const api = {
   get: <T>(caminho: string, opcoes?: RequestOptions) =>
     request<T>(caminho, { ...opcoes, method: "GET" }),
+
+  blob: (caminho: string, opcoes?: RequestOptions) =>
+    requestBlob(caminho, opcoes),
 
   post: <T>(caminho: string, body?: unknown, opcoes?: RequestOptions) =>
     request<T>(caminho, { ...opcoes, method: "POST", body }),
