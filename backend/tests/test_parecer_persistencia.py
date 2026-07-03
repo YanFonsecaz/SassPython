@@ -1,6 +1,6 @@
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -18,7 +18,7 @@ MOCK_EXEC_ID = uuid.uuid4()
 MOCK_USER_ID = uuid.uuid4()
 MOCK_CLIENT_ID = uuid.uuid4()
 MOCK_PARECER_ID = uuid.uuid4()
-NOW = datetime.now(timezone.utc)
+NOW = datetime.now(UTC)
 
 ESTRUTURA = {
     "titulo": "Parecer Teste",

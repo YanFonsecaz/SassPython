@@ -4,7 +4,6 @@ from app.services.cwv_kb import (
     carregar_kb,
     listar_kb_codigos,
     mapeamento_audit_kb,
-    recarregar_kb,
 )
 
 

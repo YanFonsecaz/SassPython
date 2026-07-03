@@ -1,6 +1,5 @@
-import pytest
 
-from app.services.ferramenta_service import calcular_custo_final, custo_maximo_estimado, CUSTO_BASE
+from app.services.ferramenta_service import CUSTO_BASE, calcular_custo_final, custo_maximo_estimado
 
 
 def test_custo_primeira_versao_com_imagem():

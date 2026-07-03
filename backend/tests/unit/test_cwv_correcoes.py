@@ -12,7 +12,6 @@ import pytest
 from app.services import cwv_psi_client as psi
 from app.services import ferramenta_service as fs
 
-
 # --- SPEC_Billing_CWV: reserva pelo custo real ---
 
 def _exec_cwv(n_urls: int):

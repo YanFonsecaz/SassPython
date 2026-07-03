@@ -94,8 +94,8 @@ async def fetch_url(
             logger.warning("fetch_url falhou para %s: %s", url, e)
             return f"ERRO: fetch falhou ({type(e).__name__})"
 
-    from readability import Document
     from markdownify import markdownify
+    from readability import Document
 
     try:
         doc = Document(html)

@@ -1,4 +1,3 @@
-import re
 
 from app.core.logging import JsonFormatter, setup_logging
 from app.core.middleware import get_client_ip

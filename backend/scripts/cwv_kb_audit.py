@@ -8,7 +8,7 @@ Uso:
 """
 import asyncio
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
@@ -25,8 +25,8 @@ async def main() -> None:
     diretos = mapeamento_audit_kb()
     kb_codigos = {c["codigo"] for c in listar_kb_codigos()}
 
-    desde = datetime.now(timezone.utc) - timedelta(days=90)
-    hoje = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    desde = datetime.now(UTC) - timedelta(days=90)
+    hoje = datetime.now(UTC).strftime("%Y-%m-%d")
 
     async with async_session_factory() as s:
         result = await s.execute(

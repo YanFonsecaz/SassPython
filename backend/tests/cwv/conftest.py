@@ -2,7 +2,7 @@ import json
 import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
@@ -46,7 +46,6 @@ def psi_payload_quota_429():
 @pytest.fixture
 def mock_redis_pool():
     import uuid as _uuid
-    from unittest.mock import MagicMock
 
     mock_pool = AsyncMock()
     fake_job = MagicMock()
@@ -69,6 +68,7 @@ def mock_credito_service():
 @pytest_asyncio.fixture
 async def db_engine():
     from sqlalchemy.ext.asyncio import create_async_engine
+
     from app.models.base import Base
 
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
@@ -127,6 +127,7 @@ async def cliente_teste(db_session, usuario_teste):
 @pytest_asyncio.fixture
 async def cliente_outro_usuario(db_session):
     from sqlalchemy import text
+
     from app.core.seguranca import hash_senha
 
     uid = uuid.uuid4()
@@ -158,7 +159,6 @@ def auth_token(usuario_teste):
 
 @pytest_asyncio.fixture
 async def client_autenticado(db_engine, auth_token, mock_redis_pool):
-    from unittest.mock import patch
 
     from app.main import application
 

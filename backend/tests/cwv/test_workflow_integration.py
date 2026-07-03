@@ -1,10 +1,7 @@
-import json
 import uuid
-from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from sqlalchemy import select
 
 from app.models.cwv_analise import CwvAnalise
 from app.models.execucao_ferramenta import ExecucaoFerramenta
@@ -15,7 +12,6 @@ async def test_workflow_completo_persiste_e_atualiza_execucao(
     db_engine, db_session, usuario_teste, cliente_teste, execucao_teste
 ):
     """REGRESSAO Bugs #6 e #7: workflow completa e persiste resultado_json + analises"""
-    from unittest.mock import patch
 
     eid = str(execucao_teste.id)
 
@@ -71,7 +67,7 @@ async def test_workflow_completo_persiste_e_atualiza_execucao(
         from app.agents.cwv.workflow import executar_workflow_cwv
         await executar_workflow_cwv(eid)
 
-    from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
     check_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
     async with check_factory() as check_session:
         execucao = await check_session.get(ExecucaoFerramenta, execucao_teste.id)
@@ -96,7 +92,8 @@ async def test_workflow_completo_persiste_e_atualiza_execucao(
 @pytest.mark.asyncio
 async def test_workflow_falha_psi_persiste_status(db_engine, db_session, usuario_teste, cliente_teste, execucao_teste):
     """Workflow com PSI falhando deve persistir analises com status falhou_psi"""
-    from unittest.mock import AsyncMock, patch
+    from unittest.mock import AsyncMock
+
     from app.agents.cwv.workflow import executar_workflow_cwv
 
     mock_credito = AsyncMock()
@@ -120,7 +117,7 @@ async def test_workflow_falha_psi_persiste_status(db_engine, db_session, usuario
 
         await executar_workflow_cwv(str(execucao_teste.id))
 
-    from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
     check_factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
     async with check_factory() as check_session:
         execucao = await check_session.get(ExecucaoFerramenta, execucao_teste.id)

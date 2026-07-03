@@ -1,9 +1,10 @@
-import pytest
-from datetime import datetime, timezone, timedelta
-from uuid import uuid4, UUID
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import UUID, uuid4
 
-from app.schemas.cwv import ComparacaoResposta, MetricaComparada, ProblemaComparado
+import pytest
+
+from app.schemas.cwv import ProblemaComparado
 
 
 def _make_mock_analise(**overrides):
@@ -12,7 +13,7 @@ def _make_mock_analise(**overrides):
         "cliente_id": str(uuid4()),
         "usuario_id": str(uuid4()),
         "url_canonica": "https://test.com/page",
-        "criado_em": datetime.now(timezone.utc),
+        "criado_em": datetime.now(UTC),
         "score_performance": 80,
         "lcp_ms": 2000.0,
         "cls": 0.05,
@@ -42,7 +43,7 @@ async def test_buscar_analise_anterior_encontrada():
 
     mock_analise = _make_mock_analise(
         id=uuid4(),
-        criado_em=datetime.now(timezone.utc) - timedelta(days=7),
+        criado_em=datetime.now(UTC) - timedelta(days=7),
         score_performance=75,
         lcp_ms=2500.0,
     )
@@ -56,7 +57,7 @@ async def test_buscar_analise_anterior_encontrada():
         mock_session,
         "https://test.com/page",
         str(uuid4()),
-        datetime.now(timezone.utc),
+        datetime.now(UTC),
     )
 
     assert resultado is mock_analise
@@ -78,7 +79,7 @@ async def test_buscar_analise_anterior_nao_encontrada():
         mock_session,
         "https://test.com/page",
         str(uuid4()),
-        datetime.now(timezone.utc),
+        datetime.now(UTC),
     )
 
     assert resultado is None
@@ -95,7 +96,7 @@ async def test_comparar_com_anterior_sucesso():
     mock_analise_atual = _make_mock_analise(
         id=UUID(analise_atual_id),
         usuario_id=str(user_id),
-        criado_em=datetime(2026, 5, 27, 12, 0, 0, tzinfo=timezone.utc),
+        criado_em=datetime(2026, 5, 27, 12, 0, 0, tzinfo=UTC),
         score_performance=80,
         lcp_ms=2000.0,
         cls=0.05,
@@ -105,7 +106,7 @@ async def test_comparar_com_anterior_sucesso():
     mock_analise_anterior = _make_mock_analise(
         id=UUID(analise_anterior_id),
         usuario_id=str(user_id),
-        criado_em=datetime(2026, 5, 20, 12, 0, 0, tzinfo=timezone.utc),
+        criado_em=datetime(2026, 5, 20, 12, 0, 0, tzinfo=UTC),
         score_performance=75,
         lcp_ms=2500.0,
         cls=0.08,
@@ -215,13 +216,13 @@ async def test_diff_distingue_problemas_kb_nulo_com_audit_ids_diferentes():
     mock_analise_atual = _make_mock_analise(
         id=UUID(analise_atual_id),
         usuario_id=str(user_id),
-        criado_em=datetime(2026, 5, 27, 12, 0, 0, tzinfo=timezone.utc),
+        criado_em=datetime(2026, 5, 27, 12, 0, 0, tzinfo=UTC),
         score_performance=60,
     )
     mock_analise_anterior = _make_mock_analise(
         id=UUID(analise_anterior_id),
         usuario_id=str(user_id),
-        criado_em=datetime(2026, 5, 20, 12, 0, 0, tzinfo=timezone.utc),
+        criado_em=datetime(2026, 5, 20, 12, 0, 0, tzinfo=UTC),
         score_performance=55,
     )
 

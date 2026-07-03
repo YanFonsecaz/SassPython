@@ -1,9 +1,9 @@
 import asyncio
-import sys
-import os
-import uuid
-from datetime import datetime, timezone, timedelta
 import logging
+import os
+import sys
+import uuid
+from datetime import UTC, datetime, timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -55,7 +55,7 @@ async def criar_execucao(usuario_id: str) -> tuple[str, str]:
                     "persona_id": ""
                 }""",
                 "tid": thread_id,
-                "timeout": datetime.now(timezone.utc) + timedelta(hours=1),
+                "timeout": datetime.now(UTC) + timedelta(hours=1),
             },
         )
         await session.commit()
@@ -65,7 +65,8 @@ async def criar_execucao(usuario_id: str) -> tuple[str, str]:
 
 async def run_workflow_phase_1(execucao_id: str, thread_id: str, usuario_id: str):
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-    from app.agents.workflow import criar_workflow, EstadoWorkflow
+
+    from app.agents.workflow import EstadoWorkflow, criar_workflow
 
     db_url = settings.database_url.replace("+asyncpg", "")
     async with AsyncPostgresSaver.from_conn_string(db_url) as checkpointer:
@@ -111,6 +112,7 @@ async def run_workflow_phase_1(execucao_id: str, thread_id: str, usuario_id: str
 async def run_workflow_phase_2(thread_id: str, execucao_id: str, usuario_id: str):
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
     from langgraph.types import Command
+
     from app.agents.workflow import criar_workflow
 
     db_url = settings.database_url.replace("+asyncpg", "")
@@ -191,7 +193,7 @@ async def main():
         expected_fase2 = {"salvar_vetorial", "gerar_imagem"}
         fase2_ok = len(nodos_fase2) > 0
         if fase2_ok:
-            logger.info(f"[OK] FASE 2 PASSOU - workflow retomado e completou")
+            logger.info("[OK] FASE 2 PASSOU - workflow retomado e completou")
 
         await verify_final_state(execucao_id)
 

@@ -1,5 +1,4 @@
 """Testes do _resumir_items e AUDIT_ALIASES introduzidos nas SPECs #17/#18."""
-import pytest
 
 
 def test_resumir_items_sem_limite_de_quantidade():

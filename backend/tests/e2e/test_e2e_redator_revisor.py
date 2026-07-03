@@ -1,9 +1,9 @@
 import asyncio
-import sys
-import os
-import uuid
-from datetime import datetime, timezone, timedelta
 import logging
+import os
+import sys
+import uuid
+from datetime import UTC, datetime, timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -38,7 +38,7 @@ async def criar_execucao_teste(usuario_id: str):
                 "uid": usuario_id,
                 "entrada": '{"topico": "marketing digital"}',
                 "tid": thread_id,
-                "timeout": datetime.now(timezone.utc) + timedelta(hours=1),
+                "timeout": datetime.now(UTC) + timedelta(hours=1),
             },
         )
         await session.commit()

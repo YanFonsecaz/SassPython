@@ -1,9 +1,8 @@
 import base64
 import io
 
-import pytest
-from PIL import Image as PILImage
 from docx import Document
+from PIL import Image as PILImage
 
 from app.services.parecer_service import estrutura_para_html, html_para_docx_bytes
 

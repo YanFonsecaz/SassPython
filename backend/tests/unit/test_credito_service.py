@@ -1,7 +1,7 @@
-import json
+
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 def test_credito_service_imports():

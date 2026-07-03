@@ -6,7 +6,6 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from app.config import settings
 from app.core.seguranca import gerar_csrf_nonce
 
 STATE_CHANGING_METHODS = {"POST", "PUT", "DELETE", "PATCH"}

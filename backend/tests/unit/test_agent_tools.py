@@ -1,12 +1,9 @@
-import json
 
 import httpx
 import pytest
 import respx
 
 from app.core.agent_tools import (
-    _ctx7_cache_get,
-    _ctx7_cache_set,
     buscar_docs_lib,
     buscar_web,
     fetch_url,

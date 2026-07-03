@@ -3,7 +3,6 @@
 Cada teste falha sem o fix correspondente. Adicionar novo teste aqui sempre
 que um bug for descoberto em produção/staging para evitar reintroducao.
 """
-import pytest
 
 
 def test_bug1_node_pesquisar_outros_usa_variavel_correta():
@@ -11,6 +10,7 @@ def test_bug1_node_pesquisar_outros_usa_variavel_correta():
     NameError so disparava em runtime quando havia problemas sem KB.
     """
     import inspect
+
     from app.agents.cwv import workflow
 
     src = inspect.getsource(workflow.node_pesquisar_outros)

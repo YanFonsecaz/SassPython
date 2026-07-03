@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 
 @pytest.mark.asyncio
@@ -54,7 +55,8 @@ async def test_analisar_cliente_de_outro_usuario_retorna_404(client_autenticado,
 
 @pytest.mark.asyncio
 async def test_analisar_sem_auth_retorna_401():
-    from httpx import AsyncClient, ASGITransport
+    from httpx import ASGITransport, AsyncClient
+
     from app.main import application
     transport = ASGITransport(app=application)
     async with AsyncClient(transport=transport, base_url="http://test") as client:

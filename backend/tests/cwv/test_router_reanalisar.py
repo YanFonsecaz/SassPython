@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 
 @pytest.mark.asyncio
@@ -28,9 +29,11 @@ async def test_reanalisar_analise_inexistente(client_autenticado):
 
 @pytest.mark.asyncio
 async def test_reanalisar_sem_auth():
-    from httpx import AsyncClient, ASGITransport
-    from app.main import application
     import uuid
+
+    from httpx import ASGITransport, AsyncClient
+
+    from app.main import application
 
     transport = ASGITransport(app=application)
     async with AsyncClient(transport=transport, base_url="http://test") as client:

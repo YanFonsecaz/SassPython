@@ -22,13 +22,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings  # noqa: E402
-from app.core.seguranca import hash_senha  # noqa: E402
-from app.db.session import async_session_factory, engine  # noqa: E402
-from app.models.conta_credito import ContaCredito  # noqa: E402
-from app.models.plano import Plano  # noqa: E402
-from app.models.transacao_credito import TransacaoCredito  # noqa: E402
-from app.models.usuario import Usuario  # noqa: E402
+from app.core.seguranca import hash_senha
+from app.db.session import async_session_factory
+from app.models.conta_credito import ContaCredito
+from app.models.plano import Plano
+from app.models.transacao_credito import TransacaoCredito
+from app.models.usuario import Usuario
 
 EMAIL = "teste@seosaas.com"
 SENHA = "Teste@12345678"
@@ -120,7 +119,7 @@ async def main() -> None:
         print("═══════════════════════════════════════════")
         print(f"  Email:    {EMAIL}")
         print(f"  Senha:    {SENHA}")
-        print(f"  Plano:    Ilimitado")
+        print("  Plano:    Ilimitado")
         print(f"  Créditos: {conta.saldo_total:,}")
         print("═══════════════════════════════════════════")
 

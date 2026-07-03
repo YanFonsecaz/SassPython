@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from PIL import Image as PILImage
 
+from app.agents.parecer.analisador import _achado_degradado, analisar_imagem
 from app.schemas.parecer import AchadoImagem
-from app.agents.parecer.analisador import analisar_imagem, _achado_degradado
 
 
 def _make_data_uri(width=100, height=100, fmt="PNG") -> str:

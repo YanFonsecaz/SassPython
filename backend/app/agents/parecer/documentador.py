@@ -66,7 +66,7 @@ async def gerar_parecer_estruturado(
     contexto = (
         f"Nome do cliente: {cliente_nome}\n\n"
         + titulo_linha
-        + f"Notas do analista (blocos de texto):\n"
+        + "Notas do analista (blocos de texto):\n"
         + "\n---\n".join(blocos_texto)
         + "\n\nAnalise das imagens:\n"
         + "\n---\n".join(achados_texto)

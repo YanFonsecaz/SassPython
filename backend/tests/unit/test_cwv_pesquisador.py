@@ -1,9 +1,8 @@
-import pytest
 
 from app.agents.cwv.pesquisador import (
-    CWVPesquisadorAgent,
     FRAMEWORKS_SUPORTADOS_CTX7,
     SYSTEM,
+    CWVPesquisadorAgent,
 )
 
 

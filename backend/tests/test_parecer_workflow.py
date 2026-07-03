@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -8,7 +7,6 @@ from app.schemas.parecer import (
     AchadoImagem,
     ParecerEstruturado,
 )
-
 
 MOCK_EXEC_ID = str(uuid.uuid4())
 MOCK_USER_ID = str(uuid.uuid4())

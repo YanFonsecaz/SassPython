@@ -4,7 +4,6 @@ from sqlalchemy import select
 from app.models.cwv_analise import CwvAnalise
 from app.models.cwv_problema import CwvProblema
 from app.services.cwv_persistencia import (
-    buscar_analise_anterior,
     buscar_analise_com_problemas,
     buscar_historico_url,
     buscar_ultima_analise_url,

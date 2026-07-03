@@ -1,6 +1,5 @@
 import base64
 import io
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -42,16 +41,18 @@ class TestCustoParecer:
 
 class TestValidacaoBlocos:
     def test_bloco_vazio_sem_texto_sem_imagem(self):
-        from app.routers.ferramentas_parecer import _validar_blocos
         from fastapi import HTTPException
+
+        from app.routers.ferramentas_parecer import _validar_blocos
 
         with pytest.raises(HTTPException) as exc_info:
             _validar_blocos([{"texto": "   ", "imagens": []}])
         assert exc_info.value.status_code == 422
 
     def test_data_uri_invalida(self):
-        from app.routers.ferramentas_parecer import _validar_blocos
         from fastapi import HTTPException
+
+        from app.routers.ferramentas_parecer import _validar_blocos
 
         with pytest.raises(HTTPException) as exc_info:
             _validar_blocos([{"texto": "t", "imagens": ["data:text/html;base64,PHNjcmlwdD4="]}])
@@ -71,8 +72,9 @@ class TestValidacaoBlocos:
         assert b > 0
 
     def test_imagem_acima_de_4mb(self):
-        from app.routers.ferramentas_parecer import _validar_blocos
         from fastapi import HTTPException
+
+        from app.routers.ferramentas_parecer import _validar_blocos
 
         # base64 que DECODIFICA para >4 MB (6 MB de base64 -> ~4.5 MB decodificado)
         fake_b64 = "A" * (6 * 1024 * 1024)

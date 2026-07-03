@@ -74,9 +74,7 @@ async def cwv_health(
     overall = "ok"
     if not psi_status["key1_available"] and not psi_status["key2_available"]:
         overall = "down"
-    elif total > 0 and taxa_sucesso is not None and taxa_sucesso < 0.8:
-        overall = "degraded"
-    elif not llm_status["openai_configured"]:
+    elif (total > 0 and taxa_sucesso is not None and taxa_sucesso < 0.8) or not llm_status["openai_configured"]:
         overall = "degraded"
 
     return {

@@ -1,7 +1,8 @@
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.cwv_psi_client import normalizar_url, parse_psi, _fire_webhook_alert
+import pytest
+
+from app.services.cwv_psi_client import _fire_webhook_alert, normalizar_url, parse_psi
 
 
 def test_normalizar_url_completa():

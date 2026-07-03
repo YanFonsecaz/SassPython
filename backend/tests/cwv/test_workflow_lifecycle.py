@@ -4,13 +4,10 @@ Estes cenários nunca foram exercitados em E2E real. Aqui são validados via
 asyncio direto sem depender de PSI real.
 """
 import asyncio
-import uuid
-from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.models.cwv_analise import CwvAnalise
 from app.models.execucao_ferramenta import ExecucaoFerramenta
 
 
@@ -91,6 +88,7 @@ async def test_workflow_cliente_removido_handler_defensivo_existe():
     Garante que código defensivo não seja removido em refactor.
     """
     import inspect
+
     from app.agents.cwv import workflow
 
     src = inspect.getsource(workflow.executar_workflow_cwv)

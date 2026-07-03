@@ -1,19 +1,18 @@
 import asyncio
-import sys
-import os
-import uuid
-from datetime import date, timedelta, datetime, timezone
 import logging
+import os
+import sys
+import uuid
+from datetime import UTC, date, datetime, timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import argon2
-import jwt
 from sqlalchemy import text
 
 from app.config import settings
-from app.db.session import async_session_factory
 from app.core.seguranca import gerar_jwt_access_token
+from app.db.session import async_session_factory
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -57,14 +56,14 @@ async def criar_test_usuario_e_creditos():
                 {"id": str(uuid.uuid4()), "uid": usuario_id, "inicio": hoje, "fim": hoje + timedelta(days=30)},
             )
             await session.commit()
-            logger.info(f"[OK] Conta credito criada: 100 plano + 50 extras")
+            logger.info("[OK] Conta credito criada: 100 plano + 50 extras")
 
     return usuario_id
 
 
 def gerar_jwt(usuario_id: str):
     token = gerar_jwt_access_token(usuario_id, TEST_EMAIL, False)
-    logger.info(f"[OK] JWT gerado (tipo=access, exp=900s)")
+    logger.info("[OK] JWT gerado (tipo=access, exp=900s)")
     return token
 
 
@@ -88,7 +87,7 @@ async def criar_execucao_teste(usuario_id: str):
                 "uid": usuario_id,
                 "entrada": '{"topico": "marketing digital para pequenas empresas"}',
                 "tid": thread_id,
-                "timeout": datetime.now(timezone.utc) + timedelta(hours=1),
+                "timeout": datetime.now(UTC) + timedelta(hours=1),
             },
         )
         await session.commit()
@@ -128,7 +127,7 @@ async def test_pesquisador_agent(usuario_id: str):
     from app.agents.pesquisador import PesquisadorAgent
 
     agente = PesquisadorAgent(usuario_id=usuario_id)
-    logger.info(f"[OK] PesquisadorAgent criado")
+    logger.info("[OK] PesquisadorAgent criado")
 
     estado = {
         "topico": "marketing digital para pequenas empresas",

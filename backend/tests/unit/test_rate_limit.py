@@ -1,5 +1,6 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.core.rate_limit import SLIDING_WINDOW_SCRIPT, check_rate_limit_redis
 
