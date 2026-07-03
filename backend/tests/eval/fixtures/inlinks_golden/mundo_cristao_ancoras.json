@@ -1,0 +1,34 @@
+{
+  "nome": "mundo_cristao_ancoras",
+  "ferramenta": "distribuir",
+  "descricao": "Caso real Mundo Cristão (commits e0f1784/1077a27): distribuir link de categoria de produto com âncora preferida presente literalmente na candidata.",
+  "alvo": {
+    "url": "https://www.mundocristao.com.br/categoria-produto/livros/mulheres/",
+    "titulo": "Livros para mulheres cristãs",
+    "conteudo_md": "# Livros para mulheres cristãs\n\nSeleção de livros para mulheres cristãs: devocionais diários, estudos bíblicos, biografias de mulheres de fé e obras sobre maternidade, casamento e vida espiritual. Títulos de autoras como Elisabeth Elliot, Joyce Meyer e Ana Paula Valadão, com opções para leitoras iniciantes e maduras na fé.",
+    "resumo": "Categoria de livros para mulheres cristãs: devocionais, estudos bíblicos, biografias e vida espiritual.",
+    "palavras_chave": ["livros para mulheres cristãs", "devocional feminino", "estudo bíblico", "literatura cristã"]
+  },
+  "candidatas": [
+    {
+      "url": "https://www.mundocristao.com.br/blog/mulheres-da-biblia-que-inspiram/",
+      "titulo": "Mulheres da Bíblia que inspiram a fé até hoje",
+      "conteudo_md": "# Mulheres da Bíblia que inspiram a fé até hoje\n\nA Bíblia registra histórias de mulheres cuja coragem e fé atravessaram séculos. Débora liderou Israel como juíza e profetisa em um tempo em que a liderança feminina era exceção. Rute abandonou sua terra por lealdade e se tornou parte da genealogia de Davi.\n\nEster arriscou a própria vida ao interceder pelo seu povo diante do rei persa, e Maria de Nazaré aceitou um chamado que mudaria a história da humanidade.\n\nEssas histórias seguem alimentando a espiritualidade feminina. Não por acaso, os livros para mulheres cristãs representam uma das categorias que mais crescem no mercado editorial evangélico, com devocionais e estudos dedicados a essas personagens.\n\nConhecer essas trajetórias é um convite ao aprofundamento: cada uma delas mostra uma faceta diferente da fé vivida em circunstâncias adversas."
+    },
+    {
+      "url": "https://www.mundocristao.com.br/blog/como-organizar-grupo-de-estudo/",
+      "titulo": "Como organizar um grupo de estudo bíblico na sua igreja",
+      "conteudo_md": "# Como organizar um grupo de estudo bíblico na sua igreja\n\nGrupos pequenos de estudo bíblico fortalecem a comunhão e aprofundam o conhecimento das Escrituras. Para começar, defina um dia fixo, um local acessível e um formato de encontro com começo, meio e fim.\n\nA escolha do material de estudo importa: guias com perguntas prontas facilitam a condução para líderes iniciantes, enquanto grupos maduros aproveitam melhor a leitura corrida com discussão aberta.\n\nEstabeleça um rodízio de anfitriões e mantenha os encontros entre 60 e 90 minutos. Grupos que passam disso perdem frequência ao longo do semestre.\n\nPor fim, celebre marcos: terminar um livro da Bíblia ou um ciclo de estudos merece um encontro especial de confraternização."
+    }
+  ],
+  "params": {
+    "ancoras_preferidas": ["livros para mulheres cristãs"],
+    "permitir_cta_fallback": true,
+    "objetivo_linkagem": "foco em conversão para categoria de produto"
+  },
+  "rotulos": {
+    "https://www.mundocristao.com.br/blog/mulheres-da-biblia-que-inspiram/": "deve_aplicar",
+    "https://www.mundocristao.com.br/blog/como-organizar-grupo-de-estudo/": "aceitavel_sugestao"
+  },
+  "notas_rotulos": "candidata 1 contém a âncora preferida LITERAL ('os livros para mulheres cristãs representam...') — REGRA ZERO deve aplicar. candidata 2: tema relacionado (estudo bíblico) mas sem âncora natural óbvia — sugestão ou CTA são aceitáveis."
+}

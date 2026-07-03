@@ -1,0 +1,40 @@
+{
+  "nome": "cnae_agilize",
+  "ferramenta": "receber",
+  "descricao": "Caso real d7b50a52 (13/05/2026): pilar CNAE varejista + 4 candidatas Agilize. Antes: 1 bom, 3 forcados.",
+  "pilar": {
+    "url": "https://blog.agilize.com.br/abrir-empresa/cnae-comercio-varejista/",
+    "titulo": "CNAE para comércio varejista: como escolher o código certo",
+    "conteudo_md": "# CNAE para comércio varejista: como escolher o código certo\n\nEscolher o CNAE certo é uma das etapas mais importantes na abertura de um comércio varejista. O código define quais impostos você paga, quais atividades pode exercer legalmente e até se a empresa pode optar pelo Simples Nacional. Um erro aqui pode gerar multas, impedimentos fiscais e retrabalho na junta comercial.\n\nO CNAE (Classificação Nacional de Atividades Econômicas) é um código de sete dígitos que identifica a atividade da empresa perante os órgãos públicos. Todo CNPJ precisa de pelo menos um código principal, e pode ter códigos secundários para atividades complementares que a empresa também exerce.\n\nPara o comércio varejista, a família de códigos mais comum é a divisão 47, que cobre desde lojas de roupas e calçados até mercearias e lojas de departamento. Dentro dela, cada segmento tem seu código específico: vestuário usa o 4781-4/00, calçados o 4782-2/01, e assim por diante. Verifique a descrição completa no site do IBGE antes de decidir.\n\nSe a sua loja também vende pela internet, é recomendável incluir o código de comércio eletrônico como atividade secundária. Vender online sem o CNAE adequado pode gerar problemas com a emissão de notas fiscais e com o enquadramento tributário da operação digital.\n\nQuando a empresa exerce mais de uma atividade, priorize a atividade de maior faturamento como CNAE principal. É o caso comum do lojista que também presta serviços de instalação ou manutenção: além do código de comércio, é preciso incluir um CNAE de prestação de serviço como atividade secundária. Essa escolha impacta diretamente a alíquota do Simples Nacional e a classificação de risco do negócio nas licenças municipais.\n\nAntes de registrar, vale a pena simular o enquadramento tributário com um contador. A escolha entre Simples Nacional, Lucro Presumido e Lucro Real depende do faturamento projetado, da margem e do próprio CNAE — alguns códigos têm restrições ao Simples.\n\nPor fim, lembre-se de que o CNAE pode ser alterado depois, mas o processo exige alteração contratual na junta comercial e atualização em todos os cadastros fiscais. Melhor acertar de primeira."
+  },
+  "candidatas": [
+    {
+      "url": "https://blog.agilize.com.br/abrir-empresa/cnae-prestacao-de-servico/",
+      "titulo": "CNAE para prestação de serviço: escolha o código ideal",
+      "conteudo_md": "# CNAE para prestação de serviço: escolha o código ideal\n\nAssim como no comércio, escolher o CNAE certo para prestação de serviço define os impostos e as autorizações da empresa. Prestadores de serviço usam principalmente as divisões 62 a 82 da classificação, dependendo do segmento.\n\nConsultores, desenvolvedores, designers e profissionais de marketing têm códigos próprios. O enquadramento errado pode excluir a empresa do Simples Nacional ou gerar bitributação de ISS.\n\nO código principal deve refletir a atividade de maior faturamento do prestador. Atividades complementares entram como CNAEs secundários, sem custo adicional no registro.\n\nAntes de definir, consulte a tabela do IBGE e valide com um contador o impacto tributário de cada opção — a diferença de alíquota entre anexos do Simples pode chegar a vários pontos percentuais."
+    },
+    {
+      "url": "https://blog.agilize.com.br/gestao/contratacao-pj/",
+      "titulo": "Contratação PJ: guia completo para empresas",
+      "conteudo_md": "# Contratação PJ: guia completo para empresas\n\nContratar profissionais como pessoa jurídica (PJ) é uma alternativa ao regime CLT que reduz encargos trabalhistas, mas exige cuidado com o risco de vínculo empregatício.\n\nNa contratação PJ, o profissional emite nota fiscal pelos serviços prestados e não tem direito a férias, 13º ou FGTS. Em troca, costuma negociar uma remuneração bruta maior.\n\nPara reduzir riscos, o contrato deve deixar claras a autonomia do prestador, a ausência de subordinação direta e a possibilidade de prestar serviços a outros clientes. Pejotização — quando a empresa disfarça uma relação de emprego — pode gerar passivo trabalhista relevante.\n\nAvalie caso a caso: funções centrais e permanentes tendem a se encaixar melhor na CLT; projetos e especialidades pontuais funcionam bem no modelo PJ."
+    },
+    {
+      "url": "https://blog.agilize.com.br/contabilidade/contabilidade-online-mei-me/",
+      "titulo": "Contabilidade online para MEI e ME: como funciona",
+      "conteudo_md": "# Contabilidade online para MEI e ME: como funciona\n\nA contabilidade online substitui o escritório tradicional por uma plataforma digital, reduzindo custos para microempreendedores individuais (MEI) e microempresas (ME).\n\nPelo aplicativo, o empreendedor envia notas fiscais e extratos; a plataforma calcula impostos, gera as guias e entrega as obrigações acessórias. O contador continua existindo — a diferença é o canal de atendimento.\n\nPara MEI, a contabilidade é opcional na maior parte dos casos, mas se torna obrigatória ao migrar para ME. Nessa transição, o suporte contábil evita erros de enquadramento e atrasos nas declarações.\n\nAo escolher a plataforma, verifique se ela cobre seu regime tributário, se emite as guias do seu município e qual o prazo de resposta do time contábil."
+    },
+    {
+      "url": "https://blog.agilize.com.br/vendas/marketplace/",
+      "titulo": "Como vender em marketplaces: guia para lojistas",
+      "conteudo_md": "# Como vender em marketplaces: guia para lojistas\n\nMarketplaces como Mercado Livre, Amazon e Shopee concentram milhões de compradores e são uma porta de entrada rápida para quem quer vender online sem montar estrutura própria.\n\nO modelo cobra comissão por venda, que varia de 10% a 20% conforme a categoria. Em troca, o lojista ganha tráfego, meios de pagamento integrados e, em alguns casos, logística terceirizada.\n\nPara se destacar, capriche no cadastro dos produtos: títulos descritivos, fotos de qualidade e preço competitivo pesam no algoritmo de busca interno das plataformas.\n\nA reputação é o principal ativo do vendedor: atrasos e cancelamentos derrubam o selo de qualidade e a visibilidade dos anúncios."
+    }
+  ],
+  "params": {},
+  "rotulos": {
+    "https://blog.agilize.com.br/abrir-empresa/cnae-prestacao-de-servico/": "deve_aplicar",
+    "https://blog.agilize.com.br/gestao/contratacao-pj/": "nao_linkar",
+    "https://blog.agilize.com.br/contabilidade/contabilidade-online-mei-me/": "aceitavel_sugestao",
+    "https://blog.agilize.com.br/vendas/marketplace/": "aceitavel_sugestao"
+  },
+  "notas_rotulos": "marketplace: o pilar menciona 'vender pela internet' de passagem — aplicar seria forçado, mas sugerir é aceitável; o crítico é NÃO aplicar contratacao-pj (tema desconectado). contabilidade-online: relação real porém tangencial (simular com contador)."
+}

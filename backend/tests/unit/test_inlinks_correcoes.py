@@ -68,7 +68,7 @@ def test_trecho_contexto_alinhado_com_multiplos_links():
         {"url_destino": "https://ex.com/java", "paragrafo_idx": 1, "trecho_original": "java", "anchor_text": "java"},
     ]
     # min_distance_words=1 para nao rejeitar por proximidade
-    texto, inseridos = _aplicar_insercoes(pilar, paragrafos, candidatos, insercoes_raw, min_distance_words=1)
+    texto, inseridos, _colisoes = _aplicar_insercoes(pilar, paragrafos, candidatos, insercoes_raw, min_distance_words=1)
 
     aplicados = [i for i in inseridos if i.status == "aplicado"]
     assert len(aplicados) == 2, [i.status for i in inseridos]

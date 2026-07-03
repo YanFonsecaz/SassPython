@@ -1,0 +1,34 @@
+{
+  "nome": "dropshipping_sinonimo",
+  "ferramenta": "receber",
+  "descricao": "Casos reais dos E2E #3/#6 (13/05/2026): sinônimo de domínio legítimo (cosine 0.26) deve linkar; imobiliária/restaurante (cosine 0.49/0.23) não devem — anti-forçagem.",
+  "pilar": {
+    "url": "https://blog.exemplo.com.br/ganhar-dinheiro-na-internet/",
+    "titulo": "Como ganhar dinheiro na internet: caminhos realistas para começar",
+    "conteudo_md": "# Como ganhar dinheiro na internet: caminhos realistas para começar\n\nGanhar dinheiro na internet deixou de ser promessa vazia: hoje existem modelos de negócio digitais consolidados, com barreiras de entrada baixas e potencial de escala real. O segredo está em escolher um caminho compatível com seu tempo, capital e habilidades.\n\nA primeira decisão é entre vender produto ou vender serviço. Serviços digitais — design, redação, consultoria, programação — geram receita mais rápido, mas trocam tempo por dinheiro. Produtos escalam melhor, porém exigem investimento inicial em estoque ou desenvolvimento.\n\nEntre os modelos de produto, a revenda sem estoque vem crescendo entre novos empreendedores: você anuncia o produto, o fornecedor envia direto ao cliente e a sua margem fica na diferença. É um formato com risco baixo de capital, embora a concorrência exija bom marketing para se diferenciar.\n\nOutro caminho consistente é a produção de conteúdo. Blogs, canais de vídeo e newsletters monetizam por publicidade, afiliação e produtos próprios. O retorno demora mais, mas constrói um ativo durável: a audiência.\n\nSeja qual for o modelo, formalize seu empreendimento desde cedo. Emitir nota fiscal abre portas para vender a empresas, participar de plataformas e escapar de bloqueios de pagamento.\n\nPor fim, tenha expectativas realistas: o investimento cresce conforme o negócio valida. Comece pequeno, meça os resultados e reinvista o lucro com disciplina."
+  },
+  "candidatas": [
+    {
+      "url": "https://blog.exemplo.com.br/como-abrir-loja-virtual/",
+      "titulo": "Como abrir uma loja virtual: guia completo e prático",
+      "conteudo_md": "# Como abrir uma loja virtual: guia completo e prático\n\nAbrir uma loja virtual é o caminho mais direto para vender produtos online com marca própria. Plataformas como Shopify, Nuvemshop e WooCommerce eliminaram a barreira técnica: em poucos dias a operação está no ar.\n\nO primeiro passo é definir o modelo de estoque. No modelo tradicional, você compra e armazena os produtos. No dropshipping, o fornecedor envia direto ao cliente — você não toca no estoque e paga o produto só depois de vender.\n\nO dropshipping reduz o capital inicial, mas aperta as margens e tira o controle sobre prazo de entrega. Escolha fornecedores confiáveis e deixe os prazos claros na página do produto.\n\nNos dois modelos, o sucesso depende de tráfego qualificado: SEO, anúncios pagos e redes sociais são os canais principais. Comece por um nicho específico — lojas generalistas raramente competem com os marketplaces."
+    },
+    {
+      "url": "https://blog.exemplo.com.br/como-abrir-imobiliaria/",
+      "titulo": "Como abrir uma imobiliária: requisitos e custos",
+      "conteudo_md": "# Como abrir uma imobiliária: requisitos e custos\n\nAbrir uma imobiliária exige registro no CRECI, tanto do responsável técnico quanto da pessoa jurídica. Sem o registro, a empresa não pode intermediar compra, venda ou locação de imóveis.\n\nOs custos iniciais incluem o registro profissional, um ponto comercial bem localizado e investimento em divulgação dos imóveis da carteira.\n\nA receita vem de comissões: tipicamente 6% na venda de imóveis usados e o valor do primeiro aluguel na locação. O fluxo de caixa é irregular no início, até a carteira de imóveis ganhar volume.\n\nDiferenciais competitivos incluem fotografia profissional, tour virtual e presença forte nos portais imobiliários."
+    },
+    {
+      "url": "https://blog.exemplo.com.br/como-abrir-restaurante/",
+      "titulo": "Como abrir um restaurante: do cardápio às licenças",
+      "conteudo_md": "# Como abrir um restaurante: do cardápio às licenças\n\nAbrir um restaurante envolve licenças sanitárias, alvará de funcionamento e treinamento de equipe — além, claro, de um cardápio que se destaque na região.\n\nA vigilância sanitária exige estrutura adequada de cozinha, controle de temperatura e boas práticas de manipulação de alimentos. Sem o licenciamento, o estabelecimento não pode operar.\n\nRestaurante que oferece um cardápio enxuto, com estrutura para entregas, aproveita o crescimento do delivery sem inflar o custo de insumos.\n\nA margem do setor é apertada: controle de desperdício e giro de mesas definem a rentabilidade mais do que o preço do prato."
+    }
+  ],
+  "params": {},
+  "rotulos": {
+    "https://blog.exemplo.com.br/como-abrir-loja-virtual/": "deve_aplicar",
+    "https://blog.exemplo.com.br/como-abrir-imobiliaria/": "nao_linkar",
+    "https://blog.exemplo.com.br/como-abrir-restaurante/": "nao_linkar"
+  },
+  "notas_rotulos": "loja-virtual deve ancorar em 'revenda sem estoque' (sinônimo de dropshipping — cosine real medido: 0.26, morto pelos portões antigos). imobiliária: cosine 0.49 > que o caso bom, mas tema desconectado — anti-forçagem. restaurante: sem relação."
+}

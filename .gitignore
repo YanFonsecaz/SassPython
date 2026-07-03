@@ -63,3 +63,6 @@ frontend/coverage/
 .opencode/
 .aider*
 .playwright-mcp/
+
+# cache record/replay do harness de eval de inlinks
+backend/tests/eval/cache/
