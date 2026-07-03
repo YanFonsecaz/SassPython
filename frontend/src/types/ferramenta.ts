@@ -71,6 +71,9 @@ export interface InlinksRequest {
   threshold_score?: number;
   max_inlinks?: number;
   rel_attr?: string;
+  ancoras_preferidas?: string[];
+  objetivo_linkagem?: string;
+  permitir_cta_fallback?: boolean;
 }
 
 export interface CustoInlinksResponse {
@@ -106,12 +109,16 @@ export interface InlinkAplicado {
   trecho_original?: string | null;
   conector_antes?: string | null;
   conector_depois?: string | null;
+  confianca?: number | null;
+  sinal_cos_contexto?: number | null;
+  sinal_cos_ancora?: number | null;
 }
 
 export interface ResultadoInlinks {
   n_candidatas_validas: number;
   n_aplicadas: number;
   n_rejeitadas: number;
+  funil?: FunilInlinks;
   artigo_titulo: string;
   artigo: string;
   conteudo_markdown: string;
@@ -157,6 +164,28 @@ export interface CandidataResultado {
   ancora_preferida_usada?: boolean | null;
 }
 
+export interface FunilInlinks {
+  n_solicitadas?: number;
+  n_scrape_ok?: number;
+  n_scrape_falhas?: number;
+  urls_falhas?: string[];
+  n_pos_cosine_top15?: number;
+  n_pos_piso_ruido?: number;
+  n_descartadas_piso_ruido?: number;
+  n_viaveis?: number;
+  n_descartadas_similaridade?: number;
+  n_falhas_extracao?: number;
+  threshold_informativo?: number;
+  n_enviadas_juiz?: number;
+  n_decisao_aplicar?: number;
+  n_decisao_sugerir?: number;
+  n_decisao_descartar?: number;
+  n_sem_match?: number;
+  n_rejeitados_revisor?: number;
+  n_aplicadas?: number;
+  motivos?: Record<string, number>;
+}
+
 export interface ResultadoDistribuirInlinks {
   url_alvo: string;
   titulo_alvo: string;
@@ -169,4 +198,5 @@ export interface ResultadoDistribuirInlinks {
   candidatas: CandidataResultado[];
   alvo_invalido?: boolean;
   motivo_alvo?: string | null;
+  funil?: FunilInlinks;
 }

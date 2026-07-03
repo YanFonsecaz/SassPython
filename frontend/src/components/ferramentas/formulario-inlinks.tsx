@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api, mensagemErroAmigavel } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { CheckIcon, LinkIcon, FileTextIcon, SparklesIcon, Trash2Icon, ClipboardPasteIcon, InfoIcon } from "lucide-react";
+import { CheckIcon, LinkIcon, FileTextIcon, SparklesIcon, Trash2Icon, ClipboardPasteIcon, InfoIcon, XIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import type { InlinksRequest, ExecucaoCriada, CustoInlinksResponse } from "@/types";
 
 const STEPS = [
@@ -33,6 +34,10 @@ export function FormularioInlinks() {
   const [maxInlinks, setMaxInlinks] = useState(8);
   const [thresholdScore, setThresholdScore] = useState(0.6);
   const [relAttr, setRelAttr] = useState("noopener");
+  const [ancorasPreferidas, setAncorasPreferidas] = useState<string[]>([]);
+  const [novaAncora, setNovaAncora] = useState("");
+  const [objetivoLinkagem, setObjetivoLinkagem] = useState("");
+  const [permitirCtaFallback, setPermitirCtaFallback] = useState(false);
   const [custoEstimado, setCustoEstimado] = useState<CustoInlinksResponse | null>(null);
 
   useEffect(() => {
@@ -117,6 +122,29 @@ export function FormularioInlinks() {
     setCandidatasUrls((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function addAncora() {
+    const a = novaAncora.trim();
+    if (!a || a.length < 2 || a.length > 50) {
+      setErro("Âncora deve ter entre 2 e 50 caracteres");
+      return;
+    }
+    if (ancorasPreferidas.some((x) => x.toLowerCase() === a.toLowerCase())) {
+      setErro("Âncora já adicionada");
+      return;
+    }
+    if (ancorasPreferidas.length >= 10) {
+      setErro("Máximo 10 âncoras preferidas");
+      return;
+    }
+    setAncorasPreferidas((prev) => [...prev, a]);
+    setNovaAncora("");
+    setErro("");
+  }
+
+  function removeAncora(idx: number) {
+    setAncorasPreferidas((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   async function handleSubmit() {
     setErro("");
     setEnviando(true);
@@ -129,6 +157,9 @@ export function FormularioInlinks() {
         max_inlinks: maxInlinks,
         threshold_score: thresholdScore,
         rel_attr: relAttr,
+        ancoras_preferidas: ancorasPreferidas,
+        objetivo_linkagem: objetivoLinkagem.trim() || undefined,
+        permitir_cta_fallback: permitirCtaFallback,
       };
 
       const resultado = await api.post<ExecucaoCriada>(
@@ -399,6 +430,91 @@ export function FormularioInlinks() {
                 </select>
               </div>
             </div>
+
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="ancora" className="text-sm font-medium text-muted-foreground">
+                  Âncoras preferidas (opcional)
+                </Label>
+                <span title="Termos que você quer ver como âncora dos links. A ferramenta usa quando o parágrafo permite naturalmente; se não couber, cai pro comportamento padrão. Máximo 10.">
+                  <InfoIcon className="size-3 text-muted-foreground/60" />
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  id="ancora"
+                  placeholder="ex.: reposição de cálcio"
+                  maxLength={50}
+                  value={novaAncora}
+                  onChange={(e) => { setNovaAncora(e.target.value); setErro(""); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAncora(); } }}
+                  disabled={enviando}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addAncora}
+                  disabled={enviando || !novaAncora.trim()}
+                >
+                  Adicionar
+                </Button>
+              </div>
+              {ancorasPreferidas.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {ancorasPreferidas.map((a, i) => (
+                    <Badge
+                      key={`${a}-${i}`}
+                      className="bg-brand/10 text-brand-dark border border-brand/30 gap-1.5"
+                    >
+                      {a}
+                      <button
+                        type="button"
+                        onClick={() => removeAncora(i)}
+                        className="hover:text-destructive"
+                        disabled={enviando}
+                        aria-label={`Remover ${a}`}
+                      >
+                        <XIcon className="size-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="objetivo" className="text-sm font-medium text-muted-foreground">
+                  Objetivo da linkagem (opcional)
+                </Label>
+                <span title="Direcionamento estratégico que a ferramenta usa para escolher âncoras alinhadas ao seu objetivo. Ex.: 'foco em conversão para categoria de produto', 'fortalecimento semântico'.">
+                  <InfoIcon className="size-3 text-muted-foreground/60" />
+                </span>
+              </div>
+              <Textarea
+                id="objetivo"
+                placeholder="ex.: foco em conversão para categoria de produto"
+                maxLength={300}
+                value={objetivoLinkagem}
+                onChange={(e) => { setObjetivoLinkagem(e.target.value); }}
+                disabled={enviando}
+                rows={2}
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="permitir-cta"
+                checked={permitirCtaFallback}
+                onChange={(e) => setPermitirCtaFallback(e.target.checked)}
+                disabled={enviando}
+                className="size-4 rounded border-input accent-brand"
+              />
+              <Label htmlFor="permitir-cta" className="text-xs text-muted-foreground cursor-pointer">
+                Permitir CTA &quot;Leia também&quot; quando nenhuma âncora cabe naturalmente
+              </Label>
+            </div>
           </div>
         )}
 
@@ -413,6 +529,9 @@ export function FormularioInlinks() {
                   ["Teto de inlinks", String(maxInlinks)],
                   ["Score mínimo", String(thresholdScore)],
                   ["Rel", relAttr],
+                  ["Âncoras preferidas", ancorasPreferidas.length ? ancorasPreferidas.join(", ") : "—"],
+                  ["Objetivo", objetivoLinkagem.trim() || "—"],
+                  ["CTA fallback", permitirCtaFallback ? "ativo" : "desligado"],
                 ].map(([label, value]) => (
                   <div key={label} className="flex justify-between gap-4">
                     <span className="text-muted-foreground shrink-0">{label}</span>

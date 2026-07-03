@@ -77,13 +77,15 @@ function renderTrecho(trecho: string) {
 interface Props {
   inlinks: InlinkAplicado[];
   totalCandidatas?: number;
+  motivoGeral?: string;
 }
 
-export function InlinksResultado({ inlinks, totalCandidatas }: Props) {
+export function InlinksResultado({ inlinks, totalCandidatas, motivoGeral }: Props) {
   if (!inlinks || inlinks.length === 0) {
     return (
-      <div className="rounded-xl border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-        Nenhum inlink foi aplicado neste artigo.
+      <div className="rounded-xl border bg-muted/30 p-6 text-center text-sm text-muted-foreground space-y-1">
+        <p>Nenhum inlink foi aplicado neste artigo.</p>
+        {motivoGeral && <p className="text-xs">{motivoGeral}</p>}
       </div>
     );
   }
@@ -94,13 +96,19 @@ export function InlinksResultado({ inlinks, totalCandidatas }: Props) {
 
   return (
     <div className="space-y-4">
+      {aplicados.length === 0 && (
+        <div className="rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
+          Nenhum inlink foi aplicado automaticamente — veja abaixo os motivos de cada candidata.
+          {motivoGeral ? ` ${motivoGeral}` : ""}
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <span className="font-semibold text-foreground">
           {aplicados.length} inlink{aplicados.length === 1 ? "" : "s"} aplicado
           {aplicados.length === 1 ? "" : "s"}
         </span>
         {rejeitados.length > 0 && (
-          <span>· {rejeitados.length} rejeitado pelo revisor</span>
+          <span>· {rejeitados.length} descartado{rejeitados.length === 1 ? "" : "s"} pela IA</span>
         )}
         {sugestoes.length > 0 && (
           <span>· {sugestoes.length} sugestão{sugestoes.length === 1 ? "" : "ões"} manual</span>
@@ -167,6 +175,11 @@ export function InlinksResultado({ inlinks, totalCandidatas }: Props) {
                     sem {(il.score_semantico * 100).toFixed(0)} · ctx{" "}
                     {(il.score_contexto * 100).toFixed(0)}
                   </p>
+                  {typeof il.confianca === "number" && (
+                    <p className="text-muted-foreground/70" title="Confiança da IA nesta decisão">
+                      IA {(il.confianca * 100).toFixed(0)}%
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -196,7 +209,8 @@ export function InlinksResultado({ inlinks, totalCandidatas }: Props) {
                   )}
                   {rejeitado && il.motivo_rejeicao && (
                     <p className="mt-1 text-destructive">
-                      Revisor rejeitou: {il.motivo_rejeicao}
+                      {il.status === "rejeitado_revisor" ? "Revisor rejeitou: " : "Descartado pela IA: "}
+                      {il.motivo_rejeicao}
                     </p>
                   )}
                   {sugestaoManual && (il.motivo_sugestao || il.motivo_rejeicao) && (

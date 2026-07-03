@@ -47,6 +47,7 @@ export type {
   CustoDistribuirInlinksResponse,
   CandidataResultado,
   ResultadoDistribuirInlinks,
+  FunilInlinks,
 } from "./ferramenta";
 
 export type { Pacote, Compra, Plano } from "./billing";

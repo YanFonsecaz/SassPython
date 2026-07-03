@@ -22,6 +22,7 @@ import { PreviewArtigo } from "@/components/ferramentas/preview-artigo";
 import { ComparadorVersoes } from "@/components/ferramentas/comparador-versoes";
 import { ComparadorPilarInlinks } from "@/components/ferramentas/comparador-pilar-inlinks";
 import { InlinksResultado } from "@/components/ferramentas/inlinks-resultado";
+import { InlinksFunilStrip } from "@/components/ferramentas/inlinks-funil-strip";
 import { DistribuirInlinksResultado } from "@/components/ferramentas/distribuir-inlinks-resultado";
 import { cn } from "@/lib/utils";
 import { labelFerramenta } from "@/lib/ferramentas";
@@ -234,6 +235,31 @@ export function ExecucaoDetalheConteudo() {
   const imagemUrl = resultado.imagem_url as string | undefined;
   const st = statusLabel(execucao.status);
 
+  // Soft-fail: backend marca "concluida" mas nada foi aplicado — o motivo vive em
+  // erro_msg/motivo_alvo e precisa aparecer (nunca banner verde com resultado vazio).
+  const nAplicadas = Number(resultado.n_aplicadas ?? 0);
+  const nSugestoes = Number(resultado.n_sugestoes ?? 0);
+  const isSoftFail =
+    execucao.status === "concluida" &&
+    (execucao.ferramenta === "distribuir_inlinks"
+      ? Boolean(resultado.alvo_invalido) || nAplicadas + nSugestoes === 0
+      : execucao.ferramenta === "inlinks_automaticos"
+        ? nAplicadas === 0
+        : false);
+  const motivoSoftFail =
+    (resultado.motivo_alvo as string | undefined) ||
+    execucao.erro_msg ||
+    "A execução terminou sem links aplicados.";
+
+  const rotaNovaExecucao =
+    execucao.ferramenta === "inlinks_automaticos"
+      ? "/ferramentas/inlinks?modo=receber"
+      : execucao.ferramenta === "distribuir_inlinks"
+        ? "/ferramentas/inlinks?modo=distribuir"
+        : execucao.ferramenta === "core_web_vitals"
+          ? "/ferramentas/core-web-vitals"
+          : "/ferramentas/gerar-artigo";
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -282,16 +308,31 @@ export function ExecucaoDetalheConteudo() {
             <p className="font-heading text-sm font-semibold text-destructive">Falha na execução</p>
           </div>
           <p className="text-sm text-muted-foreground">{execucao.erro_msg || "Erro desconhecido"}</p>
-          <Link href="/ferramentas/gerar-artigo" className={buttonVariants({ variant: "outline", size: "sm" })}>
+          <Link href={rotaNovaExecucao} className={buttonVariants({ variant: "outline", size: "sm" })}>
             Tentar novamente
           </Link>
         </div>
       )}
 
-      {execucao.status === "concluida" && execucao.ferramenta !== "core_web_vitals" && (
+      {execucao.status === "concluida" && execucao.ferramenta !== "core_web_vitals" && !isSoftFail && (
         <div className="rounded-xl border border-success/30 bg-success/5 px-4 py-3 flex items-center gap-2.5">
           <CircleCheckIcon className="size-5 text-success" />
           <p className="text-sm font-medium text-success">{mensagemSucessoFerramenta(execucao.ferramenta)}</p>
+        </div>
+      )}
+
+      {isSoftFail && (
+        <div className="rounded-xl border border-warning/30 bg-warning/5 p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangleIcon className="size-5 text-warning" />
+            <p className="font-heading text-sm font-semibold text-warning">
+              Execução concluída sem links aplicados
+            </p>
+          </div>
+          <p className="text-sm text-muted-foreground">{motivoSoftFail}</p>
+          <Link href={rotaNovaExecucao} className={buttonVariants({ variant: "outline", size: "sm" })}>
+            Tentar com outras URLs
+          </Link>
         </div>
       )}
 
@@ -322,7 +363,10 @@ export function ExecucaoDetalheConteudo() {
       )}
 
       {execucao.status === "concluida" && execucao.ferramenta === "distribuir_inlinks" && (
-        <DistribuirInlinksResultado resultado={resultado as unknown as ResultadoDistribuirInlinks} />
+        <DistribuirInlinksResultado
+          resultado={resultado as unknown as ResultadoDistribuirInlinks}
+          motivoGeral={isSoftFail ? motivoSoftFail : undefined}
+        />
       )}
 
       {(isAguardando || execucao.status === "concluida") &&
@@ -350,8 +394,7 @@ export function ExecucaoDetalheConteudo() {
 
       {execucao.ferramenta === "inlinks_automaticos" &&
         execucao.status === "concluida" &&
-        Array.isArray(resultado.inlinks) &&
-        (resultado.inlinks as InlinkAplicado[]).length > 0 && (
+        Array.isArray(resultado.inlinks) && (
           <div className="space-y-3">
             <div>
               <h3 className="font-heading text-base font-semibold">Inlinks aplicados</h3>
@@ -359,6 +402,10 @@ export function ExecucaoDetalheConteudo() {
                 Onde cada link entrou no artigo e por que faz sentido aqui.
               </p>
             </div>
+            <InlinksFunilStrip
+              funil={(resultado as { funil?: import("@/types").FunilInlinks }).funil}
+              modo="receber"
+            />
             <InlinksResultado
               inlinks={resultado.inlinks as InlinkAplicado[]}
               totalCandidatas={
@@ -366,6 +413,7 @@ export function ExecucaoDetalheConteudo() {
                   ? (resultado.n_candidatas_validas as number)
                   : undefined
               }
+              motivoGeral={isSoftFail ? motivoSoftFail : undefined}
             />
           </div>
         )}

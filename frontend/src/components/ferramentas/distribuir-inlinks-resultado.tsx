@@ -17,11 +17,13 @@ import {
   InfoIcon,
 } from "lucide-react";
 import type { ResultadoDistribuirInlinks, CandidataResultado } from "@/types";
+import { InlinksFunilStrip } from "@/components/ferramentas/inlinks-funil-strip";
 
 type TabKey = "aplicadas" | "sugestoes" | "sem_match" | "falhas";
 
 interface Props {
   resultado: ResultadoDistribuirInlinks;
+  motivoGeral?: string;
 }
 
 function CandidataAccordion({ candidata, urlAlvo }: { candidata: CandidataResultado; urlAlvo: string }) {
@@ -175,13 +177,45 @@ function CandidataAccordion({ candidata, urlAlvo }: { candidata: CandidataResult
   );
 }
 
-export function DistribuirInlinksResultado({ resultado }: Props) {
-  const [tabAtiva, setTabAtiva] = useState<TabKey>("aplicadas");
+export function DistribuirInlinksResultado({ resultado, motivoGeral }: Props) {
+  const tabsIniciais: { key: TabKey; count: number }[] = [
+    { key: "aplicadas", count: resultado?.n_aplicadas ?? 0 },
+    { key: "sugestoes", count: resultado?.n_sugestoes ?? 0 },
+    { key: "sem_match", count: resultado?.n_sem_match ?? 0 },
+    { key: "falhas", count: resultado?.n_falhas ?? 0 },
+  ];
+  const primeiraComItens = tabsIniciais.find((t) => t.count > 0)?.key ?? "aplicadas";
+  const [tabAtiva, setTabAtiva] = useState<TabKey>(primeiraComItens);
 
   if (!resultado || !Array.isArray(resultado.candidatas)) {
     return (
       <div className="rounded-xl border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
         Carregando resultado...
+      </div>
+    );
+  }
+
+  // Alvo inviável: não há candidatas processadas — mostra só o motivo, sem tabs zeradas.
+  if (resultado.alvo_invalido) {
+    return (
+      <div className="rounded-xl border border-warning/30 bg-warning/5 p-5 space-y-2">
+        <div className="flex items-center gap-2">
+          <AlertTriangleIcon className="size-5 text-warning" />
+          <p className="font-heading text-sm font-semibold text-warning">URL alvo não pôde ser usada</p>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {resultado.motivo_alvo || motivoGeral || "A URL alvo não tem conteúdo analisável."}
+        </p>
+        {resultado.url_alvo && (
+          <a
+            href={resultado.url_alvo}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-brand-dark hover:underline break-all"
+          >
+            {resultado.url_alvo}
+          </a>
+        )}
       </div>
     );
   }
@@ -241,6 +275,8 @@ export function DistribuirInlinksResultado({ resultado }: Props) {
         </a>
       </div>
 
+      <InlinksFunilStrip funil={resultado.funil} modo="distribuir" />
+
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         {tabs.map((t) => (
           <span key={t.key}>
@@ -265,8 +301,11 @@ export function DistribuirInlinksResultado({ resultado }: Props) {
       </div>
 
       {filtradas.length === 0 ? (
-        <div className="rounded-xl border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-          Nenhuma candidata nesta categoria.
+        <div className="rounded-xl border bg-muted/30 p-6 text-center text-sm text-muted-foreground space-y-1">
+          <p>Nenhuma candidata nesta categoria.</p>
+          {motivoGeral && tabs.every((t) => t.count === 0) && (
+            <p className="text-xs">{motivoGeral}</p>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

@@ -34,10 +34,16 @@ const NODE_ICONS: Record<string, React.ElementType> = {
   extrair_candidatos: SearchIcon,
   enriquecer: DatabaseIcon,
   match_rerank: BarChart3Icon,
-  gerar_ancoras: PenLineIcon,
-  injetar: LinkIcon,
+  inserir: LinkIcon,
+  formatar: PenLineIcon,
   revisar_inlinks: ShieldCheckIcon,
   persistir: DatabaseIcon,
+  falha_pilar: FileTextIcon,
+  extrair_alvo: FileTextIcon,
+  extrair_candidatas: SearchIcon,
+  filtrar_similaridade: BarChart3Icon,
+  inserir_em_cada: LinkIcon,
+  persistir_falha_alvo: FileTextIcon,
 };
 
 const NODE_LABELS: Record<string, string> = {
@@ -55,8 +61,14 @@ const NODE_LABELS: Record<string, string> = {
   extrair_candidatos: "Extrair Candidatos",
   enriquecer: "Gerar Embeddings",
   match_rerank: "Ranquear",
-  gerar_ancoras: "Gerar Âncoras",
-  injetar: "Injetar Inlinks",
+  inserir: "Inserir Inlinks",
+  formatar: "Formatar",
+  falha_pilar: "Pilar Indisponível",
+  extrair_alvo: "Extrair Alvo",
+  extrair_candidatas: "Extrair Candidatas",
+  filtrar_similaridade: "Filtrar Similaridade",
+  inserir_em_cada: "Inserir Links",
+  persistir_falha_alvo: "Alvo Inválido",
   revisar_inlinks: "Revisar Inlinks",
   persistir: "Persistir",
 };
@@ -78,9 +90,19 @@ const ETAPAS_ORDER_INLINKS = [
   "extrair_candidatos",
   "enriquecer",
   "match_rerank",
-  "gerar_ancoras",
-  "injetar",
+  "inserir",
   "revisar",
+  "formatar",
+  "persistir",
+];
+
+const ETAPAS_ORDER_DISTRIBUIR = [
+  "validar_urls",
+  "extrair_alvo",
+  "extrair_candidatas",
+  "enriquecer",
+  "filtrar_similaridade",
+  "inserir_em_cada",
   "persistir",
 ];
 
@@ -131,6 +153,15 @@ const DICAS_POR_ETAPA: Record<string, string[]> = {
     "Criando visualização única para o conteúdo...",
     "Processando imagem otimizada para seu texto...",
   ],
+  extrair_candidatos: ["Lendo o conteúdo das páginas candidatas..."],
+  extrair_candidatas: ["Lendo o conteúdo das páginas candidatas..."],
+  enriquecer: ["Gerando metadados e embeddings das páginas..."],
+  match_rerank: ["Comparando temas e ranqueando as candidatas..."],
+  filtrar_similaridade: ["Medindo a similaridade de cada candidata com a URL alvo..."],
+  inserir: ["A IA está escolhendo âncoras naturais no texto..."],
+  inserir_em_cada: ["Inserindo o link do alvo em cada página candidata..."],
+  formatar: ["Ajustando a formatação do texto final..."],
+  persistir: ["Salvando o resultado..."],
 };
 
 const TEMPOS_ESTIMADOS: Record<string, number> = {
@@ -171,8 +202,13 @@ export function BarraProgressoWorkflow({
   ferramenta,
 }: BarraProgressoWorkflowProps) {
   const isInlinks = ferramenta === "inlinks_automaticos";
+  const isDistribuir = ferramenta === "distribuir_inlinks";
 
-  const ETAPAS_ORDER = isInlinks ? ETAPAS_ORDER_INLINKS : ETAPAS_ORDER_ARTIGO;
+  const ETAPAS_ORDER = isDistribuir
+    ? ETAPAS_ORDER_DISTRIBUIR
+    : isInlinks
+      ? ETAPAS_ORDER_INLINKS
+      : ETAPAS_ORDER_ARTIGO;
 
   const nodeLabelsResolved: Record<string, string> = isInlinks
     ? { ...NODE_LABELS, revisar: "Revisar Inlinks" }
@@ -191,8 +227,18 @@ export function BarraProgressoWorkflow({
     status === "aguardando_aprovacao" ||
     status === "aguardando_revisao";
 
-  // Get current dicas based on etapaAtual
-  const dicasAtuais = etapaAtual ? DICAS_POR_ETAPA[etapaAtual] || [] : [];
+  // Os workflows de inlinks não persistem `etapa_atual` — deriva a etapa ativa
+  // do último evento SSE quando a prop não traz uma etapa conhecida.
+  const emOrdem = (n: string | null | undefined): n is string =>
+    !!n && ETAPAS_ORDER.includes(n);
+  const ultimoEvento = nodeHistory.length > 0 ? nodeHistory[nodeHistory.length - 1] : null;
+  const etapaEfetiva =
+    (emOrdem(etapaAtual) ? etapaAtual : null) ??
+    (emOrdem(ultimaEtapaRef.current) ? ultimaEtapaRef.current : null) ??
+    (ultimoEvento && emOrdem(ultimoEvento.node) ? ultimoEvento.node : null);
+
+  // Get current dicas based on etapa efetiva
+  const dicasAtuais = etapaEfetiva ? DICAS_POR_ETAPA[etapaEfetiva] || [] : [];
   const dicaAtual = dicasAtuais[indiceDicaAtual] || dicasAtuais[0] || "Processando...";
 
   useEffect(() => {
@@ -228,11 +274,7 @@ export function BarraProgressoWorkflow({
     }
   }, [etapaAtual]);
 
-  const etapaIndex = ETAPAS_ORDER.indexOf(etapaAtual || ultimaEtapaRef.current || "");
-  const progresso =
-    etapaIndex < 0
-      ? 0
-      : ((etapaIndex + 1) / ETAPAS_ORDER.length) * 100;
+  const etapaIndex = etapaEfetiva ? ETAPAS_ORDER.indexOf(etapaEfetiva) : -1;
 
   const completedNodes = new Set<string>();
   for (const a of nodeHistory) {
@@ -244,11 +286,18 @@ export function BarraProgressoWorkflow({
   const lastCompletedIndex = Math.max(
     ...ETAPAS_ORDER.map((n, i) => (completedNodes.has(n) ? i : -1))
   );
-  const activeNode = !isFinalizado && !isAguardando ? etapaAtual : null;
-  const proximaEtapa = ETAPAS_ORDER[etapaIndex + 1];
+
+  const progressoBase = Math.max(
+    lastCompletedIndex + 1,
+    etapaIndex >= 0 ? etapaIndex + 0.5 : 0
+  );
+  const progresso =
+    isFinalizado && status === "concluida"
+      ? 100
+      : Math.min(100, (progressoBase / ETAPAS_ORDER.length) * 100);
 
   // Calculate estimated time for current stage
-  const tempoEtapaAtual = etapaAtual ? TEMPOS_ESTIMADOS[etapaAtual] || 30 : 0;
+  const tempoEtapaAtual = etapaEfetiva ? TEMPOS_ESTIMADOS[etapaEfetiva] || 30 : 0;
   const tempoRestanteEstimado = Math.max(0, tempoEtapaAtual - (tempoDecorrido % (tempoEtapaAtual || 30)));
 
   return (
@@ -267,7 +316,7 @@ export function BarraProgressoWorkflow({
             {ETAPAS_ORDER.map((node, index) => {
               const Icon = NODE_ICONS[node] || FileTextIcon;
               const isCompleted = completedNodes.has(node);
-              const isActive = node === etapaAtual;
+              const isActive = !isFinalizado && node === etapaEfetiva;
               const isFuture = index > etapaIndex;
               
               return (
@@ -324,11 +373,11 @@ export function BarraProgressoWorkflow({
           <div className="glass-card rounded-xl p-6 space-y-4 animate-slide-in-up">
             <div className="flex items-center gap-4">
               {/* Active icon with breathing animation */}
-              {etapaAtual ? (
+              {etapaEfetiva ? (
                 <div className="animate-breathing">
                   <div className="size-12 rounded-full bg-brand/10 flex items-center justify-center">
                     {(() => {
-                      const Icon = NODE_ICONS[etapaAtual] || Loader2Icon;
+                      const Icon = NODE_ICONS[etapaEfetiva] || Loader2Icon;
                       return <Icon className="size-6 text-brand" />;
                     })()}
                   </div>
@@ -344,7 +393,7 @@ export function BarraProgressoWorkflow({
               <div className="flex-1 space-y-1">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-lg">
-                    {isAguardando ? APROVACAO_LABELS[status || ""] : etapaAtual ? `Processando ${nodeLabelsResolved[etapaAtual] || etapaAtual}` : "Iniciando processo..."}
+                    {isAguardando ? APROVACAO_LABELS[status || ""] : etapaEfetiva ? `Processando ${nodeLabelsResolved[etapaEfetiva] || etapaEfetiva}` : "Iniciando processo..."}
                   </h3>
                   <ClockIcon className="size-4 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">
