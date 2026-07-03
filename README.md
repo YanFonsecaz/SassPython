@@ -123,7 +123,7 @@ curl http://localhost:8000/metrics
 - **[docs/deploy.md](docs/deploy.md)** — provisionar prod (Postgres, Redis, secrets, workers)
 - **[docs/observability.md](docs/observability.md)** — LangSmith, Sentry, /metrics, logs JSON
 - **[docs/Security/](docs/Security/)** — design docs de segurança (autenticação, threat modeling, etc.)
-- **[docs/specs/](docs/specs/)** — SPECs de features + auditoria (`Auditoria_2026_05_16/`)
+- **[docs/specs/](docs/specs/)** — registry SDD: specs vivas por capacidade (`ferramentas/`, `plataforma/`) + `auditorias/` (histórico). Comece por [docs/specs/README.md](docs/specs/README.md)
 - **[backend/MYPY_BASELINE.md](backend/MYPY_BASELINE.md)** — baseline de tipos (gradual)
 
 ## Contribuição
