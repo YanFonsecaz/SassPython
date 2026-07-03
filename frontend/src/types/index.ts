@@ -48,6 +48,12 @@ export type {
   CandidataResultado,
   ResultadoDistribuirInlinks,
   FunilInlinks,
+  StatusIndiceSite,
+  IndiceSiteStatus,
+  CandidataSugerida,
+  RespostaCandidatas,
+  IndexarSiteResponse,
+  ClienteResumido,
 } from "./ferramenta";
 
 export type { Pacote, Compra, Plano } from "./billing";

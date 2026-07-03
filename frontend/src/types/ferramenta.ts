@@ -65,6 +65,7 @@ export interface CancelarResultado {
 }
 
 export interface InlinksRequest {
+  cliente_id?: string;
   pilar_url?: string;
   pilar_markdown?: string;
   candidatas_urls: string[];
@@ -128,6 +129,7 @@ export interface ResultadoInlinks {
 }
 
 export interface DistribuirInlinksRequest {
+  cliente_id?: string;
   url_alvo: string;
   candidatas_urls: string[];
   threshold_score?: number;
@@ -199,4 +201,48 @@ export interface ResultadoDistribuirInlinks {
   alvo_invalido?: boolean;
   motivo_alvo?: string | null;
   funil?: FunilInlinks;
+}
+
+// ── SPEC_Inlinks_Descoberta_Automatica_Candidatas ─────────────────────────────
+
+export type StatusIndiceSite =
+  | "nao_indexado"
+  | "indexando"
+  | "pronto"
+  | "falhou";
+
+export interface IndiceSiteStatus {
+  status: StatusIndiceSite;
+  n_paginas: number;
+  n_falhas: number;
+  dominio: string | null;
+  atualizado_em: string | null;
+  erro_msg: string | null;
+}
+
+export interface CandidataSugerida {
+  url: string;
+  titulo: string;
+  resumo: string;
+  score: number;
+}
+
+export interface RespostaCandidatas {
+  candidatas: CandidataSugerida[];
+  modo: string;
+  total: number;
+}
+
+export interface IndexarSiteResponse {
+  id: string;
+  ferramenta: "indexar_site";
+  status: string;
+  dominio: string;
+  custo_maximo_estimado: number;
+}
+
+export interface ClienteResumido {
+  id: string;
+  nome: string;
+  site_url: string | null;
 }

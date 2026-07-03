@@ -30,9 +30,9 @@ function CandidataAccordion({ candidata, urlAlvo }: { candidata: CandidataResult
   const [aberto, setAberto] = useState(false);
 
   const statusConfig: Record<string, { icon: React.ElementType; label: string; classe: string }> = {
-    aplicado: { icon: CheckCircleIcon, label: "Aplicado", classe: "text-success" },
+    aplicado: { icon: CheckCircleIcon, label: "Aplicado pela IA", classe: "text-success" },
     sugestao_manual: { icon: AlertTriangleIcon, label: "Revisar antes de aplicar", classe: "text-warning" },
-    sem_match: { icon: XCircleIcon, label: "Sem relação suficiente", classe: "text-muted-foreground" },
+    sem_match: { icon: XCircleIcon, label: "Sem relação (julgado pela IA)", classe: "text-muted-foreground" },
     falhou_extracao: { icon: XCircleIcon, label: "Erro ao ler URL", classe: "text-destructive" },
   };
 

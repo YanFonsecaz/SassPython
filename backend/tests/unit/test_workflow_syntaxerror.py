@@ -18,12 +18,18 @@ def test_workflow_inlinks_reversos_imports():
     assert hasattr(app.agents.workflow_inlinks_reversos, "executar_workflow_distribuir_inlinks")
 
 
+def test_workflow_indexar_site_imports():
+    import app.agents.workflow_indexar_site
+
+    assert hasattr(app.agents.workflow_indexar_site, "executar_workflow_indexar_site")
+
+
 def test_worker_imports():
     import app.worker
 
     assert hasattr(app.worker, "WorkerSettings")
     ws = app.worker.WorkerSettings()
-    assert len(ws.functions) == 6
+    assert len(ws.functions) == 7
     assert ws.max_tries == 3
     assert ws.job_timeout > 0
 

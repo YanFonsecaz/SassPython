@@ -10,6 +10,7 @@ import { api, mensagemErroAmigavel } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { CheckIcon, LinkIcon, FileTextIcon, SparklesIcon, Trash2Icon, ClipboardPasteIcon, InfoIcon, XIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { DescobertaCandidatas } from "@/components/ferramentas/descoberta-candidatas";
 import type { InlinksRequest, ExecucaoCriada, CustoInlinksResponse } from "@/types";
 
 const STEPS = [
@@ -342,6 +343,16 @@ export function FormularioInlinks() {
                 </p>
               </div>
             )}
+
+            <DescobertaCandidatas
+              modo="receber"
+              urlConsulta={pilarUrl}
+              urlsJaPresentes={candidatasUrls}
+              onAdicionar={(urls) => {
+                setCandidatasUrls((prev) => [...prev, ...urls]);
+                setErro("");
+              }}
+            />
 
             {candidatasUrls.length > 0 && (
               <div className="space-y-2">

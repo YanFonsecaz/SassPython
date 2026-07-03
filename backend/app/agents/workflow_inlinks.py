@@ -24,11 +24,10 @@ def _sanitize(obj: Any) -> Any:
         return [_sanitize(v) for v in obj]
     return obj
 
-# Piso de RUÍDO: corta apenas domínio claramente alheio. A decisão de qualidade
-# é do LLM juiz no inseridor (julgamento único) — o cosine não decide mais.
-# Caso real que motivou o valor: sinônimo legítimo "dropshipping" x "loja virtual"
-# media cosine 0.26 e era morto pelo piso anterior de 0.40.
-_PISO_RUIDO_SEMANTICO = 0.25
+# Piso de RUÍDO compartilhado entre Receber e Distribuir (ver inlinks/constantes.py).
+# Mantido aqui como alias para preservar os imports locais; o valor canônico é o
+# do módulo compartilhado.
+from app.agents.inlinks.constantes import PISO_RUIDO_SEMANTICO as _PISO_RUIDO_SEMANTICO  # noqa: E402
 
 
 def _log_prefix(eid: str) -> str:
@@ -289,9 +288,9 @@ async def node_enriquecer(estado: EstadoInlinks) -> dict[str, Any]:
 
             existing_rows = []
             if html_hash:
-                # A busca por html_hash + url_canonica + usuario_id basta;
-                # vetores não são por-cliente nesta versão. Para multi-cliente real,
-                # adicionar `ConteudoVetor.cliente_id == cliente_id_val` aqui.
+                # Lookup escopado por cliente_id quando presente (multi-tenant):
+                # vetores do cliente A nunca são reusados pela execução do cliente B.
+                # Sem cliente_id (execução sem cliente vinculado), mantém o escopo por usuário.
                 stmt = (
                     sel(ConteudoVetor)
                     .where(
@@ -302,6 +301,8 @@ async def node_enriquecer(estado: EstadoInlinks) -> dict[str, Any]:
                     )
                     .order_by(ConteudoVetor.chunk_index)
                 )
+                if cliente_id_val is not None:
+                    stmt = stmt.where(ConteudoVetor.cliente_id == cliente_id_val)
                 result = await session.execute(stmt)
                 existing_rows = result.scalars().all()
 
@@ -505,25 +506,35 @@ async def node_match_rerank(estado: EstadoInlinks) -> dict[str, Any]:
     scored = sorted(best_by_url.values(), key=lambda x: x["score_semantico"], reverse=True)
     scored = scored[:15]
 
-    await publish_event(
-        eid,
-        "node_progress",
-        "match_rerank",
-        f"Top {len(scored)} por similaridade semantica, aplicando re-rank LLM...",
-    )
-
     threshold = estado.get("threshold_score", 0.6)
-
-    from app.agents.inlinks.reranker import rerank_candidatos
-
     pilar_resultado = estado.get("pilar_resultado", {})
-    reranked = await rerank_candidatos(
-        pilar_resultado.get("titulo", ""),
-        pilar_resultado.get("conteudo_md", "")[:2000],
-        estado.get("pilar_metadados", {}),
-        scored,
-        estado["usuario_id"],
-    )
+
+    if settings.inlinks_reranker_ativo:
+        # Caminho padrão (reranker ativo): ordena por LLM e gera score_contexto.
+        await publish_event(
+            eid, "node_progress", "match_rerank",
+            f"Top {len(scored)} por similaridade semantica, aplicando re-rank LLM...",
+        )
+        from app.agents.inlinks.reranker import rerank_candidatos
+
+        reranked = await rerank_candidatos(
+            pilar_resultado.get("titulo", ""),
+            pilar_resultado.get("conteudo_md", "")[:2000],
+            estado.get("pilar_metadados", {}),
+            scored,
+            estado["usuario_id"],
+        )
+    else:
+        # SPEC_Inlinks_Remover_Reranker_Redundante: cosine ordena, juiz decide.
+        # score_total = score_contexto = score_semantico (sem chamada LLM de rerank).
+        await publish_event(
+            eid, "node_progress", "match_rerank",
+            f"Top {len(scored)} por similaridade semantica (reranker desligado).",
+        )
+        reranked = [
+            {**c, "score_total": c["score_semantico"], "score_contexto": c["score_semantico"]}
+            for c in scored
+        ]
 
     # O reranker ORDENA e gera sinal (score_total/score_contexto); só o piso de
     # ruído corta candidatas — a decisão fina é do LLM juiz no inseridor.
@@ -626,10 +637,23 @@ async def node_inserir(estado: EstadoInlinks) -> dict[str, Any]:
 
 async def node_revisar(estado: EstadoInlinks) -> dict[str, Any]:
     from app.agents.inlinks.injector import remover_links_rejeitados
-    from app.agents.inlinks.revisor import revisar_inlinks
     from app.core.workflow_events import publish_event
 
     eid = estado["execucao_id"]
+
+    if not settings.inlinks_revisor_ativo:
+        # SPEC_Inlinks_Remover_Reranker_Redundante: kill-switch do revisor-lint.
+        # Curto-circuita sem chamada LLM — os inlinks aplicados seguem como estão.
+        await publish_event(eid, "node_complete", "revisar", "Revisão desativada (kill-switch)")
+        inlinks = estado.get("inlinks_aplicados", [])
+        return _sanitize({
+            "inlinks_revisados": inlinks,
+            "pilar_modificado": estado.get("pilar_modificado", ""),
+            "funil": {**estado.get("funil", {}), "n_rejeitados_revisor": 0},
+        })
+
+    from app.agents.inlinks.revisor import revisar_inlinks
+
     await publish_event(eid, "node_start", "revisar", "Revisando inlinks aplicados...")
     await _gravar_etapa(eid, "revisar")
 

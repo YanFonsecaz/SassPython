@@ -505,6 +505,9 @@ async def node_enriquecer(estado: EstadoDistribuir) -> dict[str, Any]:
                     )
                     .order_by(ConteudoVetor.chunk_index)
                 )
+                # Escopo multi-tenant quando há cliente vinculado (mesmo padrão do Receber).
+                if cliente_id_val is not None:
+                    stmt = stmt.where(ConteudoVetor.cliente_id == cliente_id_val)
                 result = await session.execute(stmt)
                 existing_rows = result.scalars().all()
 
@@ -715,44 +718,88 @@ async def node_filtrar_similaridade(estado: EstadoDistribuir) -> dict[str, Any]:
             }
 
     alvo_modo = estado.get("alvo_modo", "pleno")
+    legado = settings.inlinks_pisos_legado_distribuir
+    palavras_alvo: list[str] = []
+
     if alvo_modo == "slug_only":
-        threshold_efetivo = max(threshold * _FATOR_SLUG_ONLY, _PISO_SLUG_ONLY)
         palavras_alvo = estado.get("alvo_resultado", {}).get("pseudo_palavras_chave", [])
-        logger.info(
-            "%s slug_only: threshold %.2f -> efetivo %.2f (palavras_alvo=%s)",
-            _log_prefix(eid),
-            threshold,
-            threshold_efetivo,
-            ", ".join(palavras_alvo[:5]),
-        )
-    else:
-        threshold_efetivo = threshold
-        palavras_alvo = []
 
     viaveis: list[dict[str, Any]] = []
     descartadas: list[dict[str, Any]] = []
 
-    for c in best_by_url.values():
-        score = c["score_semantico"]
-        if score >= threshold_efetivo:
-            c["motivo_viavel"] = f"cosine {score:.2f} >= threshold {threshold_efetivo:.2f}"
-            viaveis.append(c)
-        elif alvo_modo == "slug_only" and score >= _PISO_SLUG_ONLY:
-            if _candidata_tem_keyword_alvo(c.get("conteudo_md", ""), palavras_alvo):
-                c["motivo_viavel"] = (
-                    f"cosine {score:.2f} baixo, mas candidata contem palavras do slug literalmente"
-                )
-                logger.info(
-                    "%s keyword override: %s (cosine=%.2f)",
-                    _log_prefix(eid),
-                    c.get("url", ""),
-                    score,
-                )
+    if legado:
+        # ── Caminho legado: threshold por cosine + slug_only + keyword override ──
+        if alvo_modo == "slug_only":
+            threshold_efetivo = max(threshold * _FATOR_SLUG_ONLY, _PISO_SLUG_ONLY)
+            logger.info(
+                "%s slug_only (legado): threshold %.2f -> efetivo %.2f (palavras_alvo=%s)",
+                _log_prefix(eid), threshold, threshold_efetivo,
+                ", ".join(palavras_alvo[:5]),
+            )
+        else:
+            threshold_efetivo = threshold
+
+        for c in best_by_url.values():
+            score = c["score_semantico"]
+            if score >= threshold_efetivo:
+                c["motivo_viavel"] = f"cosine {score:.2f} >= threshold {threshold_efetivo:.2f}"
                 viaveis.append(c)
+            elif alvo_modo == "slug_only" and score >= _PISO_SLUG_ONLY:
+                if _candidata_tem_keyword_alvo(c.get("conteudo_md", ""), palavras_alvo):
+                    c["motivo_viavel"] = (
+                        f"cosine {score:.2f} baixo, mas candidata contem palavras do slug literalmente"
+                    )
+                    logger.info(
+                        "%s keyword override (legado): %s (cosine=%.2f)",
+                        _log_prefix(eid), c.get("url", ""), score,
+                    )
+                    viaveis.append(c)
+                else:
+                    descartadas.append(c)
             else:
                 descartadas.append(c)
+        threshold_info = threshold_efetivo
+    else:
+        # ── Caminho novo (SPEC_Distribuir_Viabilidade_Pelo_Juiz): piso de ruído +
+        #    keyword vira sinal + teto de julgamentos top-N. O juiz decide. ────────
+        from app.agents.inlinks.constantes import PISO_RUIDO_SEMANTICO
+
+        todas_ordenadas = sorted(best_by_url.values(), key=lambda x: x["score_semantico"], reverse=True)
+        acima_piso: list[dict[str, Any]] = []
+        for c in todas_ordenadas:
+            score = c["score_semantico"]
+            if score < PISO_RUIDO_SEMANTICO:
+                c["motivo_descarte"] = (
+                    f"tema claramente distinto (cos={score:.2f} < piso {PISO_RUIDO_SEMANTICO})"
+                )
+                descartadas.append(c)
+                continue
+            # keyword override vira SINAL registrado (não promove mais sozinho).
+            c["sinal_keyword_alvo"] = bool(
+                palavras_alvo and _candidata_tem_keyword_alvo(c.get("conteudo_md", ""), palavras_alvo)
+            )
+            c["motivo_viavel"] = (
+                f"cosine {score:.2f} >= piso {PISO_RUIDO_SEMANTICO}"
+                + (" (contém keyword do slug)" if c["sinal_keyword_alvo"] else "")
+            )
+            acima_piso.append(c)
+
+        max_julg = settings.distribuir_max_julgamentos
+        if len(acima_piso) > max_julg:
+            viaveis = acima_piso[:max_julg]
+            for c in acima_piso[max_julg:]:
+                c["motivo_descarte"] = (
+                    f"fora do top-{max_julg} por similaridade (cos={c['score_semantico']:.2f}) — "
+                    f"aumente a prioridade dividindo em execuções menores"
+                )
+                descartadas.append(c)
+            logger.info(
+                "%s teto de julgamentos: %d acima do piso, top-%d ao juiz, %d fora do corte",
+                _log_prefix(eid), len(acima_piso), max_julg, len(acima_piso) - max_julg,
+            )
         else:
-            descartadas.append(c)
+            viaveis = acima_piso
+        threshold_info = PISO_RUIDO_SEMANTICO
 
     viaveis.sort(key=lambda x: x["score_semantico"], reverse=True)
     descartadas.sort(key=lambda x: x["score_semantico"], reverse=True)
@@ -773,7 +820,7 @@ async def node_filtrar_similaridade(estado: EstadoDistribuir) -> dict[str, Any]:
             "n_viaveis": n_viaveis,
             "n_descartadas_similaridade": n_descartadas,
             "n_falhas_extracao": n_falhas,
-            "threshold_informativo": threshold_efetivo,
+            "threshold_informativo": threshold_info,
         },
     })
 
@@ -859,6 +906,7 @@ async def node_inserir_em_cada(estado: EstadoDistribuir) -> dict[str, Any]:
             "score_semantico": score_real,
             "score_contexto": score_real,
             "score_total": score_real,
+            "sinal_keyword_alvo": candidata.get("sinal_keyword_alvo", False),
         }
 
         async with semaforo:

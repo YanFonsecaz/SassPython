@@ -6,6 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { buttonVariants } from "@/components/ui/button";
 import { FormularioCliente } from "@/components/clientes/formulario-cliente";
+import { CardIndiceSite } from "@/components/clientes/card-indice-site";
 import { api, mensagemErroAmigavel } from "@/lib/api";
 import type { Cliente } from "@/types";
 
@@ -92,6 +93,8 @@ export function ClienteDetalheConteudo() {
           toast.success("Alteracoes salvas");
         }}
       />
+
+      <CardIndiceSite clienteId={id} />
     </div>
   );
 }

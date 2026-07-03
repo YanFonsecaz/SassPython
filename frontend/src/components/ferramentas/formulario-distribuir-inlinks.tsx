@@ -20,6 +20,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { DescobertaCandidatas } from "@/components/ferramentas/descoberta-candidatas";
 import type {
   DistribuirInlinksRequest,
   ExecucaoCriada,
@@ -419,6 +420,16 @@ export function FormularioDistribuirInlinks() {
                 </p>
               </div>
             )}
+
+            <DescobertaCandidatas
+              modo="distribuir"
+              urlConsulta={urlAlvo}
+              urlsJaPresentes={candidatasUrls}
+              onAdicionar={(urls) => {
+                setCandidatasUrls((prev) => [...prev, ...urls]);
+                setErro("");
+              }}
+            />
 
             {candidatasUrls.length > 0 && (
               <div className="space-y-2">

@@ -119,6 +119,52 @@ async def job_limpar_cache():
             logger.error("Erro na limpeza de cache: %s", e)
 
 
+async def job_limpar_embeddings_cache():
+    """SPEC_Inlinks_Cache_Duravel_Embeddings: limpeza semanal por uso da L2.
+
+    Remove linhas não usadas há mais que embeddings_cache_ttl_dias e, se a
+    tabela exceder embeddings_cache_max_linhas, apaga as mais antigas por
+    usado_em até voltar ao teto.
+    """
+    logger.info("Iniciando limpeza do embeddings_cache (L2)")
+    async with async_session_factory() as session:
+        try:
+            from sqlalchemy import text
+
+            from app.config import settings
+
+            # 1) TTL por uso.
+            await session.execute(
+                text(
+                    "DELETE FROM embeddings_cache "
+                    "WHERE usado_em < NOW() - make_interval(days => :dias)"
+                ),
+                {"dias": settings.embeddings_cache_ttl_dias},
+            )
+
+            # 2) Teto de linhas — remove as mais antigas (por usado_em) acima do teto.
+            await session.execute(
+                text(
+                    """
+                    DELETE FROM embeddings_cache
+                    WHERE chave IN (
+                        SELECT chave FROM embeddings_cache
+                        ORDER BY usado_em ASC
+                        OFFSET :max_linhas
+                    )
+                    """
+                ),
+                {"max_linhas": settings.embeddings_cache_max_linhas},
+            )
+
+            await session.commit()
+            logger.info("embeddings_cache limpo")
+        except Exception as e:
+            await session.rollback()
+            # Tabela pode não existir ainda (pré-migration) — loga em debug, não é erro fatal.
+            logger.debug("Limpeza do embeddings_cache pulada: %s", e)
+
+
 def criar_scheduler() -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler()
 
@@ -127,5 +173,13 @@ def criar_scheduler() -> AsyncIOScheduler:
     scheduler.add_job(job_cancelar_abandonadas, "cron", day_of_week="mon", hour=2, minute=0, id="cancelar_abandonadas")
     scheduler.add_job(job_limpar_versoes, "cron", hour=4, minute=0, id="limpar_versoes")
     scheduler.add_job(job_limpar_cache, "cron", hour=5, minute=0, id="limpar_cache")
+    scheduler.add_job(
+        job_limpar_embeddings_cache,
+        "cron",
+        day_of_week="mon",
+        hour=6,
+        minute=0,
+        id="limpar_embeddings_cache",
+    )
 
     return scheduler

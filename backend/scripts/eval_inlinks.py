@@ -153,6 +153,8 @@ async def rodar_caso_receber(caso: dict[str, Any], usuario_id: str) -> list[dict
             "anchor": d.get("anchor_text", ""),
             "motivo": d.get("motivo_rejeicao") or d.get("motivo_sugestao") or d.get("motivo_contexto") or "",
             "alucinou": alucinou,
+            "confianca": d.get("confianca"),
+            "categoria_match": d.get("categoria_match"),
         })
     for c in cortadas:
         itens.append({
@@ -208,6 +210,8 @@ async def rodar_caso_distribuir(caso: dict[str, Any], usuario_id: str) -> list[d
             "url": c["url"], "status": status, "anchor": il.anchor_text,
             "motivo": il.motivo_rejeicao or il.motivo_sugestao or il.motivo_contexto or "",
             "alucinou": alucinou,
+            "confianca": il.confianca,
+            "categoria_match": il.categoria_match,
         })
     return itens
 
@@ -243,6 +247,38 @@ def avaliar(caso: dict[str, Any], itens: list[dict[str, Any]]) -> dict[str, Any]
     return resultado
 
 
+def _imprimir_distribuicao_confianca(itens: list[dict[str, Any]]) -> None:
+    """Histograma de confiança por status — calibra os thresholds das badges."""
+    buckets = {"alta (≥0.85)": 0, "boa (0.70-0.85)": 0, "baixa (<0.70)": 0, "sem confiança": 0}
+    por_status: dict[str, dict[str, int]] = {}
+    for it in itens:
+        c = it.get("confianca")
+        if it.get("status") != "aplicado":
+            continue
+        chave = (
+            "alta (≥0.85)" if isinstance(c, (int, float)) and c >= 0.85
+            else "boa (0.70-0.85)" if isinstance(c, (int, float)) and c >= 0.70
+            else "baixa (<0.70)" if isinstance(c, (int, float))
+            else "sem confiança"
+        )
+        buckets[chave] += 1
+        cat = it.get("categoria_match") or "—"
+        por_status.setdefault(cat, {}).setdefault(chave, 0)
+        por_status[cat][chave] += 1
+    total = sum(buckets.values())
+    if not total:
+        return
+    print("\n=== DISTRIBUIÇÃO DE CONFIANÇA (itens aplicados) ===")
+    print(f"  total aplicados: {total}")
+    for chave, n in buckets.items():
+        pct = (n / total * 100) if total else 0
+        print(f"  {chave:<18}: {n:>3} ({pct:5.1f}%)")
+    if por_status:
+        print("  por categoria_match:")
+        for cat, dist in sorted(por_status.items()):
+            print(f"    {cat}: {dist}")
+
+
 async def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--caso", help="Nome de um caso específico (sem .json)")
@@ -261,6 +297,7 @@ async def main() -> int:
 
     usuario_id = "eval-inlinks"
     agregado = {"deve_ok": 0, "deve_total": 0, "nao_violado": 0, "alucinacoes": 0, "sem_motivo": 0}
+    todos_itens: list[dict[str, Any]] = []
 
     for f in arquivos:
         caso = json.loads(f.read_text())
@@ -269,6 +306,7 @@ async def main() -> int:
             itens = await rodar_caso_receber(caso, usuario_id)
         else:
             itens = await rodar_caso_distribuir(caso, usuario_id)
+        todos_itens.extend(itens)
         r = avaliar(caso, itens)
         agregado["deve_ok"] += r["deve_aplicar_ok"]
         agregado["deve_total"] += r["deve_aplicar_total"]
@@ -282,6 +320,10 @@ async def main() -> int:
                 print(f"       âncora: “{d['anchor']}”")
             if d["motivo"]:
                 print(f"       motivo: {d['motivo']}")
+
+    # Distribuição de confiança por categoria de badge — calibra os thresholds
+    # (0.85 / 0.70) da SPEC_Inlinks_Badges_Pela_Decisao_Do_Juiz.
+    _imprimir_distribuicao_confianca(todos_itens)
 
     recall = (agregado["deve_ok"] / agregado["deve_total"]) if agregado["deve_total"] else 1.0
     print("\n=== GATE DE MERGE ===")

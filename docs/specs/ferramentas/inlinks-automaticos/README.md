@@ -45,6 +45,15 @@ extrair_candidatos → enriquecer → match_rerank → inserir → revisar → f
 
 ## Specs
 
+### Descoberta + limpeza da era do cosine (2026-07)
+| Spec | Conteúdo | Estado |
+|---|---|---|
+| [SPEC_Inlinks_Descoberta_Automatica_Candidatas](SPEC_Inlinks_Descoberta_Automatica_Candidatas.md) | Indexar o site do cliente (sitemap → pgvector, migration `0023`) e sugerir candidatas nos 2 formulários | ✅ |
+| [SPEC_Inlinks_Badges_Pela_Decisao_Do_Juiz](SPEC_Inlinks_Badges_Pela_Decisao_Do_Juiz.md) | Badges "Conexão forte/sólida" derivadas da confiança do juiz, não de cortes de cosine | ✅ |
+| [SPEC_Inlinks_Cache_Duravel_Embeddings](SPEC_Inlinks_Cache_Duravel_Embeddings.md) | L2 em Postgres (migration `0022`) atrás do Redis de 25MB (evicção torna o L1 efêmero em prod) | ✅ |
+| [SPEC_Distribuir_Viabilidade_Pelo_Juiz](../inlinks-reversos/SPEC_Distribuir_Viabilidade_Pelo_Juiz.md) | Remove o último portão decisório de cosine (upstream do Distribuir); gate do eval PASSOU | ✅ |
+| [SPEC_Inlinks_Remover_Reranker_Redundante](SPEC_Inlinks_Remover_Reranker_Redundante.md) | Kill-switches prontos (default **ativo**); flip/remoção só após ~2 semanas de funil em produção | ⚙️ gatilho |
+
 ### Julgamento único + verdade na UX (2026-07 — arquitetura vigente)
 | Spec | Conteúdo |
 |---|---|

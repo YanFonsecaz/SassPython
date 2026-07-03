@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from app.agents.base import BaseAgent
 from app.agents.inlinks.injector import (
     _categoria_match,
+    _categoria_match_por_decisao,
     _esta_em_cabecalho,
     _extrair_trecho_contexto,
     _strip_accents,
@@ -316,6 +317,7 @@ async def inserir_inlinks(
         min_distance_words=min_dist,
         ancoras_preferidas=ancoras_preferidas,
         finalizar_colisoes=False,
+        aplicar_pisos_legado=aplicar_pisos_legado,
     )
 
     if colisoes:
@@ -374,6 +376,7 @@ async def inserir_inlinks(
             min_distance_words=min_dist,
             ancoras_preferidas=ancoras_preferidas,
             finalizar_colisoes=True,
+            aplicar_pisos_legado=aplicar_pisos_legado,
         )
 
     return texto, inseridos
@@ -722,6 +725,16 @@ do nicho comercial (nao termos vagos como "tema" ou "papel").
 """
 
     nota_block = f"\n{nota_densidade}\n" if nota_densidade else ""
+
+    # Sinal (não decisão): a candidata contém literalmente termos do slug do alvo.
+    # Quem decide é o juiz; este bloco apenas dá a informação adicional.
+    keyword_block = ""
+    if candidato.get("sinal_keyword_alvo"):
+        keyword_block = """
+SINAL: esta candidata contém LITERALMENTE termos do slug da URL destino. É um
+indício forte (mas não definitivo) de que o tema casa — confirme pela leitura.
+"""
+
     n_paragrafos = len(contexto)
 
     return f"""Você é um editor sênior de SEO. Você decide, SOZINHO e UMA ÚNICA VEZ, se este artigo
@@ -734,7 +747,7 @@ URL DESTINO:
 - Palavras-chave do destino: {kws_str}
 - Resumo: {candidato.get('resumo', '')[:300]}
 - Categoria: {candidato.get('categoria', '')}
-{objetivo_block}{ancoras_block}{nota_block}
+{objetivo_block}{ancoras_block}{keyword_block}{nota_block}
 PARÁGRAFOS CANDIDATOS DO ARTIGO:
 {blocos}
 
@@ -853,6 +866,7 @@ def _aplicar_insercoes(
     min_distance_words: int = _MIN_DISTANCE_WORDS_BASE,
     ancoras_preferidas: list[str] | None = None,
     finalizar_colisoes: bool = True,
+    aplicar_pisos_legado: bool = False,
 ) -> tuple[str, list[InlinkInserido], list[dict[str, Any]]]:
     """Aplica as inserções válidas e retorna (texto, itens, colisões).
 
@@ -1045,7 +1059,11 @@ def _aplicar_insercoes(
             trecho_contexto=trecho_ctx,
             titulo_destino=c.get("titulo", "") or None,
             motivo_contexto=v.get("justificativa") or c.get("motivo_contexto", "") or None,
-            categoria_match=_categoria_match(
+            categoria_match=_categoria_match_por_decisao(
+                "aplicado", v.get("confianca"), cta=bool(v.get("_modo_cta"))
+            )
+            if not aplicar_pisos_legado
+            else _categoria_match(
                 c.get("score_semantico", 0), c.get("score_contexto", 0), c.get("score_total", 0)
             ),
             trecho_original=v["trecho_original"],
@@ -1076,7 +1094,9 @@ def _aplicar_insercoes(
             titulo_destino=c.get("titulo", "") or None,
             motivo_contexto=c.get("motivo_contexto", "") or None,
             motivo_sugestao=s.get("motivo_sugestao"),
-            categoria_match=_categoria_match(
+            categoria_match=_categoria_match_por_decisao("sugestao_manual", s.get("confianca"))
+            if not aplicar_pisos_legado
+            else _categoria_match(
                 c.get("score_semantico", 0), c.get("score_contexto", 0), c.get("score_total", 0)
             ),
             trecho_original=s.get("trecho_original"),
@@ -1099,7 +1119,9 @@ def _aplicar_insercoes(
             status="rejeitado",
             motivo_rejeicao=d.get("motivo_rejeicao") or "Sem relação temática real com o destino.",
             titulo_destino=c.get("titulo", "") or None,
-            categoria_match=_categoria_match(
+            categoria_match=_categoria_match_por_decisao("rejeitado", d.get("confianca"))
+            if not aplicar_pisos_legado
+            else _categoria_match(
                 c.get("score_semantico", 0), c.get("score_contexto", 0), c.get("score_total", 0)
             ),
             confianca=d.get("confianca"),

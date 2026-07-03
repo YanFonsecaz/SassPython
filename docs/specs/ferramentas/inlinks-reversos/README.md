@@ -46,8 +46,11 @@ revisor, formatador, cache de vetores (`conteudo_vetor`). **Não cria tabelas no
 
 ## Specs
 
+### Implementadas
 | Spec | Conteúdo |
 |---|---|
+| [SPEC_Distribuir_Viabilidade_Pelo_Juiz](SPEC_Distribuir_Viabilidade_Pelo_Juiz.md) | ✅ 2026-07: threshold de cosine no upstream vira piso de ruído 0.25; keyword override vira sinal; juiz decide (teto `distribuir_max_julgamentos=30`; rollback `inlinks_pisos_legado_distribuir=True`) |
+| [SPEC_Inlinks_Descoberta_Automatica_Candidatas](../inlinks-automaticos/SPEC_Inlinks_Descoberta_Automatica_Candidatas.md) | ✅ 2026-07: índice do site por cliente + "Descobrir candidatas do site" também neste formulário |
 | [SPEC_Ferramenta_Distribuir_Inlinks](SPEC_Ferramenta_Distribuir_Inlinks.md) | Spec-mãe: visão, reuso, modelo de dados, fluxo |
 | [SPEC_Distribuir_Inlinks_Prioridade_Estrategica](SPEC_Distribuir_Inlinks_Prioridade_Estrategica.md) | Priorização estratégica das candidatas |
 | [SPEC_Distribuir_Inlinks_Ancoras_Preferidas](SPEC_Distribuir_Inlinks_Ancoras_Preferidas.md) | Âncoras preferidas |

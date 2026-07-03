@@ -12,22 +12,23 @@ const CATEGORIA_INFO: Record<
 > = {
   alta_similaridade: {
     label: "Conexão forte",
-    descricao: "Tema do destino bate fortemente com o trecho do pilar — link confiável",
+    descricao: "A IA aplicou com alta confiança: o tema do destino casa direto com o trecho.",
     classe: "bg-success/10 text-success border-success/30",
   },
   boa_similaridade: {
     label: "Conexão sólida",
-    descricao: "Conexão temática consistente entre trecho e destino",
+    descricao: "A IA aplicou o link com confiança: conexão temática consistente entre trecho e destino.",
     classe: "bg-brand/15 text-brand-dark border-brand/30",
   },
   complemento_contextual: {
-    label: "Conexão indireta · revise",
-    descricao: "Destino se conecta por contexto, não por tema direto. Confirme se o leitor vai querer clicar.",
+    label: "Aplicado com ressalva · revise",
+    descricao:
+      "A IA aplicou o link, mas com confiança menor. Confirme se o leitor vai querer clicar.",
     classe: "bg-warning/15 text-warning border-warning/40",
   },
   similaridade_media: {
     label: "Conexão fraca · revise",
-    descricao: "Relação tênue entre trecho e destino. Considere remover ou trocar a âncora.",
+    descricao: "Relação fraca entre trecho e destino. Considere trocar a âncora ou remover.",
     classe: "bg-muted text-muted-foreground border-border",
   },
 };
@@ -171,9 +172,19 @@ export function InlinksResultado({ inlinks, totalCandidatas, motivoGeral }: Prop
                   <p className="font-mono font-semibold text-foreground">
                     {(il.score_total * 100).toFixed(0)}%
                   </p>
-                  <p className="text-muted-foreground">
-                    sem {(il.score_semantico * 100).toFixed(0)} · ctx{" "}
-                    {(il.score_contexto * 100).toFixed(0)}
+                  <p
+                    className="text-muted-foreground"
+                    title="Similaridade semântica (cosseno) — sinal auxiliar, não a decisão final"
+                  >
+                    sem {(il.score_semantico * 100).toFixed(0)}
+                    {/* "ctx" só aparece quando o reranker produziu um contexto distinto
+                        do semântico (execuções antigas ou com reranker ativo). */}
+                    {il.score_contexto !== il.score_semantico && (
+                      <>
+                        {" "}
+                        · ctx {(il.score_contexto * 100).toFixed(0)}
+                      </>
+                    )}
                   </p>
                   {typeof il.confianca === "number" && (
                     <p className="text-muted-foreground/70" title="Confiança da IA nesta decisão">

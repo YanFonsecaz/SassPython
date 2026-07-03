@@ -92,6 +92,16 @@ class Settings(BaseSettings):
     inlinks_formatador_temperature: float = 0.0
     inlinks_formatador_ativo: bool = True
     inlinks_pisos_legado_distribuir: bool = False
+    # SPEC_Inlinks_Remover_Reranker_Redundante — kill-switches com GATE:
+    # defaults True (comportamento atual). Só virar False em produção APÓS ~2
+    # semanas de funil confirmando que reranker/revisor não mudam resultados.
+    # Ver SPEC_Inlinks_Remover_Reranker_Redundante.md (§Gatilho).
+    inlinks_reranker_ativo: bool = True
+    inlinks_revisor_ativo: bool = True
+    # SPEC_Distribuir_Viabilidade_Pelo_Juiz: sem o filtro de threshold no upstream,
+    # o juiz poderia receber todas as candidatas acima do piso — este teto limita
+    # o pior caso de custo de LLM (excedentes viram sem_match "fora do top-N").
+    distribuir_max_julgamentos: int = 30
 
     cwv_analisador_llm_model: str = "gpt-4o-mini"
     cwv_analisador_llm_temperature: float = 0.1
@@ -102,6 +112,10 @@ class Settings(BaseSettings):
 
     embedding_model: str = "embedding-3"
     embedding_dimensions: int = 1024
+    # Cache durável de embeddings (SPEC_Inlinks_Cache_Duravel_Embeddings):
+    # L2 em Postgres atrás do Redis. Limpeza semanal por uso.
+    embeddings_cache_ttl_dias: int = 90
+    embeddings_cache_max_linhas: int = 50000
 
     serpapi_key: str = ""
     api_context7_key: str = ""
@@ -135,6 +149,10 @@ class Settings(BaseSettings):
     hibp_fail_mode: str = "open"  # "open" | "closed" | "queue"
 
     workflow_distribuir_inlinks_timeout: int = 1800
+
+    # SPEC_Inlinks_Descoberta_Automatica_Candidatas: timeout do job de indexação
+    # do site do cliente (sitemap pode ter centenas de páginas).
+    indexar_workflow_timeout: int = 1800
 
     cors_origins: list[str] = ["http://localhost:3000"]
 

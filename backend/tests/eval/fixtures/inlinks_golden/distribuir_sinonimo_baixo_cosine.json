@@ -1,0 +1,27 @@
+{
+  "nome": "distribuir_sinonimo_baixo_cosine",
+  "ferramenta": "distribuir",
+  "descricao": "SPEC_Distribuir_Viabilidade_Pelo_Juiz caso (a): no fluxo Distribuir, candidata cuja relação com o alvo é por SINÔNIMO de domínio (cosine baixo, ~0.26) DEVE aplicar o link. Espelha o caso dropshipping do Receber — antes do piso de ruído, o threshold 0.6 matava este caso legítimo sem o juiz ver. Agora o piso 0.25 deixa passar e o juiz decide.",
+  "alvo": {
+    "url": "https://loja.exemplo.com.br/categoria/dropshipping/",
+    "titulo": "Dropshipping: guia da categoria",
+    "conteudo_md": "# Dropshipping: guia da categoria\n\nDropshipping é o modelo de e-commerce em que você anuncia produtos sem manter estoque: o pedido é repassado ao fornecedor, que envia direto ao cliente final. Esta categoria reúne fornecedores, ferramentas e guias para quem quer operar dropshipping com margem saudável.",
+    "resumo": "Categoria de dropshipping: modelo de e-commerce sem estoque.",
+    "palavras_chave": ["dropshipping", "revenda sem estoque", "e-commerce sem estoque"]
+  },
+  "candidatas": [
+    {
+      "url": "https://blog.exemplo.com.br/revenda-sem-estoque/",
+      "titulo": "Revenda sem estoque: como funciona",
+      "conteudo_md": "# Revenda sem estoque: como funciona\n\nA revenda sem estoque atrai quem quer vender online sem comprometer capital em produtos. Você cadastra o item na sua loja, o pedido chega e você repassa para o fornecedor, que despacha ao comprador.\n\nA diferença entre o preço anunciado e o pago ao fornecedor é a sua margem. Como você não toca na mercadoria, o risco financeiro fica baixo — mas o controle sobre prazo e qualidade também.\n\nPara dar certo, escolha fornecedores confiáveis e seja transparente sobre o prazo de entrega na ficha do produto. Clientes toleram espera, não toleram surpresa.\n\nEste formato é ideal para quem está começando e quer validar um nicho antes de investir em estoque próprio."
+    }
+  ],
+  "params": {
+    "max_inlinks_por_candidata": 1,
+    "permitir_cta_fallback": true
+  },
+  "rotulos": {
+    "https://blog.exemplo.com.br/revenda-sem-estoque/": "deve_aplicar"
+  },
+  "notas_rotulos": "Sinônimo de domínio: 'revenda sem estoque' = dropshipping. Cosine real entre os textos é baixo (~0.26) — abaixo do threshold 0.6 antigo, mas acima do piso de ruído 0.25. O juiz deve aplicar porque a relação semântica é direta (são a mesma coisa). Caso análogo ao dropshipping_sinonimo, mas no fluxo Distribuir."
+}

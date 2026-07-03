@@ -7,14 +7,15 @@ from app.models.cwv_analise import CwvAnalise
 from app.models.cwv_problema import CwvProblema
 from app.models.execucao_ferramenta import ExecucaoFerramenta
 from app.models.historico_senha import HistoricoSenha
+from app.models.indice_site import IndiceSite
 from app.models.mfa_dispositivo import MfaDispositivo
 from app.models.pacote_credito import PacoteCredito
+from app.models.parecer import Parecer
 from app.models.pesquisa_cache import PesquisaCache
 from app.models.plano import Plano
 from app.models.reset_senha_token import ResetSenhaToken
 from app.models.sessao import Sessao
 from app.models.transacao_credito import TransacaoCredito
-from app.models.parecer import Parecer
 from app.models.usuario import Usuario
 from app.models.versao_artigo import VersaoArtigo
 
@@ -28,6 +29,7 @@ __all__ = [
     "CwvProblema",
     "ExecucaoFerramenta",
     "HistoricoSenha",
+    "IndiceSite",
     "MfaDispositivo",
     "PacoteCredito",
     "Parecer",

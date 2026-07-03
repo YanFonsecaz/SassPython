@@ -12,6 +12,15 @@ from app.models.versao_artigo import VersaoArtigo
 
 logger = logging.getLogger(__name__)
 
+
+def calcular_custo_indexar_site(n_paginas: int) -> int:
+    """SPEC_Inlinks_Descoberta_Automatica_Candidatas: 10 + 1/25 páginas, teto 40."""
+    import math
+    return min(
+        CUSTO_BASE_INDEXAR + math.ceil(max(0, n_paginas) / TAMANHO_LOTE_INDEXAR) * CUSTO_POR_LOTE_INDEXAR,
+        CUSTO_MAX_INDEXAR,
+    )
+
 CUSTO_BASE = 15
 CUSTO_REVISAO = 3
 CUSTO_IMAGEM = 5
@@ -32,6 +41,15 @@ CUSTO_BASE_PARECER = 10
 CUSTO_POR_IMAGEM_PARECER = 3
 CUSTO_MAX_PARECER = 90
 
+# SPEC_Inlinks_Descoberta_Automatica_Candidatas: indexação do site do cliente.
+# 10 + 1 crédito por lote de 25 páginas processadas, teto 40. A descoberta
+# (consulta ao índice) é grátis — cobra-se só a indexação.
+CUSTO_BASE_INDEXAR = 10
+CUSTO_POR_LOTE_INDEXAR = 1  # 1 crédito por lote de 25 páginas
+TAMANHO_LOTE_INDEXAR = 25
+CUSTO_MAX_INDEXAR = 40
+CUSTO_MIN_INDEXAR = 5  # mínimo cobrado em reindexação incremental com hash novo
+
 
 CUSTOS_TABELA = [
     {"acao": "gerar_artigo_base", "custo_creditos": CUSTO_BASE, "chamadas_llm_estimadas": 5},
@@ -47,6 +65,8 @@ CUSTOS_TABELA = [
     {"acao": "cwv_por_url", "custo_creditos": CUSTO_POR_URL_CWV, "chamadas_llm_estimadas": 0},
     {"acao": "parecer_base", "custo_creditos": CUSTO_BASE_PARECER, "chamadas_llm_estimadas": 1},
     {"acao": "parecer_por_imagem", "custo_creditos": CUSTO_POR_IMAGEM_PARECER, "chamadas_llm_estimadas": 1},
+    {"acao": "indexar_site_base", "custo_creditos": CUSTO_BASE_INDEXAR, "chamadas_llm_estimadas": 0},
+    {"acao": "indexar_site_por_lote", "custo_creditos": CUSTO_POR_LOTE_INDEXAR, "chamadas_llm_estimadas": 0},
 ]
 
 
@@ -243,6 +263,12 @@ def _obter_reserva_estimada(ferramenta: str, execucao: ExecucaoFerramenta) -> in
         return calcular_custo_cwv(n_urls_cwv * 2)
     if ferramenta == "parecer_tecnico":
         return execucao.creditos_cobrados or CUSTO_BASE_PARECER
+    if ferramenta == "indexar_site":
+        # A reserva é feita pelo TETO de páginas no router (o sitemap só é lido
+        # dentro do job) — refund/confirmação precisam usar a MESMA conta.
+        from app.agents.inlinks.constantes import MAX_PAGINAS_SITE
+
+        return calcular_custo_indexar_site(MAX_PAGINAS_SITE)
     return 0
 
 
@@ -440,4 +466,57 @@ async def finalizar_sucesso_distribuir_inlinks(db, execucao_id: str, resultado_j
     execucao.concluida_em = datetime.now(UTC)
     await db.flush()
     logger.info("%s distribuir_inlinks status=concluida creditos=%d", execucao_id[:8], custo)
+    return execucao
+
+
+async def finalizar_sucesso_indexar_site(db, execucao_id: str, resultado_json: dict[str, Any]) -> ExecucaoFerramenta:
+    """Confirma o débito pela indexação: cobra só pelas páginas com hash novo
+    (incremental), mínimo CUSTO_MIN_INDEXAR quando houver trabalho."""
+    from app.services import credito_service
+
+    execucao = await buscar_execucao(db, execucao_id)
+    if not execucao:
+        raise ValueError(f"Execucao {execucao_id} nao encontrada")
+
+    reserva = _obter_reserva_estimada("indexar_site", execucao)
+
+    n_novas = resultado_json.get("n_paginas_novas", 0)
+    if n_novas == 0:
+        # Reindexação sem mudanças — libera reserva, não cobra.
+        await credito_service.liberar_reserva(db, str(execucao.usuario_id), reserva)
+        execucao.status = "concluida"
+        execucao.creditos_cobrados = 0
+        execucao.resultado_json = resultado_json
+        execucao.concluida_em = datetime.now(UTC)
+        await db.flush()
+        logger.info("%s indexar_site status=concluida sem creditos (0 páginas novas)", execucao_id[:8])
+        return execucao
+
+    custo = max(calcular_custo_indexar_site(n_novas), CUSTO_MIN_INDEXAR)
+
+    try:
+        await credito_service.confirmar_debito(
+            db,
+            str(execucao.usuario_id),
+            reservado=reserva,
+            quantidade=custo,
+            descricao=f"Indexar site: {custo} creditos (páginas novas={n_novas})",
+            ferramenta="indexar_site",
+            execucao_id=execucao_id,
+        )
+    except ValueError:
+        await credito_service.liberar_reserva(db, str(execucao.usuario_id), reserva)
+        execucao.status = "falhou"
+        execucao.erro_msg = "Saldo insuficiente"
+        execucao.concluida_em = datetime.now(UTC)
+        await db.flush()
+        return execucao
+
+    execucao.status = "concluida"
+    execucao.creditos_cobrados = custo
+    execucao.resultado_json = resultado_json
+    execucao.concluida_em = datetime.now(UTC)
+    await db.flush()
+    logger.info("%s indexar_site status=concluida creditos=%d (páginas novas=%d)",
+                execucao_id[:8], custo, n_novas)
     return execucao
