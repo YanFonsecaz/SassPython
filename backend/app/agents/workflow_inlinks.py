@@ -24,11 +24,27 @@ def _sanitize(obj: Any) -> Any:
         return [_sanitize(v) for v in obj]
     return obj
 
-_MIN_SEMANTIC_SCORE = 0.40
+# Piso de RUÍDO: corta apenas domínio claramente alheio. A decisão de qualidade
+# é do LLM juiz no inseridor (julgamento único) — o cosine não decide mais.
+# Caso real que motivou o valor: sinônimo legítimo "dropshipping" x "loja virtual"
+# media cosine 0.26 e era morto pelo piso anterior de 0.40.
+_PISO_RUIDO_SEMANTICO = 0.25
 
 
 def _log_prefix(eid: str) -> str:
     return f"[eid={eid[:8]}]"
+
+
+async def _gravar_etapa(execucao_id: str, etapa: str) -> None:
+    """Persiste etapa_atual (a barra de progresso sobrevive a reload de página)."""
+    from app.services import ferramenta_service
+
+    try:
+        async with async_session_factory() as session:
+            await ferramenta_service.atualizar_etapa(session, execucao_id, etapa)
+            await session.commit()
+    except Exception as e:  # telemetria não pode derrubar o workflow
+        logger.debug("Falha ao gravar etapa %s: %s", etapa, e)
 
 
 def _calcular_max_inlinks_dinamico(pilar_md: str, teto_usuario: int) -> int:
@@ -58,6 +74,9 @@ class EstadoInlinks(TypedDict):
     threshold_score: float
     max_inlinks: int
     rel_attr: str
+    ancoras_preferidas: list[str]
+    permitir_cta_fallback: bool
+    objetivo_linkagem: str | None
 
     pilar_resultado: dict[str, Any]
     candidatas_resultados: list[dict[str, Any]]
@@ -74,6 +93,8 @@ class EstadoInlinks(TypedDict):
     inlinks_aplicados: list[dict[str, Any]]
     inlinks_revisados: list[dict[str, Any]]
 
+    funil: dict[str, Any]
+
     resultado_final: dict[str, Any]
 
 
@@ -82,6 +103,7 @@ async def node_validar_e_normalizar(estado: EstadoInlinks) -> dict[str, Any]:
 
     eid = estado["execucao_id"]
     await publish_event(eid, "node_start", "validar_urls", "Validando e normalizando URLs...")
+    await _gravar_etapa(eid, "validar_urls")
 
     urls = estado.get("candidatas_urls", [])
     validas = []
@@ -105,6 +127,7 @@ async def node_extrair_pilar(estado: EstadoInlinks) -> dict[str, Any]:
 
     eid = estado["execucao_id"]
     await publish_event(eid, "node_start", "extrair_pilar", "Extraindo conteudo do pilar...")
+    await _gravar_etapa(eid, "extrair_pilar")
 
     resultado = await extrair_pilar(
         estado.get("pilar_url") or None,
@@ -160,6 +183,7 @@ async def node_extrair_candidatos(estado: EstadoInlinks) -> dict[str, Any]:
     eid = estado["execucao_id"]
     urls = estado.get("candidatas_urls", [])
     await publish_event(eid, "node_start", "extrair_candidatos", f"Extraindo {len(urls)} URLs candidatas...")
+    await _gravar_etapa(eid, "extrair_candidatos")
 
     async def _on_progress(feito: int, total: int, r: ScrapeResult) -> None:
         sufixo = "(cache)" if r.cache_hit else ("falhou" if r.falhou else "ok")
@@ -197,6 +221,13 @@ async def node_extrair_candidatos(estado: EstadoInlinks) -> dict[str, Any]:
         "candidatas_resultados": resultados,
         "n_candidatas_validas": lote.n_sucessos,
         "n_candidatas_falhas": lote.n_falhas,
+        "funil": {
+            **estado.get("funil", {}),
+            "n_solicitadas": len(urls),
+            "n_scrape_ok": lote.n_sucessos,
+            "n_scrape_falhas": lote.n_falhas,
+            "urls_falhas": [r.url for r in lote.resultados if r.falhou][:20],
+        },
     }
 
 
@@ -215,6 +246,7 @@ async def node_enriquecer(estado: EstadoInlinks) -> dict[str, Any]:
     uid = estado["usuario_id"]
     cliente_id_val = estado.get("cliente_id")
     await publish_event(eid, "node_start", "enriquecer", "Consultando banco vetorial...")
+    await _gravar_etapa(eid, "enriquecer")
 
     pilar = estado.get("pilar_resultado", {})
     candidatas = estado.get("candidatas_resultados", [])
@@ -385,7 +417,9 @@ async def node_enriquecer(estado: EstadoInlinks) -> dict[str, Any]:
                         **meta_dict,
                     }
                     if item["is_pilar"]:
-                        if emb:
+                        # `is not None`: embedding recuperado do pgvector é numpy array
+                        # e truthiness de array levanta ValueError.
+                        if emb is not None and len(emb) > 0:
                             pilar_chunk_embeddings.append(emb)
                         if not pilar_metadados:
                             pilar_metadados = meta_dict
@@ -433,6 +467,7 @@ async def node_match_rerank(estado: EstadoInlinks) -> dict[str, Any]:
 
     eid = estado["execucao_id"]
     await publish_event(eid, "node_start", "match_rerank", "Buscando e re-ranqueando candidatos...")
+    await _gravar_etapa(eid, "match_rerank")
 
     pilar_embedding = estado.get("pilar_embedding")
     if pilar_embedding is None:
@@ -490,32 +525,36 @@ async def node_match_rerank(estado: EstadoInlinks) -> dict[str, Any]:
         estado["usuario_id"],
     )
 
+    # O reranker ORDENA e gera sinal (score_total/score_contexto); só o piso de
+    # ruído corta candidatas — a decisão fina é do LLM juiz no inseridor.
+    # `threshold` (parâmetro do usuário) é registrado como informativo.
     filtered = [
         c for c in reranked
-        if c.get("score_total", 0) >= threshold
-        and c.get("score_semantico", 0) >= _MIN_SEMANTIC_SCORE
+        if c.get("score_semantico", 0) >= _PISO_RUIDO_SEMANTICO
     ]
 
-    if not filtered and reranked:
-        fallback_threshold = threshold * 0.85
-        filtered = [
-            c for c in reranked
-            if c.get("score_total", 0) >= fallback_threshold
-            and c.get("score_semantico", 0) >= _MIN_SEMANTIC_SCORE
-        ]
-        logger.info(
-            "%s match_rerank: filtro vazio com threshold %.2f, reaplicou com %.2f → %d resultados",
-            _log_prefix(eid), threshold, fallback_threshold, len(filtered),
-        )
-
     n_descartadas_piso = len(reranked) - len(filtered)
+    if n_descartadas_piso:
+        logger.info(
+            "%s match_rerank: %d candidatas abaixo do piso de ruído %.2f (threshold informativo=%.2f)",
+            _log_prefix(eid), n_descartadas_piso, _PISO_RUIDO_SEMANTICO, threshold,
+        )
     await publish_event(
         eid,
         "node_complete",
         "match_rerank",
-        f"Top {len(filtered)} candidatos acima de {threshold} (piso semântico {_MIN_SEMANTIC_SCORE}; {n_descartadas_piso} descartadas pelo piso)",
+        f"{len(filtered)} candidatos seguem para o julgamento da IA ({n_descartadas_piso} sem relação de tema)",
     )
-    return _sanitize({"candidatos_reranked": filtered})
+    return _sanitize({
+        "candidatos_reranked": filtered,
+        "funil": {
+            **estado.get("funil", {}),
+            "n_pos_cosine_top15": len(scored),
+            "n_pos_piso_ruido": len(filtered),
+            "n_descartadas_piso_ruido": n_descartadas_piso,
+            "threshold_informativo": threshold,
+        },
+    })
 
 
 async def node_inserir(estado: EstadoInlinks) -> dict[str, Any]:
@@ -524,6 +563,7 @@ async def node_inserir(estado: EstadoInlinks) -> dict[str, Any]:
 
     eid = estado["execucao_id"]
     await publish_event(eid, "node_start", "inserir", "Inserindo inlinks no texto...")
+    await _gravar_etapa(eid, "inserir")
 
     pilar_md = estado.get("pilar_resultado", {}).get("conteudo_md", "")
     candidatos = estado.get("candidatos_reranked", [])
@@ -538,7 +578,10 @@ async def node_inserir(estado: EstadoInlinks) -> dict[str, Any]:
     )
 
     pilar_modificado, inseridos = await inserir_inlinks(
-        pilar_md, candidatos, estado["usuario_id"], max_inlinks=max_inlinks
+        pilar_md, candidatos, estado["usuario_id"], max_inlinks=max_inlinks,
+        ancoras_preferidas=estado.get("ancoras_preferidas") or None,
+        permitir_cta_fallback=estado.get("permitir_cta_fallback", False),
+        objetivo_linkagem=estado.get("objetivo_linkagem"),
     )
 
     inlinks_dicts = [
@@ -560,6 +603,9 @@ async def node_inserir(estado: EstadoInlinks) -> dict[str, Any]:
             "trecho_original": ij.trecho_original,
             "conector_antes": ij.conector_antes,
             "conector_depois": ij.conector_depois,
+            "confianca": ij.confianca,
+            "sinal_cos_contexto": ij.sinal_cos_contexto,
+            "sinal_cos_ancora": ij.sinal_cos_ancora,
         }
         for ij in inseridos
     ]
@@ -568,6 +614,13 @@ async def node_inserir(estado: EstadoInlinks) -> dict[str, Any]:
     return _sanitize({
         "pilar_modificado": pilar_modificado,
         "inlinks_aplicados": inlinks_dicts,
+        "funil": {
+            **estado.get("funil", {}),
+            "n_enviadas_juiz": min(len(candidatos), max_inlinks),
+            "n_decisao_aplicar": sum(1 for d in inlinks_dicts if d["status"] == "aplicado"),
+            "n_decisao_sugerir": sum(1 for d in inlinks_dicts if d["status"] == "sugestao_manual"),
+            "n_decisao_descartar": sum(1 for d in inlinks_dicts if d["status"] == "rejeitado"),
+        },
     })
 
 
@@ -578,6 +631,7 @@ async def node_revisar(estado: EstadoInlinks) -> dict[str, Any]:
 
     eid = estado["execucao_id"]
     await publish_event(eid, "node_start", "revisar", "Revisando inlinks aplicados...")
+    await _gravar_etapa(eid, "revisar")
 
     inlinks = estado.get("inlinks_aplicados", [])
     pilar_original = estado.get("pilar_resultado", {}).get("conteudo_md", "")
@@ -591,7 +645,14 @@ async def node_revisar(estado: EstadoInlinks) -> dict[str, Any]:
     n_rejeitados = len(revisados) - n_aplicados
 
     await publish_event(eid, "node_complete", "revisar", f"Revisao: {n_aplicados} aplicados, {n_rejeitados} rejeitados")
-    return _sanitize({"inlinks_revisados": revisados, "pilar_modificado": pilar_saneado})
+    return _sanitize({
+        "inlinks_revisados": revisados,
+        "pilar_modificado": pilar_saneado,
+        "funil": {
+            **estado.get("funil", {}),
+            "n_rejeitados_revisor": sum(1 for r in revisados if r.get("status") == "rejeitado_revisor"),
+        },
+    })
 
 
 async def node_formatar(estado: EstadoInlinks) -> dict[str, Any]:
@@ -599,7 +660,13 @@ async def node_formatar(estado: EstadoInlinks) -> dict[str, Any]:
     from app.core.workflow_events import publish_event
 
     eid = estado["execucao_id"]
+
+    if not settings.inlinks_formatador_ativo:
+        await publish_event(eid, "node_complete", "formatar", "Formatação desativada (kill-switch)")
+        return {}
+
     await publish_event(eid, "node_start", "formatar", "Formatando texto final...")
+    await _gravar_etapa(eid, "formatar")
 
     pilar_mod = estado.get("pilar_modificado", "")
     pilar_formatado = await formatar_pilar(pilar_mod, estado["usuario_id"])
@@ -620,8 +687,16 @@ async def node_persistir(estado: EstadoInlinks) -> dict[str, Any]:
 
     eid = estado["execucao_id"]
     await publish_event(eid, "node_start", "persistir", "Persistindo resultados...")
+    await _gravar_etapa(eid, "persistir")
 
     inlinks = estado.get("inlinks_revisados", [])
+
+    # Garantia: nenhum item não-aplicado sem motivo legível.
+    for il in inlinks:
+        if il.get("status") != "aplicado" and not (
+            il.get("motivo_rejeicao") or il.get("motivo_sugestao")
+        ):
+            il["motivo_sugestao"] = "Sem motivo registrado — revise manualmente."
     pilar_modificado = estado.get("pilar_modificado", "")
     pilar_original = estado.get("pilar_resultado", {}).get("conteudo_md", "")
     n_validas = estado.get("n_candidatas_validas", 0)
@@ -697,6 +772,14 @@ async def node_persistir(estado: EstadoInlinks) -> dict[str, Any]:
 
     top_scores = sorted([float(il.get("score_total", 0)) for il in inlinks], reverse=True)
 
+    motivos_agregados: dict[str, int] = {}
+    for il in inlinks:
+        if il.get("status") == "aplicado":
+            continue
+        m = (il.get("motivo_rejeicao") or il.get("motivo_sugestao") or "").strip()
+        if m:
+            motivos_agregados[m[:120]] = motivos_agregados.get(m[:120], 0) + 1
+
     resultado_final = {
         "n_candidatas_validas": n_validas,
         "n_aplicadas": n_aplicados,
@@ -708,6 +791,11 @@ async def node_persistir(estado: EstadoInlinks) -> dict[str, Any]:
         "pilar_original": pilar_original,
         "imagem_url": None,
         "inlinks": inlinks_para_resultado,
+        "funil": {
+            **estado.get("funil", {}),
+            "n_aplicadas": n_aplicados,
+            "motivos": motivos_agregados,
+        },
     }
 
     await publish_event(eid, "node_complete", "persistir", "Resultados persistidos")
@@ -770,6 +858,9 @@ async def executar_workflow_inlinks(execucao_id: str, ctx: dict[str, Any] | None
             "threshold_score": entrada.get("threshold_score", 0.6),
             "max_inlinks": entrada.get("max_inlinks", 8),
             "rel_attr": entrada.get("rel_attr", "noopener"),
+            "ancoras_preferidas": entrada.get("ancoras_preferidas") or [],
+            "permitir_cta_fallback": bool(entrada.get("permitir_cta_fallback", False)),
+            "objetivo_linkagem": entrada.get("objetivo_linkagem"),
         }
 
         checkpointer = await _resolver_checkpointer(ctx)
@@ -801,7 +892,7 @@ async def executar_workflow_inlinks(execucao_id: str, ctx: dict[str, Any] | None
             await ferramenta_service.finalizar_falha(session, execucao_id, "Workflow excedeu o tempo limite", ferramenta="inlinks")
             await session.commit()
     except Exception as e:
-        logger.error("%s Workflow inlinks falhou para execucao %s: %s", _log_prefix(execucao_id), execucao_id, e)
+        logger.exception("%s Workflow inlinks falhou para execucao %s: %s", _log_prefix(execucao_id), execucao_id, e)
         async with async_session_factory() as session:
             await ferramenta_service.finalizar_falha(session, execucao_id, "Erro interno do workflow", ferramenta="inlinks")
             await session.commit()

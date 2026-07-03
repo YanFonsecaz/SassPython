@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     inlinks_revisor_temperature: float = 0.1
     inlinks_reranker_temperature: float = 0.2
     inlinks_enriquecedor_temperature: float = 0.2
+    inlinks_cleaner_temperature: float = 0.0
+    inlinks_formatador_temperature: float = 0.0
+    inlinks_formatador_ativo: bool = True
+    inlinks_pisos_legado_distribuir: bool = False
 
     cwv_analisador_llm_model: str = "gpt-4o-mini"
     cwv_analisador_llm_temperature: float = 0.1

@@ -48,8 +48,11 @@ async def revisar_inlinks(
     if not inlinks:
         return inlinks
 
+    # Lint final de coesão: só revisa o que foi de fato APLICADO no texto.
+    # O julgamento semântico (tema âncora↔destino) já foi feito pelo juiz único
+    # no inseridor — revisar semântica 2x produzia rejeições ruidosas.
     inlinks_revisaveis = [
-        il for il in inlinks if il.get("status") != "sugestao_manual"
+        il for il in inlinks if il.get("status") == "aplicado"
     ]
 
     if not inlinks_revisaveis:
@@ -60,43 +63,32 @@ async def revisar_inlinks(
     lista = ""
     for i, il in enumerate(inlinks_revisaveis):
         lista += (
-            f"\n{i+1}. URL: {il['url_destino']}\n"
-            f"   Âncora: {il['anchor_text']}\n"
-            f"   Parágrafo: {il['paragrafo_idx']}\n"
-            f"   Score: {il.get('score_total', 0):.2f}"
+            f"\n{i+1}. Âncora: {il['anchor_text']}\n"
+            f"   Destino: {il.get('titulo_destino') or il['url_destino']}\n"
+            f"   Parágrafo: {il['paragrafo_idx']}"
         )
 
-    prompt = f"""Você é um revisor de SEO. Verifique se os inlinks abaixo foram aplicados corretamente no texto.
+    prompt = f"""Você é um revisor de texto. Os links abaixo já passaram por julgamento semântico —
+NÃO reavalie tema ou relevância. Verifique APENAS defeitos objetivos de aplicação no texto.
 
-REGRAS DE REJEIÇÃO — rejeite SOMENTE se:
-- A âncora foi inserida em contexto que quebra a gramática ou o sentido da frase
-- A âncora é claramente desconectada do tema do parágrafo
+REJEITE SOMENTE se:
+- A frase ficou gramaticalmente quebrada ou sem sentido no ponto do link
 - Há texto duplicado, truncado ou corrompido ao redor do link
-- Distância entre inlinks é menor que 100 palavras
-- A âncora não tem relação clara de tema com a página de destino
+- A mesma âncora exata foi usada em dois links diferentes
 
 NÃO rejeite por:
-- Score baixo — o score já foi usado para ranquear, não para filtrar aqui
+- Tema, relevância ou "âncora genérica" — isso já foi julgado antes
+- Score — não é critério aqui
 - Âncoras que são trechos literais do texto original — essas são SEMPRE naturais
-- Diferença de tema parcial — links de tema complementar agregam valor ao leitor
 
-INLINKS APLICADOS:
+LINKS APLICADOS:
 {lista}
 
 TRECHO DO TEXTO MODIFICADO (parágrafos relevantes):
 {_extrair_paragrafos_relevantes(pilar_modificado, inlinks_revisaveis, 6000)}
 
-EXEMPLO de rejeição correta:
-- Âncora: "o código adequado" → Destino: "Contratação PJ: guia completo"
-  Status: rejeitado_revisor
-  Motivo: A âncora fala de código CNAE; o destino fala de contratação PJ. Temas tangenciais.
-
-EXEMPLO de aprovação correta:
-- Âncora: "escolher o CNAE certo" → Destino: "CNAE prestação de serviço: escolha o ideal"
-  Status: aplicado
-  Motivo: ""
-
-Revise cada inlink informando indice, status ("aplicado" ou "rejeitado_revisor") e motivo da rejeicao."""
+Revise cada link informando indice, status ("aplicado" ou "rejeitado_revisor") e motivo da rejeicao
+(1 frase objetiva apontando o defeito de texto; vazio se aplicado)."""
 
     try:
         resultado: RevisaoSchema = await agente.invoke_structured(prompt, RevisaoSchema)
@@ -110,10 +102,9 @@ Revise cada inlink informando indice, status ("aplicado" ou "rejeitado_revisor")
                 il["status"] = "aplicado"
                 il["motivo_rejeicao"] = None
     except Exception as e:
-        logger.warning("Revisor LLM falhou; rebaixando inlinks para sugestao manual: %s", e)
-        for il in inlinks_revisaveis:
-            il["status"] = "sugestao_manual"
-            il["motivo_rejeicao"] = "Revisão automática indisponível — confira manualmente."
+        # Fail-open: juiz + validações determinísticas já garantiram o link;
+        # o lint é cosmético — indisponível, mantém os aplicados.
+        logger.warning("Revisor LLM indisponível; mantendo inlinks aplicados sem lint: %s", e)
 
     return inlinks
 

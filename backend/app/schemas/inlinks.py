@@ -11,6 +11,9 @@ class InlinksRequest(BaseModel):
     threshold_score: float = Field(default=0.6, ge=0.0, le=1.0)
     max_inlinks: int = Field(default=8, ge=1, le=20)
     rel_attr: str = Field(default="noopener")
+    ancoras_preferidas: list[str] = Field(default_factory=list, max_length=10)
+    permitir_cta_fallback: bool = Field(default=False)
+    objetivo_linkagem: str | None = Field(default=None, max_length=300)
 
     @field_validator("pilar_url")
     @classmethod
@@ -18,6 +21,32 @@ class InlinksRequest(BaseModel):
         if v and not v.startswith(("http://", "https://")):
             raise ValueError("URL do pilar deve usar http ou https")
         return v
+
+    @field_validator("objetivo_linkagem")
+    @classmethod
+    def validar_objetivo(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        s = v.strip()
+        return s or None
+
+    @field_validator("ancoras_preferidas")
+    @classmethod
+    def validar_ancoras(cls, v: list[str]) -> list[str]:
+        normalizadas: list[str] = []
+        vistos: set[str] = set()
+        for raw in v:
+            s = (raw or "").strip()
+            if not s:
+                continue
+            if len(s) < 2 or len(s) > 50:
+                raise ValueError("Cada ancora deve ter entre 2 e 50 caracteres")
+            chave = s.lower()
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            normalizadas.append(s)
+        return normalizadas
 
     @field_validator("candidatas_urls")
     @classmethod

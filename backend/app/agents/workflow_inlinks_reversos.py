@@ -26,7 +26,6 @@ def _sanitize(obj: Any) -> Any:
         return [_sanitize(v) for v in obj]
     return obj
 
-_MIN_SEMANTIC_SCORE = 0.40
 _MIN_ALVO_CHARS = 1500
 _MIN_ALVO_PALAVRAS = 250
 _PISO_SLUG_ONLY = 0.30
@@ -218,6 +217,18 @@ def _log_prefix(eid: str) -> str:
     return f"[distribuir eid={eid[:8]}]"
 
 
+async def _gravar_etapa(execucao_id: str, etapa: str) -> None:
+    """Persiste etapa_atual (a barra de progresso sobrevive a reload de página)."""
+    from app.services import ferramenta_service
+
+    try:
+        async with async_session_factory() as session:
+            await ferramenta_service.atualizar_etapa(session, execucao_id, etapa)
+            await session.commit()
+    except Exception as e:  # telemetria não pode derrubar o workflow
+        logger.debug("Falha ao gravar etapa %s: %s", etapa, e)
+
+
 async def _resolver_checkpointer(ctx: dict[str, Any] | None):
     """Prefere checkpointer do ctx (worker warmup); senao usa singleton."""
     from app.agents.checkpointer import get_checkpointer, get_checkpointer_from_ctx
@@ -258,6 +269,8 @@ class EstadoDistribuir(TypedDict):
 
     candidatas_processadas: list[dict[str, Any]]
 
+    funil: dict[str, Any]
+
     resultado_final: dict[str, Any]
 
 
@@ -266,6 +279,7 @@ async def node_validar_urls(estado: EstadoDistribuir) -> dict[str, Any]:
 
     eid = estado["execucao_id"]
     await publish_event(eid, "node_start", "validar_urls", "Validando e normalizando URLs...")
+    await _gravar_etapa(eid, "validar_urls")
 
     from app.core.scraper import _normalizar_url
 
@@ -294,6 +308,7 @@ async def node_extrair_alvo(estado: EstadoDistribuir) -> dict[str, Any]:
     eid = estado["execucao_id"]
     url_alvo = estado.get("url_alvo", "")
     await publish_event(eid, "node_start", "extrair_alvo", f"Extraindo conteudo da URL alvo: {url_alvo}")
+    await _gravar_etapa(eid, "extrair_alvo")
 
     resultado = await extrair_pilar(url_alvo, None)
 
@@ -376,6 +391,7 @@ async def node_extrair_candidatas(estado: EstadoDistribuir) -> dict[str, Any]:
     eid = estado["execucao_id"]
     urls = estado.get("candidatas_urls", [])
     await publish_event(eid, "node_start", "extrair_candidatas", f"Extraindo {len(urls)} URLs candidatas...")
+    await _gravar_etapa(eid, "extrair_candidatas")
 
     async def _on_progress(feito: int, total: int, r: ScrapeResult) -> None:
         sufixo = "(cache)" if r.cache_hit else ("falhou" if r.falhou else "ok")
@@ -409,6 +425,13 @@ async def node_extrair_candidatas(estado: EstadoDistribuir) -> dict[str, Any]:
         "candidatas_resultados": resultados,
         "n_candidatas_validas": lote.n_sucessos,
         "n_candidatas_falhas": lote.n_falhas,
+        "funil": {
+            **estado.get("funil", {}),
+            "n_solicitadas": len(urls),
+            "n_scrape_ok": lote.n_sucessos,
+            "n_scrape_falhas": lote.n_falhas,
+            "urls_falhas": [r.url for r in lote.resultados if r.falhou][:20],
+        },
     }
 
 
@@ -427,6 +450,7 @@ async def node_enriquecer(estado: EstadoDistribuir) -> dict[str, Any]:
     uid = estado["usuario_id"]
     cliente_id_val = estado.get("cliente_id")
     await publish_event(eid, "node_start", "enriquecer", "Consultando banco vetorial...")
+    await _gravar_etapa(eid, "enriquecer")
 
     alvo = estado.get("alvo_resultado", {})
     candidatas = estado.get("candidatas_resultados", [])
@@ -640,6 +664,7 @@ async def node_filtrar_similaridade(estado: EstadoDistribuir) -> dict[str, Any]:
 
     eid = estado["execucao_id"]
     await publish_event(eid, "node_start", "filtrar_similaridade", "Filtrando candidatas por similaridade...")
+    await _gravar_etapa(eid, "filtrar_similaridade")
 
     candidatas_resultados = estado.get("candidatas_resultados", [])
 
@@ -743,6 +768,13 @@ async def node_filtrar_similaridade(estado: EstadoDistribuir) -> dict[str, Any]:
         "candidatas_viaveis": viaveis,
         "candidatas_descartadas": descartadas,
         "falhas_extracao": falhas_extracao,
+        "funil": {
+            **estado.get("funil", {}),
+            "n_viaveis": n_viaveis,
+            "n_descartadas_similaridade": n_descartadas,
+            "n_falhas_extracao": n_falhas,
+            "threshold_informativo": threshold_efetivo,
+        },
     })
 
 
@@ -789,6 +821,7 @@ async def node_inserir_em_cada(estado: EstadoDistribuir) -> dict[str, Any]:
         eid, "node_start", "inserir_em_cada",
         f"Inserindo link para URL alvo em {len(candidatas_viaveis)} candidatas...",
     )
+    await _gravar_etapa(eid, "inserir_em_cada")
 
     alvo_base = {
         "url": alvo.get("url_canonica", alvo.get("url", "")),
@@ -835,6 +868,7 @@ async def node_inserir_em_cada(estado: EstadoDistribuir) -> dict[str, Any]:
                     ancoras_preferidas=ancoras_pref or None,
                     permitir_cta_fallback=permitir_cta,
                     objetivo_linkagem=objetivo_link,
+                    aplicar_pisos_legado=settings.inlinks_pisos_legado_distribuir,
                 )
             except Exception as e:
                 logger.error("%s inserir_candidata falhou %s: %s", _log_prefix(eid), url, e)
@@ -868,12 +902,15 @@ async def node_inserir_em_cada(estado: EstadoDistribuir) -> dict[str, Any]:
             return
 
         il = inseridos[0]
+        # Decisão "descartar" do juiz único vira "sem_match" nesta ferramenta
+        # (a UI do Distribuir usa as abas aplicadas/sugestoes/sem_match/falhas).
+        status_final = "sem_match" if il.status == "rejeitado" else il.status
         async with lock:
             resultados.append({
                 "url": url,
                 "url_canonica": candidata.get("url_canonica", url),
                 "titulo": candidata.get("titulo", ""),
-                "status": il.status,
+                "status": status_final,
                 "markdown_modificado": markdown_modificado,
                 "anchor_text": il.anchor_text,
                 "trecho_original": il.trecho_original,
@@ -881,7 +918,7 @@ async def node_inserir_em_cada(estado: EstadoDistribuir) -> dict[str, Any]:
                 "score_total": float(il.score_total),
                 "score_semantico": float(il.score_semantico),
                 "score_contexto": float(il.score_contexto),
-                "justificativa": il.motivo_contexto or il.motivo_sugestao,
+                "justificativa": il.motivo_contexto or il.motivo_sugestao or il.motivo_rejeicao,
                 "motivo_rejeicao": il.motivo_rejeicao,
                 "trecho_contexto": il.trecho_contexto,
                 "categoria_match": il.categoria_match,
@@ -900,7 +937,16 @@ async def node_inserir_em_cada(estado: EstadoDistribuir) -> dict[str, Any]:
         eid, "node_complete", "inserir_em_cada",
         f"Resultado: {n_aplicadas} aplicadas, {n_sugestoes} sugestoes, {n_sem} sem match, {n_falhas} falhas",
     )
-    return _sanitize({"candidatas_processadas": resultados})
+    return _sanitize({
+        "candidatas_processadas": resultados,
+        "funil": {
+            **estado.get("funil", {}),
+            "n_enviadas_juiz": len(candidatas_viaveis),
+            "n_decisao_aplicar": n_aplicadas,
+            "n_decisao_sugerir": n_sugestoes,
+            "n_sem_match": n_sem,
+        },
+    })
 
 
 async def node_persistir(estado: EstadoDistribuir) -> dict[str, Any]:
@@ -910,6 +956,7 @@ async def node_persistir(estado: EstadoDistribuir) -> dict[str, Any]:
 
     eid = estado["execucao_id"]
     await publish_event(eid, "node_start", "persistir", "Persistindo resultados...")
+    await _gravar_etapa(eid, "persistir")
 
     candidatas = estado.get("candidatas_processadas", [])
     alvo = estado.get("alvo_resultado", {})
@@ -977,6 +1024,16 @@ async def node_persistir(estado: EstadoDistribuir) -> dict[str, Any]:
 
         await session.commit()
 
+    motivos_agregados: dict[str, int] = {}
+    for c in candidatas:
+        if c.get("status") == "aplicado":
+            continue
+        if not (c.get("motivo") or c.get("justificativa")):
+            c["motivo"] = "Sem motivo registrado — revise manualmente."
+        m = (c.get("motivo") or c.get("justificativa") or "").strip()
+        if m:
+            motivos_agregados[m[:120]] = motivos_agregados.get(m[:120], 0) + 1
+
     resultado_final = {
         "url_alvo": url_alvo,
         "titulo_alvo": alvo.get("titulo", ""),
@@ -986,6 +1043,11 @@ async def node_persistir(estado: EstadoDistribuir) -> dict[str, Any]:
         "n_sugestoes": n_sugestoes,
         "n_sem_match": n_sem_match,
         "n_falhas": n_falhas,
+        "funil": {
+            **estado.get("funil", {}),
+            "n_aplicadas": n_aplicadas,
+            "motivos": motivos_agregados,
+        },
         "candidatas": [
             {
                 "url": c["url"],

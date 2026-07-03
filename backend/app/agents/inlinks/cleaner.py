@@ -22,6 +22,11 @@ async def limpar_conteudo(markdown: str, usuario_id: str) -> str:
 
 
 class _CleanerAgent(BaseAgent):
+    def __init__(self, usuario_id: str):
+        from app.config import settings
+
+        super().__init__(usuario_id, temperature=settings.inlinks_cleaner_temperature)
+
     async def _invoke_llm(self, prompt: str) -> str:
         from langchain_core.messages import HumanMessage
 

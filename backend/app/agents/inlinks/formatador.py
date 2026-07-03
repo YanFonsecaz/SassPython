@@ -1,16 +1,37 @@
 import json
 import logging
 import re
+from collections import Counter
 
 from app.agents.base import BaseAgent
 
 logger = logging.getLogger(__name__)
 
-_LINK_RE = re.compile(r"\[[^\]]+\]\([^)]+\)")
+_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+_HEADING_LINE_RE = re.compile(r"^\s*#{1,6}\s.*$", re.MULTILINE)
+
+# Tolerância de mutação de texto: a formatação só re-quebra parágrafos e adiciona
+# H3 curtos — o corpo não deve variar mais que isso.
+_MAX_DIFF_TOKENS_RATIO = 0.02
 
 
-def _count_links(md: str) -> int:
-    return len(_LINK_RE.findall(md))
+def _pares_links(md: str) -> list[tuple[str, str]]:
+    return [(m.group(1), m.group(2)) for m in _LINK_RE.finditer(md)]
+
+
+def _tokens_corpo(md: str) -> Counter:
+    sem_headings = _HEADING_LINE_RE.sub(" ", md)
+    return Counter(sem_headings.split())
+
+
+def _mutacao_aceitavel(original: str, formatado: str) -> bool:
+    if _pares_links(formatado) != _pares_links(original):
+        return False
+    t_orig = _tokens_corpo(original)
+    t_fmt = _tokens_corpo(formatado)
+    diff = sum((t_orig - t_fmt).values()) + sum((t_fmt - t_orig).values())
+    total = max(1, sum(t_orig.values()))
+    return diff / total <= _MAX_DIFF_TOKENS_RATIO
 
 
 async def formatar_pilar(markdown: str, usuario_id: str) -> str:
@@ -22,12 +43,11 @@ async def formatar_pilar(markdown: str, usuario_id: str) -> str:
     try:
         resposta = await agente._invoke_llm(prompt)
         formatado = _parse(resposta)
-        if formatado and _count_links(formatado) == _count_links(markdown):
+        if formatado and _mutacao_aceitavel(markdown, formatado):
             return formatado
         if formatado:
             logger.warning(
-                "Formatador alterou número de links (%d -> %d); usando original",
-                _count_links(markdown), _count_links(formatado),
+                "Formatador mudou links ou mutou o texto além do aceitável; usando original",
             )
     except Exception as e:
         logger.warning("Formatador falhou: %s", e)
@@ -35,6 +55,11 @@ async def formatar_pilar(markdown: str, usuario_id: str) -> str:
 
 
 class _FormatadorAgent(BaseAgent):
+    def __init__(self, usuario_id: str):
+        from app.config import settings
+
+        super().__init__(usuario_id, temperature=settings.inlinks_formatador_temperature)
+
     async def _invoke_llm(self, prompt: str) -> str:
         from langchain_core.messages import HumanMessage
 

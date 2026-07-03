@@ -22,12 +22,14 @@ _MD_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
 _MIN_DISTANCE_WORDS_BASE = 100
 _MAX_CONECTOR_WORDS = 3
-_TOP_N_PARAGRAFOS = 5
+_TOP_N_PARAGRAFOS = 8
+_MAX_PARAGRAFOS_CONTEXTO = 12
 _MIN_PARAGRAFO_CHARS = 80
+# Pisos de cosine usados APENAS no modo legado (aplicar_pisos_legado=True).
+# No modo padrão o LLM juiz decide; os cosines viram sinais registrados.
 _MIN_INSERCAO_SEMANTICA = 0.50
 _MIN_INSERCAO_SEMANTICA_KW_VALIDA = 0.35
 _MIN_ANCORA_TITULO = 0.35
-_MIN_SEMANTIC_FALLBACK = 0.40
 _LIST_ITEM_RE = re.compile(r"^\s*(?:[-*]|\d+\.)\s")
 _CODE_FENCE_RE = re.compile(r"^\s*```")
 
@@ -42,14 +44,24 @@ _STOPWORDS_GENERICAS = {
 }
 
 
-class PropostaInsercaoSchema(BaseModel):
-    paragrafo_idx: int = Field(description="Indice local do paragrafo (0..N)")
-    trecho_original: str = Field(default="", description="Trecho copiado EXATAMENTE")
-    anchor_text: str = Field(default="")
-    palavra_chave_destino: str = Field(default="")
+class DecisaoInsercaoSchema(BaseModel):
+    decisao: str = Field(
+        description=(
+            "aplicar = existe ancora natural e tema relacionado; "
+            "sugerir = tema relacionado mas sem ancora natural no texto atual; "
+            "descartar = sem relacao tematica real"
+        )
+    )
+    paragrafo_idx: int = Field(default=-1, description="Indice LOCAL do paragrafo (0..N-1); -1 se descartar")
+    trecho_original: str = Field(default="", description="2-6 palavras CONTINUAS copiadas EXATAMENTE do paragrafo")
+    anchor_text: str = Field(default="", description="Texto da ancora; por padrao igual ao trecho_original")
     conector_antes: str = Field(default="")
     conector_depois: str = Field(default="")
-    justificativa: str = Field(default="")
+    confianca: float = Field(default=0.5, description="Confianca na decisao, de 0.0 a 1.0")
+    motivo: str = Field(
+        default="",
+        description="1 frase clara e legivel para usuario leigo explicando a decisao. OBRIGATORIO.",
+    )
 
 
 def _normalize_token(s: str) -> str:
@@ -124,13 +136,16 @@ class InlinkInserido:
     conector_antes: str | None = None
     conector_depois: str | None = None
     ancora_preferida_usada: bool = False
+    confianca: float | None = None
+    sinal_cos_contexto: float | None = None
+    sinal_cos_ancora: float | None = None
 
 
 async def _gerar_cta_fallback(
     paragrafos: list[str],
     paragrafos_embeddings: list[Any],
     candidato: dict[str, Any],
-    ancoras_preferidas: list[str],
+    ancora: str,
     usuario_id: str,
 ) -> dict[str, Any] | None:
     consulta = _texto_destino(candidato)[:1500]
@@ -152,11 +167,10 @@ async def _gerar_cta_fallback(
         return None
 
     scored.sort(key=lambda x: x[2], reverse=True)
-    p_idx, paragrafo, cos = scored[0]
+    p_idx, _paragrafo, cos = scored[0]
     if cos < 0.55:
         return None
 
-    ancora = ancoras_preferidas[0]
     return {
         "url_destino": candidato["url"],
         "paragrafo_idx": p_idx,
@@ -165,7 +179,7 @@ async def _gerar_cta_fallback(
         "_modo_cta": True,
         "_ancora_cta": ancora,
         "justificativa": (
-            f"Nenhum parágrafo continha variante da âncora preferida. "
+            f"Nenhuma âncora natural coube no texto atual. "
             f"CTA adicionado no fim do parágrafo {p_idx} (cosine={cos:.2f})."
         ),
     }
@@ -179,6 +193,7 @@ async def inserir_inlinks(
     ancoras_preferidas: list[str] | None = None,
     permitir_cta_fallback: bool = True,
     objetivo_linkagem: str | None = None,
+    aplicar_pisos_legado: bool = False,
 ) -> tuple[str, list[InlinkInserido]]:
     if not pilar_markdown.strip() or not candidatos:
         return pilar_markdown, []
@@ -224,7 +239,7 @@ async def inserir_inlinks(
     for c, proposta in propostas_por_candidato:
         if not proposta:
             continue
-        if proposta.get("_inseridor_vazio"):
+        if proposta.get("_inseridor_vazio") or proposta.get("_descartado"):
             todas_insercoes.append(proposta)
             continue
         p_idx = proposta.get("paragrafo_idx", -1)
@@ -245,6 +260,8 @@ async def inserir_inlinks(
     if textos_batch:
         embs_batch = await gerar_embeddings_batch(textos_batch, usuario_id)
 
+    # Cosines viram SINAIS registrados na proposta (funil/telemetria). Só decidem
+    # status no modo legado (rollback do Distribuir via aplicar_pisos_legado).
     for i, (_c, proposta) in enumerate(pares_para_validar):
         emb_ctx = embs_batch[i * 4] if i * 4 < len(embs_batch) else None
         emb_dst = embs_batch[i * 4 + 1] if i * 4 + 1 < len(embs_batch) else None
@@ -252,51 +269,114 @@ async def inserir_inlinks(
         emb_tit = embs_batch[i * 4 + 3] if i * 4 + 3 < len(embs_batch) else None
 
         if emb_ctx is None or emb_dst is None:
-            proposta["forcar_sugestao_manual"] = True
-            proposta["motivo_sugestao"] = "Não foi possível validar semanticamente (embedding indisponível)."
+            if aplicar_pisos_legado:
+                proposta["forcar_sugestao_manual"] = True
+                proposta["motivo_sugestao"] = "Não foi possível validar semanticamente (embedding indisponível)."
             todas_insercoes.append(proposta)
             continue
 
         cosine_contexto = cosine_seguro(emb_ctx, emb_dst)
         cosine_ancora = cosine_seguro(emb_anc, emb_tit) if (emb_anc is not None and emb_tit is not None) else 0.0
+        proposta["sinal_cos_contexto"] = round(float(cosine_contexto), 3)
+        proposta["sinal_cos_ancora"] = round(float(cosine_ancora), 3)
 
-        # Se a validação dura por palavra-chave (_validar_palavra_chave_destino)
-        # já passou, confiamos nela e relaxamos o piso de cosine âncora-destino.
-        # Caso contrário, usa o piso conservador.
-        kw_ja_validada = not proposta.get("forcar_sugestao_manual")
-        piso_semantico = _MIN_INSERCAO_SEMANTICA_KW_VALIDA if kw_ja_validada else _MIN_INSERCAO_SEMANTICA
-
-        if cosine_contexto < piso_semantico:
-            proposta["forcar_sugestao_manual"] = True
-            proposta["motivo_sugestao"] = (
-                f"Baixa relação semântica entre âncora e destino (cos={cosine_contexto:.2f} < {piso_semantico:.2f})."
-            )
-        elif cosine_ancora < _MIN_ANCORA_TITULO:
-            proposta["forcar_sugestao_manual"] = True
-            proposta["motivo_sugestao"] = "Âncora genérica — não menciona termo específico do destino."
+        if aplicar_pisos_legado:
+            _aplicar_portoes_legado(proposta, cosine_contexto, cosine_ancora)
         todas_insercoes.append(proposta)
 
-    if (
-        ancoras_preferidas
-        and permitir_cta_fallback
-        and not any(p for _, p in propostas_por_candidato if p and not p.get("forcar_sugestao_manual"))
-    ):
-        cta_proposta = await _gerar_cta_fallback(
-            paragrafos, paragrafos_embeddings, candidatos_top[0], ancoras_preferidas, usuario_id,
+    # CTA fallback ("> Leia também:") quando o usuário optou e nenhuma proposta
+    # natural sobreviveu. Sem âncoras preferidas, usa o título do destino.
+    nenhuma_valida = not any(
+        p for _, p in propostas_por_candidato
+        if p
+        and not p.get("forcar_sugestao_manual")
+        and not p.get("_inseridor_vazio")
+        and not p.get("_descartado")
+    )
+    if permitir_cta_fallback and nenhuma_valida and candidatos_top:
+        ancora_cta = (
+            ancoras_preferidas[0]
+            if ancoras_preferidas
+            else (candidatos_top[0].get("titulo") or "").strip()[:60]
         )
-        if cta_proposta:
-            todas_insercoes.append(cta_proposta)
+        if ancora_cta:
+            cta_proposta = await _gerar_cta_fallback(
+                paragrafos, paragrafos_embeddings, candidatos_top[0], ancora_cta, usuario_id,
+            )
+            if cta_proposta:
+                todas_insercoes.append(cta_proposta)
 
     min_dist = _calcular_min_distance(pilar_markdown, max_inlinks)
     logger.info(
         "Inseridor: min_distance_words=%d (palavras=%d, max=%d)",
         min_dist, len(pilar_markdown.split()), max_inlinks,
     )
-    return _aplicar_insercoes(
+    texto, inseridos, colisoes = _aplicar_insercoes(
         pilar_markdown, paragrafos, candidatos_top, todas_insercoes,
         min_distance_words=min_dist,
         ancoras_preferidas=ancoras_preferidas,
+        finalizar_colisoes=False,
     )
+
+    if colisoes:
+        # 1 retry por proposta que caiu apenas por proximidade de outro inlink:
+        # re-julga excluindo do contexto TODO parágrafo dentro do raio de
+        # min_distance das inserções aceitas (não só o parágrafo exato) —
+        # senão o juiz escolhe o vizinho e colide de novo.
+        candidatos_by_url = {c.get("url"): c for c in candidatos_top}
+        inicio_palavras: list[int] = []
+        pos = 0
+        for p in paragrafos:
+            inicio_palavras.append(pos)
+            pos += len(p.split())
+        posicoes_aceitas = [
+            _word_position(texto, il.offset_chars)
+            for il in inseridos if il.status == "aplicado"
+        ]
+        ocupados: set[int] = set()
+        for idx, inicio in enumerate(inicio_palavras):
+            fim = inicio + len(paragrafos[idx].split())
+            if any(inicio - min_dist < ap < fim + min_dist for ap in posicoes_aceitas):
+                ocupados.add(idx)
+        substitutas: dict[int, dict[str, Any]] = {}
+        for ins in colisoes:
+            c = candidatos_by_url.get(ins.get("url_destino"))
+            nova: dict[str, Any] | None = None
+            if c and ocupados:
+                contexto2 = await _selecionar_paragrafos_relevantes(
+                    paragrafos, c, paragrafos_embeddings, usuario_id,
+                    ancoras_preferidas=ancoras_preferidas,
+                    excluir_idx=ocupados,
+                )
+                if contexto2:
+                    nota = (
+                        "ATENÇÃO: outros trechos deste artigo já receberam links próximos. "
+                        "Escolha um parágrafo DIFERENTE dentre os fornecidos, ou responda "
+                        'decisao="descartar" se nenhum servir.'
+                    )
+                    nova = await _propor_insercao_para_candidato(
+                        c, contexto2, usuario_id,
+                        ancoras_preferidas=ancoras_preferidas,
+                        objetivo_linkagem=objetivo_linkagem,
+                        nota_densidade=nota,
+                    )
+            if nova and not nova.get("_inseridor_vazio") and not nova.get("forcar_sugestao_manual"):
+                substitutas[id(ins)] = nova
+            else:
+                substitutas[id(ins)] = {
+                    **ins,
+                    "forcar_sugestao_manual": True,
+                    "motivo_sugestao": "Muito próximo de outro inlink (2 tentativas).",
+                }
+        insercoes_v2 = [substitutas.get(id(p), p) for p in todas_insercoes]
+        texto, inseridos, _ = _aplicar_insercoes(
+            pilar_markdown, paragrafos, candidatos_top, insercoes_v2,
+            min_distance_words=min_dist,
+            ancoras_preferidas=ancoras_preferidas,
+            finalizar_colisoes=True,
+        )
+
+    return texto, inseridos
 
 
 class _InseridorAgent(BaseAgent):
@@ -342,6 +422,24 @@ def _termos_keyword_destino(candidato: dict[str, Any]) -> list[str]:
     return out
 
 
+def _aplicar_portoes_legado(
+    proposta: dict[str, Any], cosine_contexto: float, cosine_ancora: float
+) -> None:
+    """Pisos de cosine pré-julgamento-único. Ativos apenas com aplicar_pisos_legado=True
+    (rollback do Distribuir). Serão removidos quando o juiz único estiver validado."""
+    if proposta.get("forcar_sugestao_manual"):
+        return
+    if cosine_contexto < _MIN_INSERCAO_SEMANTICA_KW_VALIDA:
+        proposta["forcar_sugestao_manual"] = True
+        proposta["motivo_sugestao"] = (
+            f"Baixa relação semântica entre âncora e destino "
+            f"(cos={cosine_contexto:.2f} < {_MIN_INSERCAO_SEMANTICA_KW_VALIDA:.2f})."
+        )
+    elif cosine_ancora < _MIN_ANCORA_TITULO:
+        proposta["forcar_sugestao_manual"] = True
+        proposta["motivo_sugestao"] = "Âncora genérica — não menciona termo específico do destino."
+
+
 def _keyword_boost(paragrafo: str, termos: list[str]) -> float:
     if not termos or not paragrafo:
         return 0.0
@@ -360,9 +458,8 @@ def _ancora_preferida_match(texto: str, ancoras: list[str]) -> str | None:
         if ancora_norm in texto_norm:
             return ancora
         palavras = ancora_norm.split()
-        if len(palavras) > 1:
-            if all(p in texto_norm for p in palavras):
-                return ancora
+        if len(palavras) > 1 and all(p in texto_norm for p in palavras):
+            return ancora
     return None
 
 
@@ -388,14 +485,19 @@ async def _selecionar_paragrafos_relevantes(
     usuario_id: str,
     top_n: int = _TOP_N_PARAGRAFOS,
     ancoras_preferidas: list[str] | None = None,
+    excluir_idx: set[int] | None = None,
 ) -> list[tuple[int, str]]:
     consulta = _texto_destino(candidato)[:1500]
     emb_consulta_lst = await gerar_embeddings_batch([consulta], usuario_id)
     emb_consulta = emb_consulta_lst[0] if emb_consulta_lst else None
     termos_kw = _termos_keyword_destino(candidato)
+    excluir = excluir_idx or set()
 
     if emb_consulta is None:
-        elegiveis = [(i, p) for i, p in enumerate(paragrafos) if _paragrafo_elegivel(p)]
+        elegiveis = [
+            (i, p) for i, p in enumerate(paragrafos)
+            if _paragrafo_elegivel(p) and i not in excluir
+        ]
         if termos_kw:
             scored_kw = [(i, p, _keyword_boost(p, termos_kw)) for i, p in elegiveis]
             scored_kw.sort(key=lambda x: x[2], reverse=True)
@@ -404,7 +506,7 @@ async def _selecionar_paragrafos_relevantes(
 
     scored: list[tuple[int, str, float, float]] = []
     for i, (p, emb_p) in enumerate(zip(paragrafos, paragrafos_embeddings, strict=False)):
-        if emb_p is None or not _paragrafo_elegivel(p):
+        if emb_p is None or not _paragrafo_elegivel(p) or i in excluir:
             continue
         cosine = cosine_seguro(emb_consulta, emb_p)
         boost = _keyword_boost(p, termos_kw)
@@ -414,13 +516,23 @@ async def _selecionar_paragrafos_relevantes(
     scored.sort(key=lambda x: x[2], reverse=True)
     top = scored[:top_n]
 
+    # Garantia de recall: parágrafos com match lexical de keyword do destino
+    # entram no contexto mesmo fora do top-N por cosine (cap total).
+    ja_incluidos = {i for i, _, _, _ in top}
+    for i, p, s, b in scored[top_n:]:
+        if len(top) >= _MAX_PARAGRAFOS_CONTEXTO:
+            break
+        if b > 0 and i not in ja_incluidos:
+            top.append((i, p, s, b))
+            ja_incluidos.add(i)
+
     if ancoras_preferidas:
         top.sort(key=lambda x: _ancora_preferida_match(x[1], ancoras_preferidas) is not None, reverse=True)
 
     n_kw_match = sum(1 for _, _, _, b in top if b > 0)
     logger.info(
-        "Inseridor: top-%d parágrafos para %s — %d com keyword match (termos=%s)",
-        top_n, candidato.get("url", "?")[-60:], n_kw_match,
+        "Inseridor: %d parágrafos de contexto para %s — %d com keyword match (termos=%s)",
+        len(top), candidato.get("url", "?")[-60:], n_kw_match,
         ", ".join(termos_kw[:5]),
     )
     return [(i, p) for i, p, _, _ in top]
@@ -432,9 +544,20 @@ async def _propor_insercao_para_candidato(
     usuario_id: str,
     ancoras_preferidas: list[str] | None = None,
     objetivo_linkagem: str | None = None,
+    nota_densidade: str | None = None,
 ) -> dict[str, Any] | None:
+    """Julgamento único: o LLM decide aplicar/sugerir/descartar com contexto completo.
+
+    Não há portão semântico depois desta decisão — apenas validações determinísticas
+    (trecho literal, heading/lista, link duplicado, densidade) em _aplicar_insercoes.
+    """
     agente = _InseridorAgent(usuario_id)
-    prompt = _build_prompt_focado(candidato, contexto_paragrafos, ancoras_preferidas=ancoras_preferidas, objetivo_linkagem=objetivo_linkagem)
+    prompt = _build_prompt_focado(
+        candidato, contexto_paragrafos,
+        ancoras_preferidas=ancoras_preferidas,
+        objetivo_linkagem=objetivo_linkagem,
+        nota_densidade=nota_densidade,
+    )
     logger.info(
         "Inseridor: prompt para %s (%d chars, %d parágrafos)\n%s\n---END PROMPT---",
         candidato.get("url", "?"),
@@ -445,10 +568,8 @@ async def _propor_insercao_para_candidato(
 
     parsed: dict[str, Any] | None = None
     try:
-        parsed_obj = await agente.invoke_structured(prompt, PropostaInsercaoSchema)
+        parsed_obj = await agente.invoke_structured(prompt, DecisaoInsercaoSchema)
         parsed = parsed_obj.model_dump()
-        if not parsed.get("trecho_original"):
-            parsed = None
     except Exception as e:
         logger.warning("Inseridor structured falhou para %s: %s; tentando fallback parsing", candidato.get("url"), e)
         try:
@@ -459,14 +580,11 @@ async def _propor_insercao_para_candidato(
             return None
 
     if not parsed:
-        logger.warning(
-            "Inseridor: LLM não propôs inserção para %s.",
-            candidato.get("url"),
-        )
+        logger.warning("Inseridor: LLM não respondeu com decisão para %s.", candidato.get("url"))
         termos_kw = _termos_keyword_destino(candidato)
         motivo = (
-            f"Inseridor não encontrou parágrafo do pilar com termos do destino "
-            f"({', '.join(termos_kw[:5])}). Considere reescrever o pilar mencionando o nicho."
+            f"A IA não conseguiu avaliar este destino ({', '.join(termos_kw[:3]) or 'sem termos'}). "
+            f"Revise manualmente se um link faz sentido."
         )
         return {
             "url_destino": candidato["url"],
@@ -476,6 +594,35 @@ async def _propor_insercao_para_candidato(
             "forcar_sugestao_manual": True,
             "motivo_sugestao": motivo,
             "_inseridor_vazio": True,
+        }
+
+    decisao = str(parsed.get("decisao") or "").strip().lower()
+    motivo = (parsed.get("motivo") or parsed.get("justificativa") or "").strip()
+    confianca = parsed.get("confianca")
+    trecho = (parsed.get("trecho_original") or "").strip()
+
+    if decisao == "descartar":
+        return {
+            "url_destino": candidato["url"],
+            "anchor_text": "",
+            "trecho_original": "",
+            "paragrafo_idx": -1,
+            "_descartado": True,
+            "motivo_rejeicao": motivo or "Sem relação temática real entre o artigo e o destino.",
+            "confianca": confianca,
+        }
+
+    if decisao == "sugerir" or not trecho:
+        return {
+            "url_destino": candidato["url"],
+            "anchor_text": (parsed.get("anchor_text") or "").strip(),
+            "trecho_original": trecho,
+            "paragrafo_idx": 0,
+            "forcar_sugestao_manual": True,
+            "motivo_sugestao": motivo or (
+                "Tema relacionado, mas nenhum trecho atual serve de âncora natural."
+            ),
+            "confianca": confianca,
         }
 
     idx_local = parsed.get("paragrafo_idx", -1)
@@ -489,29 +636,26 @@ async def _propor_insercao_para_candidato(
     idx_global, paragrafo_completo = contexto_paragrafos[idx_local]
     parsed["paragrafo_idx"] = idx_global
     parsed["url_destino"] = candidato["url"]
+    parsed["justificativa"] = motivo
 
     if ancoras_preferidas and parsed:
-        paragrafo_escolhido = contexto_paragrafos[idx_local][1]
-        ancora_no_paragrafo = _ancora_preferida_match(paragrafo_escolhido, ancoras_preferidas)
+        ancora_no_paragrafo = _ancora_preferida_match(paragrafo_completo, ancoras_preferidas)
         anchor_llm = (parsed.get("anchor_text") or "").strip()
         if ancora_no_paragrafo and not _ancora_preferida_match(anchor_llm, ancoras_preferidas):
             parsed["anchor_text"] = ancora_no_paragrafo
-            if ancora_no_paragrafo.lower() in paragrafo_escolhido.lower():
+            if ancora_no_paragrafo.lower() in paragrafo_completo.lower():
                 parsed["trecho_original"] = ancora_no_paragrafo
-            parsed["palavra_chave_destino"] = ancora_no_paragrafo
             logger.info(
                 "Inseridor: forcando anchor_text para ancora preferida '%s' (LLM havia escolhido '%s')",
                 ancora_no_paragrafo, anchor_llm,
             )
 
-    motivo_kw = await _validar_palavra_chave_destino(parsed, candidato, paragrafo_completo, usuario_id, ancoras_preferidas=ancoras_preferidas)
-    if motivo_kw:
-        logger.info(
-            "Inseridor: palavra_chave_destino falhou para %s: %s",
-            candidato.get("url"), motivo_kw,
-        )
-        parsed["forcar_sugestao_manual"] = True
-        parsed["motivo_sugestao"] = motivo_kw
+    # Sinal informativo (não decide status): a âncora menciona termo do destino?
+    termos_kw = _termos_keyword_destino(candidato)
+    ancora_texto = f"{parsed.get('anchor_text') or ''} {parsed.get('trecho_original') or ''}"
+    parsed["sinal_ancora_contem_termo_destino"] = any(
+        _contem_termo(ancora_texto, t) for t in termos_kw
+    )
 
     return parsed
 
@@ -521,6 +665,7 @@ def _build_prompt_focado(
     contexto: list[tuple[int, str]],
     ancoras_preferidas: list[str] | None = None,
     objetivo_linkagem: str | None = None,
+    nota_densidade: str | None = None,
 ) -> str:
     blocos = ""
     for local_idx, (_, texto) in enumerate(contexto):
@@ -541,12 +686,11 @@ ANCORAS PREFERIDAS (PRIORIDADE MAXIMA):
 
 REGRA ZERO (sobrepoe todas as outras): se QUALQUER paragrafo contem uma destas ancoras
 (literal, flexionada, ou cobertura por todas as palavras), VOCE DEVE:
-1. Escolher esse paragrafo (mesmo se outro pareca mais natural).
+1. Responder decisao="aplicar" escolhendo esse paragrafo (mesmo se outro pareca mais natural).
 2. Usar a ancora preferida LITERAL como `anchor_text` (sem truncar).
 3. Copiar `trecho_original` do paragrafo de forma que CONTENHA a ancora.
-4. Reportar `palavra_chave_destino` como a propria ancora preferida.
 
-So aplique as 7 regras abaixo quando NENHUM paragrafo contem variante de
+So aplique a rubrica geral abaixo quando NENHUM paragrafo contem variante de
 uma ancora preferida.
 
 EXEMPLO 0 — ancora preferida no paragrafo (PRIORIDADE):
@@ -556,13 +700,13 @@ Paragrafo L0: "... livros para mulheres cristas representam mais de 40% do nosso
 URL destino: /categoria-produto/livros/mulheres/
 
 Resposta CORRETA:
-{{"paragrafo_idx": 0, "trecho_original": "livros para mulheres cristas representam",
-  "anchor_text": "livros para mulheres cristas",
-  "palavra_chave_destino": "livros para mulheres cristas",
-  "justificativa": "Trecho contem ancora preferida literal."}}
+{{"decisao": "aplicar", "paragrafo_idx": 0,
+  "trecho_original": "livros para mulheres cristas representam",
+  "anchor_text": "livros para mulheres cristas", "confianca": 0.9,
+  "motivo": "Trecho contem ancora preferida literal."}}
 
 Resposta INCORRETA (truncou ancora preferida):
-{{"anchor_text": "livros", "palavra_chave_destino": "livros", ...}}
+{{"anchor_text": "livros", ...}}
 """
 
     objetivo_block = ""
@@ -577,54 +721,69 @@ alinhados a essa intencao. Se o objetivo mencionar "conversao" ou
 do nicho comercial (nao termos vagos como "tema" ou "papel").
 """
 
-    return f"""Você é um especialista em SEO. Recebe parágrafos candidatos e UMA URL de destino.
-Sua tarefa: escolher UM parágrafo e UM trecho contínuo desse parágrafo para virar âncora do link.
+    nota_block = f"\n{nota_densidade}\n" if nota_densidade else ""
+    n_paragrafos = len(contexto)
+
+    return f"""Você é um editor sênior de SEO. Você decide, SOZINHO e UMA ÚNICA VEZ, se este artigo
+deve linkar para a URL de destino abaixo — e onde. Não há outro filtro semântico depois de você:
+seja criterioso, mas não covarde. Links internos bem colocados ajudam o leitor e o SEO.
 
 URL DESTINO:
 - URL: {candidato['url']}
 - Título: {candidato.get('titulo', '')}
 - Palavras-chave do destino: {kws_str}
-- Resumo: {candidato.get('resumo', '')[:200]}
-{objetivo_block}{ancoras_block}
-PARÁGRAFOS DISPONÍVEIS:
+- Resumo: {candidato.get('resumo', '')[:300]}
+- Categoria: {candidato.get('categoria', '')}
+{objetivo_block}{ancoras_block}{nota_block}
+PARÁGRAFOS CANDIDATOS DO ARTIGO:
 {blocos}
 
-REGRAS (em ordem de prioridade):
-1. Escolha o parágrafo cujo TEMA bate com o destino, não pela palavra solta.
-2. `trecho_original`: 2-5 palavras CONTÍNUAS, COPIADAS EXATAMENTE de um dos parágrafos acima. NÃO PARAFRASEIE.
-3. `anchor_text`: por padrão igual ao trecho_original.
-4. Conectores `conector_antes` / `conector_depois` (até 3 palavras cada). Use SOMENTE quando o trecho_original já estiver naturalmente conectado ao redor e faltarem palavras de transição. NÃO use para criar contexto que não existe no parágrafo. Se o tema do parágrafo não tem relação clara com o destino, prefira NÃO propor inserção. O conector NÃO deve repetir palavras que já existem imediatamente após o trecho_original.
-5. PROIBIDO inserir em: cabeçalhos, listas, blocos de código (já filtramos, dupla checagem).
-6. **NÃO force link onde não há conexão temática.** Se o tema do parágrafo é diferente do destino, retorne `{{}}`. É melhor ter menos links com qualidade do que links forçados.
-7. **`palavra_chave_destino`**: ESCOLHA OBRIGATORIAMENTE uma das **palavras-chave do destino** listadas acima (ou um substantivo presente no título do destino). NÃO invente sinônimos do pilar — se o conceito do parágrafo NÃO está na lista de palavras-chave do destino, retorne `{{}}`. NÃO use palavras genéricas como "negócio", "empresa", "abrir", "tipo", "investimento", "como".
+DECIDA (`decisao`):
+- "aplicar": existe um trecho literal em algum parágrafo que funciona como âncora NATURAL
+  (o leitor entende para onde o link leva e a frase continua gramatical) E o tema do parágrafo
+  tem relação direta OU fortemente complementar com o destino. Relação por sinônimo ou termo
+  do mesmo domínio é VÁLIDA mesmo que a palavra exata não esteja na lista de palavras-chave
+  (ex.: "revenda sem estoque" pode ancorar um destino sobre dropshipping). Guias do MESMO
+  assunto para outro segmento/público também são fortemente complementares e DEVEM linkar
+  quando houver trecho natural (ex.: artigo sobre CNAE de comércio linka o guia de CNAE de
+  serviços no trecho que fala de outras atividades — o leitor com atividade mista precisa dos dois).
+- "sugerir": o tema é relacionado, mas nenhum trecho atual serve de âncora natural — o texto
+  precisaria de ajuste. Explique no `motivo` O QUE o autor deve ajustar
+  (ex.: "mencionar contabilidade no parágrafo sobre formalização").
+- "descartar": não há relação temática real entre o artigo e o destino. NUNCA force um link.
+  Explique o `motivo` em termos de temas (ex.: "o artigo fala de CNAE de varejo; o destino
+  fala de contratação PJ — o leitor não ganharia nada com o link").
 
-EXEMPLO 1 — match literal direto (caminho padrão):
+REGRAS DURAS (para decisao="aplicar"):
+1. `trecho_original`: 2-6 palavras CONTÍNUAS, COPIADAS EXATAMENTE de um dos parágrafos acima.
+   NÃO PARAFRASEIE — a inserção falha se o trecho não existir literalmente no texto.
+2. `anchor_text` (por padrão igual ao trecho_original) deve nomear o conceito específico do
+   destino — nunca termos vazios como "negócio", "empresa", "clique aqui", "este tipo", "como fazer".
+3. PROIBIDO usar trechos de cabeçalhos, listas ou blocos de código.
+4. Conectores `conector_antes`/`conector_depois` (até 3 palavras cada) SOMENTE quando a transição
+   já existir no texto; não crie contexto novo nem repita palavras vizinhas ao trecho.
+5. `motivo`: SEMPRE preenchido, 1 frase, linguagem de usuário final (sem jargão técnico).
+6. `confianca`: 0.0 a 1.0 — sua confiança na decisão.
 
-Parágrafo L0: "Restaurante que ofereça um cardápio específico, com estrutura para entregas, aproveita o crescimento do delivery."
-URL destino: como-abrir-um-restaurante
-Palavras-chave do destino: ["restaurante", "gastronomia", "cardápio", "delivery"]
+EXEMPLO aplicar (sinônimo de domínio):
+Parágrafo L2: "...a revenda sem estoque vem crescendo entre novos empreendedores..."
+Destino: "Como abrir uma loja virtual (dropshipping)"
+Resposta: {{"decisao": "aplicar", "paragrafo_idx": 2, "trecho_original": "revenda sem estoque",
+"anchor_text": "revenda sem estoque", "confianca": 0.85,
+"motivo": "O parágrafo trata de revenda sem estoque, que é exatamente o modelo dropshipping do destino."}}
 
-Resposta:
-{{"paragrafo_idx": 0, "trecho_original": "Restaurante que ofereça", "anchor_text": "Restaurante", "palavra_chave_destino": "restaurante", "justificativa": "Trecho menciona 'restaurante' literalmente; destino aprofunda como abrir um restaurante."}}
+EXEMPLO sugerir:
+Destino: "Contabilidade para MEI" e o artigo só cita "formalização" de passagem.
+Resposta: {{"decisao": "sugerir", "paragrafo_idx": -1, "confianca": 0.6,
+"motivo": "Adicionar uma menção a contabilidade no parágrafo sobre formalização permitiria um link natural."}}
 
-EXEMPLO 2 — match por sinônimo PRESENTE na lista (caminho válido):
+EXEMPLO descartar:
+Destino: "Guia de marketplace" e o artigo é sobre escolha de CNAE de comércio varejista sem citar venda em plataformas.
+Resposta: {{"decisao": "descartar", "paragrafo_idx": -1, "confianca": 0.8,
+"motivo": "O artigo trata da escolha de CNAE; o destino fala de vender em marketplaces — temas desconectados para o leitor."}}
 
-Parágrafo L1: "Python é uma das linguagens mais populares para iniciantes."
-URL destino: melhor-linguagem-iniciantes / Palavras-chave: ["linguagem", "Python", "iniciantes"]
-
-Resposta:
-{{"paragrafo_idx": 1, "trecho_original": "Python é uma das linguagens", "anchor_text": "Python", "palavra_chave_destino": "Python", "justificativa": "Trecho menciona 'Python', que é uma das palavras-chave do destino."}}
-
-EXEMPLO 3 — quando recusar (sem match no parágrafo NEM na lista):
-
-Parágrafo: "Antes de empreender, faça um estudo de mercado completo."
-URL destino: como-abrir-uma-imobiliaria / Palavras-chave: ["imobiliária", "imóveis", "corretagem"]
-
-Nenhum termo das palavras-chave aparece no parágrafo. Resposta: {{}}.
-
-REGRA DE DECISÃO: se algum termo das palavras-chave do destino aparece literalmente em algum parágrafo (mesmo flexionado), você DEVE propor uma inserção. Só retorne {{}} quando nenhum parágrafo menciona termos específicos do destino.
-
-Agora responda APENAS com JSON, no mesmo formato, para o caso real. Use `paragrafo_idx` 0, 1, 2, 3 ou 4 referente a L0/L1/L2/L3/L4."""
+Agora responda APENAS com JSON, no mesmo formato, para o caso real.
+Use `paragrafo_idx` LOCAL entre 0 e {max(0, n_paragrafos - 1)} (referente a L0..L{max(0, n_paragrafos - 1)})."""
 
 
 def _parse_proposta_unica(response: str) -> dict[str, Any] | None:
@@ -635,7 +794,11 @@ def _parse_proposta_unica(response: str) -> dict[str, Any] | None:
             data = json.loads(response[start:end])
             if not data:
                 return None
+            if "decisao" in data:
+                return data
             if "trecho_original" in data and "paragrafo_idx" in data:
+                # Formato antigo (sem decisao) — trecho presente implica aplicar.
+                data.setdefault("decisao", "aplicar" if data.get("trecho_original") else "sugerir")
                 return data
     except (json.JSONDecodeError, ValueError):
         pass
@@ -649,94 +812,6 @@ def _truncate_conector(conector: str) -> str:
     if len(words) > _MAX_CONECTOR_WORDS:
         return " ".join(words[:_MAX_CONECTOR_WORDS])
     return conector
-
-
-def _termos_validos_destino(candidato: dict[str, Any], palavra_chave_principal: str) -> list[str]:
-    termos = [palavra_chave_principal]
-    palavras = candidato.get("palavras_chave") or []
-    if isinstance(palavras, list):
-        termos.extend(str(p) for p in palavras)
-
-    validos: list[str] = []
-    vistos: set[str] = set()
-    for t in termos:
-        t_raw = (t or "").strip()
-        if len(t_raw) < 3:
-            continue
-        t_norm = _normalize_token(t_raw)
-        if t_norm in _STOPWORDS_GENERICAS:
-            continue
-        if t_norm in vistos:
-            continue
-        vistos.add(t_norm)
-        validos.append(t_raw)
-    return validos
-
-
-async def _validar_palavra_chave_destino(
-    parsed: dict[str, Any],
-    candidato: dict[str, Any],
-    paragrafo_completo: str,
-    usuario_id: str,
-    ancoras_preferidas: list[str] | None = None,
-) -> str | None:
-    kw_raw = (parsed.get("palavra_chave_destino") or "").strip()
-    if not kw_raw or len(kw_raw) < 2:
-        return "Inseridor não nomeou termo específico do destino."
-
-    kw_norm = _normalize_token(kw_raw)
-    if kw_norm in _STOPWORDS_GENERICAS:
-        return f"Termo '{kw_raw}' é muito genérico para servir de âncora específica."
-
-    if ancoras_preferidas:
-        anchor = (parsed.get("anchor_text") or "").strip()
-        trecho = (parsed.get("trecho_original") or "").strip()
-        if (
-            _ancora_preferida_match(kw_raw, ancoras_preferidas)
-            or _ancora_preferida_match(anchor, ancoras_preferidas)
-            or _ancora_preferida_match(trecho, ancoras_preferidas)
-        ):
-            return None
-
-    titulo = candidato.get("titulo", "") or ""
-    resumo = candidato.get("resumo", "") or ""
-    palavras_chave = candidato.get("palavras_chave", []) or []
-    palavras_chave_str = " ".join(palavras_chave) if isinstance(palavras_chave, list) else str(palavras_chave)
-    destino_texto = f"{titulo} {resumo} {palavras_chave_str}"
-
-    if not _contem_termo(destino_texto, kw_raw):
-        destino_curto = f"{titulo} {resumo[:300]}"
-        embs = await gerar_embeddings_batch([kw_raw, destino_curto], usuario_id)
-        if embs and embs[0] is not None and embs[1] is not None:
-            cos = cosine_seguro(embs[0], embs[1])
-            logger.info(
-                "Inseridor: kw '%s' fora das palavras-chave do destino (cos=%.3f). Rejeitando.",
-                kw_raw, cos,
-            )
-        palavras_chave_lista = palavras_chave if isinstance(palavras_chave, list) else []
-        amostra = ", ".join(f"'{p}'" for p in palavras_chave_lista[:5])
-        return (
-            f"Termo '{kw_raw}' não está nas palavras-chave do destino. "
-            f"Inseridor deveria escolher um da lista: {amostra}."
-        )
-
-    termos_validos = _termos_validos_destino(candidato, kw_raw)
-    if not termos_validos:
-        return f"Nenhum termo específico do destino disponível para validação (kw='{kw_raw}')."
-
-    anchor = parsed.get("anchor_text") or ""
-    trecho = parsed.get("trecho_original") or ""
-    ancora_texto = f"{anchor} {trecho} {paragrafo_completo}"
-
-    for termo in termos_validos:
-        if _contem_termo(ancora_texto, termo):
-            return None
-
-    termos_str = ", ".join(f"'{t}'" for t in termos_validos[:5])
-    return (
-        f"Âncora não menciona nenhum termo específico do destino. "
-        f"Esperado um de: {termos_str}."
-    )
 
 
 def _find_trecho_in_paragrafo(paragrafo: str, trecho_original: str) -> int | None:
@@ -777,17 +852,30 @@ def _aplicar_insercoes(
     insercoes_raw: list[dict[str, Any]],
     min_distance_words: int = _MIN_DISTANCE_WORDS_BASE,
     ancoras_preferidas: list[str] | None = None,
-) -> tuple[str, list[InlinkInserido]]:
+    finalizar_colisoes: bool = True,
+) -> tuple[str, list[InlinkInserido], list[dict[str, Any]]]:
+    """Aplica as inserções válidas e retorna (texto, itens, colisões).
+
+    `colisoes` são propostas que caíram APENAS por proximidade de outro inlink;
+    com finalizar_colisoes=True elas viram sugestao_manual (comportamento final),
+    com False são devolvidas ao chamador para 1 retry com outro parágrafo.
+    """
     candidatos_by_url = {c.get("url"): c for c in candidatos}
 
     validas: list[dict[str, Any]] = []
     sugestoes: list[dict[str, Any]] = []
+    descartes: list[dict[str, Any]] = []
+    colisoes: list[dict[str, Any]] = []
     accepted_word_positions: list[int] = []
 
     for ins in insercoes_raw:
         url = ins.get("url_destino", "")
         c = candidatos_by_url.get(url)
         if not c:
+            continue
+
+        if ins.get("_descartado"):
+            descartes.append(ins)
             continue
 
         if ins.get("_inseridor_vazio"):
@@ -891,7 +979,10 @@ def _aplicar_insercoes(
         word_pos = _word_position(pilar_markdown, global_offset)
         too_close = any(abs(word_pos - wp) < min_distance_words for wp in accepted_word_positions)
         if too_close:
-            sugestoes.append({**ins, "motivo_sugestao": "Muito próximo de outro inlink."})
+            if finalizar_colisoes:
+                sugestoes.append({**ins, "motivo_sugestao": "Muito próximo de outro inlink."})
+            else:
+                colisoes.append(ins)
             continue
 
         accepted_word_positions.append(word_pos)
@@ -905,6 +996,9 @@ def _aplicar_insercoes(
             "conector_depois": conector_depois,
             "justificativa": ins.get("justificativa", ""),
             "candidato": c,
+            "confianca": ins.get("confianca"),
+            "sinal_cos_contexto": ins.get("sinal_cos_contexto"),
+            "sinal_cos_ancora": ins.get("sinal_cos_ancora"),
         })
 
     validas.sort(key=lambda x: x["global_offset"], reverse=True)
@@ -961,6 +1055,9 @@ def _aplicar_insercoes(
                 ancoras_preferidas
                 and _ancora_preferida_match(v["anchor_text"], ancoras_preferidas)
             ),
+            confianca=v.get("confianca"),
+            sinal_cos_contexto=v.get("sinal_cos_contexto"),
+            sinal_cos_ancora=v.get("sinal_cos_ancora"),
         ))
         shift += v["link_md_len"] - len(v["trecho_original"])
 
@@ -983,6 +1080,29 @@ def _aplicar_insercoes(
                 c.get("score_semantico", 0), c.get("score_contexto", 0), c.get("score_total", 0)
             ),
             trecho_original=s.get("trecho_original"),
+            confianca=s.get("confianca"),
+            sinal_cos_contexto=s.get("sinal_cos_contexto"),
+            sinal_cos_ancora=s.get("sinal_cos_ancora"),
         ))
 
-    return texto, inseridos
+    for d in descartes:
+        url = d.get("url_destino", "")
+        c = candidatos_by_url.get(url, {})
+        inseridos.append(InlinkInserido(
+            url_destino=url,
+            anchor_text="",
+            paragrafo_idx=-1,
+            offset_chars=0,
+            score_total=c.get("score_total", 0),
+            score_semantico=c.get("score_semantico", 0),
+            score_contexto=c.get("score_contexto", 0),
+            status="rejeitado",
+            motivo_rejeicao=d.get("motivo_rejeicao") or "Sem relação temática real com o destino.",
+            titulo_destino=c.get("titulo", "") or None,
+            categoria_match=_categoria_match(
+                c.get("score_semantico", 0), c.get("score_contexto", 0), c.get("score_total", 0)
+            ),
+            confianca=d.get("confianca"),
+        ))
+
+    return texto, inseridos, colisoes
