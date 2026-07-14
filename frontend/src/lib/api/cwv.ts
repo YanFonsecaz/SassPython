@@ -177,3 +177,19 @@ export async function exportarProblemaCwvDocx(problemaId: string): Promise<Blob>
 export async function exportarRelatorioCwvDocx(analiseId: string): Promise<Blob> {
   return fetchBlobAuth(`/core-web-vitals/analise/${analiseId}/docx`);
 }
+
+export interface HealthScorePorEstrategia {
+  mobile: number | null;
+  desktop: number | null;
+}
+
+export interface HealthScoreResposta {
+  health_score: number | null;
+  n_pass: number;
+  n_total: number;
+  por_estrategia: HealthScorePorEstrategia;
+}
+
+export async function buscarHealthScoreCwv(execucaoId: string): Promise<HealthScoreResposta> {
+  return api.get<HealthScoreResposta>(`/ferramentas/core-web-vitals/execucao/${execucaoId}/health-score`);
+}

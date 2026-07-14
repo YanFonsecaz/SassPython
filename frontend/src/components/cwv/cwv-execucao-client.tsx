@@ -7,8 +7,9 @@ import { ArrowLeftIcon, CheckCircle2Icon, Loader2Icon, ArrowRightIcon } from "lu
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { createSSEConnection } from "@/lib/sse-client";
-import { buscarExecucaoCwv } from "@/lib/api/cwv";
+import { buscarExecucaoCwv, buscarHealthScoreCwv, type HealthScoreResposta } from "@/lib/api/cwv";
 import { CwvErroExecucao } from "@/components/cwv/cwv-erro-execucao";
+import { classificarMetrica, corClassificacao, rotuloClassificacao, THRESHOLDS } from "@/lib/cwv/thresholds";
 
 interface ExecucaoCwv {
   id: string;
@@ -30,6 +31,7 @@ export function CwvExecucaoClient() {
   const [statusFinal, setStatusFinal] = useState<string | null>(null);
   const [erroMsg, setErroMsg] = useState<string | null>(null);
   const [conectandoSSE, setConectandoSSE] = useState(false);
+  const [healthScore, setHealthScore] = useState<HealthScoreResposta | null>(null);
   const closeRef = useRef<{ close: () => void } | null>(null);
   const router = useRouter();
 
@@ -83,6 +85,21 @@ export function CwvExecucaoClient() {
 
     return () => { close.close(); closeRef.current = null; };
   }, [id, statusFinal]);
+
+  // SPEC_CWV_Health_Score: lê do resultado_json se já vier; senão (execução
+  // antiga) chama o endpoint que calcula on-the-fly.
+  useEffect(() => {
+    if (!id || statusFinal !== "concluida") return;
+    const embutido = execucao?.resultado_json as { health_score?: HealthScoreResposta | null } | null;
+    if (embutido && "health_score" in embutido && embutido.health_score !== undefined) {
+      const hs = embutido.health_score;
+      setHealthScore(hs === null
+        ? { health_score: null, n_pass: 0, n_total: 0, por_estrategia: { mobile: null, desktop: null } }
+        : hs);
+      return;
+    }
+    buscarHealthScoreCwv(id).then(setHealthScore).catch(() => setHealthScore(null));
+  }, [id, statusFinal, execucao]);
 
   if (!execucao && !erroMsg) {
     return (
@@ -142,6 +159,8 @@ export function CwvExecucaoClient() {
                 </div>
               )}
 
+              {healthScore && <HealthScoreCard hs={healthScore} />}
+
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" onClick={() => router.push("/ferramentas/core-web-vitals")}>
                   Nova análise
@@ -174,6 +193,44 @@ export function CwvExecucaoClient() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function HealthScoreCard({ hs }: { hs: HealthScoreResposta }) {
+  if (hs.health_score === null) {
+    return (
+      <div className="rounded-xl border bg-surface-light p-4">
+        <p className="text-sm font-medium">Health Score</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Sem score disponível (nenhuma URL analisada com sucesso).
+        </p>
+      </div>
+    );
+  }
+  const classif = classificarMetrica(hs.health_score, THRESHOLDS.score);
+  const cores = corClassificacao(classif);
+  const pct = Number(hs.health_score.toFixed(1)).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  return (
+    <div className={`rounded-xl border p-4 ${cores.bg}`}>
+      <div className="flex items-baseline justify-between">
+        <p className="text-sm font-medium">Health Score</p>
+        <span className={`text-xs font-medium ${cores.text}`}>{rotuloClassificacao(classif)}</span>
+      </div>
+      <div className="mt-2 flex items-baseline gap-2">
+        <span className={`text-3xl font-bold ${cores.text}`}>{pct}%</span>
+        <span className="text-xs text-muted-foreground">{hs.n_pass}/{hs.n_total} audits saudáveis</span>
+      </div>
+      {(hs.por_estrategia.mobile !== null || hs.por_estrategia.desktop !== null) && (
+        <div className="mt-2 flex gap-3 text-xs text-muted-foreground">
+          {hs.por_estrategia.mobile !== null && (
+            <span>Mobile: {hs.por_estrategia.mobile.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span>
+          )}
+          {hs.por_estrategia.desktop !== null && (
+            <span>Desktop: {hs.por_estrategia.desktop.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
