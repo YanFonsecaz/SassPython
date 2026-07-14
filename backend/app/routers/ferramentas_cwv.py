@@ -523,6 +523,7 @@ async def exportar_problema_docx(
         "metricas_afetadas": prob.metricas_afetadas,
         "contexto_especifico": prob.contexto_especifico,
         "documentacao_md": prob.documentacao_md,
+        "audit_id": prob.audit_id,
     }
     import asyncio
     import io
@@ -559,6 +560,7 @@ async def exportar_relatorio_docx(
             "metricas_afetadas": p["metricas_afetadas"],
             "contexto_especifico": p["contexto_especifico"],
             "documentacao_md": p["documentacao_md"],
+            "audit_id": p.get("audit_id"),
         }
         for p in problemas
     ]

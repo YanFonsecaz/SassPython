@@ -125,6 +125,7 @@ export function PlanoAcaoAccordion({ problemas }: PlanoAcaoProps) {
                 <ProblemaDetalhes
                   contexto={(p.contexto_especifico ?? {}) as Parameters<typeof ProblemaDetalhes>[0]["contexto"]}
                   documentacaoMd={p.documentacao_md}
+                  threshold={p.threshold}
                 />
               </AccordionContent>
             </AccordionItem>

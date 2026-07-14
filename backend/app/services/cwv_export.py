@@ -5,6 +5,59 @@ import markdown
 
 SEVERIDADE_LABELS = {5: "Critico", 4: "Critico", 3: "Alto", 2: "Medio", 1: "Baixo"}
 
+# Thresholds (meta) por audit_id — fonte: docs Lighthouse/web.dev e cabeçalhos
+# da planilha NPBR. Exibidos no cabeçalho da tabela de evidências para o cliente
+# entender de imediato o quão longe cada recurso está do ideal. pt-BR direto.
+THRESHOLDS_POR_AUDIT: dict[str, str] = {
+    "long-tasks": "< 100 ms por tarefa",
+    "mainthread-work-breakdown": "< 2 s de trabalho na main thread",
+    "bootup-time": "< 2 s de execução de JS",
+    "total-blocking-time": "TBT < 200 ms",
+    "server-response-time": "TTFB < 600 ms",
+    "render-blocking-resources": "0 recursos bloqueantes",
+    "unused-javascript": "desperdício < 20 KB por arquivo",
+    "unused-css-rules": "desperdício < 20 KB por arquivo",
+    "uses-long-cache-ttl": "TTL de cache ≥ 30 dias",
+    "total-byte-weight": "página < 1,6 MB",
+    "dom-size": "< 800 nós no DOM",
+    "third-party-summary": "bloqueio por terceiros < 250 ms",
+    "largest-contentful-paint": "LCP < 2,5 s",
+    "cumulative-layout-shift": "CLS < 0,1",
+    "interaction-to-next-paint": "INP < 200 ms",
+    "first-contentful-paint": "FCP < 1,8 s",
+    "modern-image-formats": "imagens em WebP/AVIF",
+    "uses-optimized-images": "0 KB de desperdício por compressão",
+    "uses-responsive-images": "imagem ≤ tamanho exibido",
+    "offscreen-images": "imagens fora da tela com lazy load",
+    "unminified-javascript": "JS minificado (0 KB de desperdício)",
+    "unminified-css": "CSS minificado (0 KB de desperdício)",
+    "uses-text-compression": "compressão gzip/brotli ativa",
+    "redirects": "0 redirecionamentos encadeados",
+    "critical-request-chains": "cadeias críticas curtas (≤ 2 níveis)",
+    "layout-shifts": "nenhum shift > 0,05",
+    "legacy-javascript": "0 polyfills desnecessários",
+    "duplicated-javascript": "0 módulos duplicados",
+    "efficient-animated-content": "vídeo no lugar de GIF",
+    "font-display": "font-display: swap/optional",
+    "prioritize-lcp-image": "imagem LCP com fetchpriority=high",
+    "lcp-lazy-loaded": "imagem LCP sem lazy load",
+    "unsized-images": "width/height explícitos em todas as imagens",
+}
+
+
+def threshold_do_audit(audit_id: str | None) -> str | None:
+    """Resolve o threshold (meta) de um audit_id.
+
+    Aplica ``AUDIT_ALIASES`` (resolve ids ``-insight`` antes do lookup).
+    Retorna ``None`` se o audit não tiver threshold mapeado.
+    """
+    if not audit_id:
+        return None
+    from app.services.cwv_kb import AUDIT_ALIASES
+
+    resolvido = AUDIT_ALIASES.get(audit_id, audit_id)
+    return THRESHOLDS_POR_AUDIT.get(resolvido)
+
 
 def _severidade_label(sev: int) -> str:
     return SEVERIDADE_LABELS.get(sev, str(sev))
@@ -49,17 +102,34 @@ def _html_table(headers: list[str], rows: list[list]) -> str:
     return "\n".join(out)
 
 
-def _tabela_recursos(items: list[dict]) -> str:
+def _tabela_recursos(items: list[dict], audit_id: str | None = None) -> str:
     if not items:
         return ""
+    # Ordena por desperdício decrescente (os piores primeiro). wastedMs/wastedBytes
+    # são opcionais; items sem desperdício mensurável ficam ao final (peso 0).
+    def peso_wasted(item: dict) -> float:
+        if item.get("wastedMs") is not None:
+            return float(item["wastedMs"])
+        if item.get("wastedBytes") is not None:
+            return float(item["wastedBytes"])
+        return 0.0
+
+    items_ordenados = sorted(items, key=peso_wasted, reverse=True)[:50]
+
     rows = []
-    for item in items[:50]:
+    for item in items_ordenados:
         recurso = item.get("url") or item.get("label") or ""
         detalhe = (item.get("snippet") or item.get("type") or "")[:120]
         desperd = _fmt_bytes(item.get("wastedBytes")) or _fmt_ms(item.get("wastedMs")) or ""
         total = _fmt_bytes(item.get("totalBytes")) or _fmt_ms(item.get("totalMs")) or ""
         rows.append([recurso, detalhe, desperd, total])
-    return _html_table(["Recurso", "Detalhe", "Desperdicado", "Total"], rows)
+
+    threshold = threshold_do_audit(audit_id)
+    partes = []
+    if threshold:
+        partes.append(f"<p><strong>Evidências</strong> — meta: {_escape(threshold)}</p>")
+    partes.append(_html_table(["Recurso", "Detalhe", "Desperdicado", "Total"], rows))
+    return "\n".join(partes)
 
 
 def problema_para_html(problema: dict) -> str:
@@ -91,7 +161,7 @@ def problema_para_html(problema: dict) -> str:
 
     items = (ctx.get("items") or ctx.get("details", {}).get("items") or [])
     if items:
-        parts.append(_tabela_recursos(items))
+        parts.append(_tabela_recursos(items, problema.get("audit_id")))
 
     doc_md = problema.get("documentacao_md", "")
     if doc_md:
@@ -170,7 +240,7 @@ def relatorio_para_html(analise: dict, problemas: list[dict]) -> str:
 
         items = (ctx.get("items") or ctx.get("details", {}).get("items") or [])
         if items:
-            parts.append(_tabela_recursos(items))
+            parts.append(_tabela_recursos(items, p.get("audit_id")))
 
         doc_md = p.get("documentacao_md", "")
         if doc_md:

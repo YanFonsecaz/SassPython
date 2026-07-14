@@ -104,14 +104,23 @@ function shortUrl(u: string): string {
 export function ProblemaDetalhes({
   contexto,
   documentacaoMd,
+  threshold,
 }: {
   contexto: Contexto;
   documentacaoMd: string;
+  threshold?: string | null;
 }) {
   const [verMais, setVerMais] = useState(false);
   const items = contexto.items ?? [];
   const limiteInicial = 10;
-  const itemsVisiveis = verMais ? items : items.slice(0, limiteInicial);
+  // SPEC_CWV_Evidencias_Destacadas: ordena por desperdício decrescente (os
+  // piores primeiro). Items sem desperdício mensurável ficam ao final.
+  const itemsOrdenados = [...items].sort((a, b) => {
+    const pa = a.wastedMs ?? a.wastedBytes ?? a.mainThreadTime ?? 0;
+    const pb = b.wastedMs ?? b.wastedBytes ?? b.mainThreadTime ?? 0;
+    return pb - pa;
+  });
+  const itemsVisiveis = verMais ? itemsOrdenados : itemsOrdenados.slice(0, limiteInicial);
   const temItens = items.length > 0;
   const hasSavings = contexto.savings_bytes != null || contexto.savings_ms != null;
   const colWasted = items.some(
@@ -202,13 +211,20 @@ export function ProblemaDetalhes({
         <div className="rounded-lg border bg-card overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/40">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Recursos afetados ({items.length})
+              Evidências ({items.length})
             </p>
-            {contexto.details_type && (
-              <Badge variant="outline" className="text-[10px]">
-                {contexto.details_type}
-              </Badge>
-            )}
+            <div className="flex items-center gap-1">
+              {threshold && (
+                <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-800" title="Meta de referência para este tipo de problema">
+                  meta: {threshold}
+                </Badge>
+              )}
+              {contexto.details_type && (
+                <Badge variant="outline" className="text-[10px]">
+                  {contexto.details_type}
+                </Badge>
+              )}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">

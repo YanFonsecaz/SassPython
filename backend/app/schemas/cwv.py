@@ -87,6 +87,7 @@ class ProblemaResposta(BaseModel):
     documentacao_md: str
     pesquisado: bool = False
     esforco: str | None = None
+    threshold: str | None = None
 
 
 class AnaliseResposta(BaseModel):

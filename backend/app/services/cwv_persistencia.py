@@ -10,6 +10,17 @@ from app.services.cwv_psi_client import normalizar_url
 logger = logging.getLogger(__name__)
 
 
+def _threshold_do_problema(audit_id: str | None) -> str | None:
+    """Wrapper lazy sobre ``cwv_export.threshold_do_audit``.
+
+    Import lazy para evitar ciclo (``cwv_export`` importa ``cwv_kb``; este
+    módulo importa modelos — manter dependências em uma direção).
+    """
+    from app.services.cwv_export import threshold_do_audit
+
+    return threshold_do_audit(audit_id)
+
+
 async def persistir_analise(
     session,
     *,
@@ -280,6 +291,7 @@ def _analise_to_dict(analise: CwvAnalise, problemas: list[CwvProblema]) -> dict:
                 "documentacao_md": p.documentacao_md,
                 "pesquisado": p.pesquisado,
                 "esforco": p.esforco,
+                "threshold": _threshold_do_problema(p.audit_id),
             }
             for p in problemas
         ],

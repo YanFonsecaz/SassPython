@@ -18,6 +18,7 @@ export interface CwvProblemaResposta {
   documentacao_md: string;
   pesquisado?: boolean;
   esforco?: CwvEsforco | null;
+  threshold?: string | null;
 }
 
 export interface CwvAnaliseResposta {
