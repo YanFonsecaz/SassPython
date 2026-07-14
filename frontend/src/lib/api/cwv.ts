@@ -192,6 +192,10 @@ export async function exportarRelatorioCwvDocx(analiseId: string): Promise<Blob>
   return fetchBlobAuth(`/core-web-vitals/analise/${analiseId}/docx`);
 }
 
+export async function exportarExecucaoCwvDocx(execucaoId: string): Promise<Blob> {
+  return fetchBlobAuth(`/core-web-vitals/execucao/${execucaoId}/docx`);
+}
+
 export interface HealthScorePorEstrategia {
   mobile: number | null;
   desktop: number | null;

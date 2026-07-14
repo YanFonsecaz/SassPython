@@ -17,7 +17,9 @@ import {
   ListOrderedIcon,
   SaveIcon,
   ShieldCheckIcon,
+  DownloadIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { createSSEConnection } from "@/lib/sse-client";
@@ -25,9 +27,11 @@ import {
   buscarExecucaoCwv,
   buscarHealthScoreCwv,
   buscarPageExperienceCwv,
+  exportarExecucaoCwvDocx,
   type HealthScoreResposta,
   type PageExperienceListResponse,
 } from "@/lib/api/cwv";
+import { mensagemErroAmigavel } from "@/lib/api";
 import { CwvErroExecucao } from "@/components/cwv/cwv-erro-execucao";
 import { classificarMetrica, corClassificacao, rotuloClassificacao, THRESHOLDS } from "@/lib/cwv/thresholds";
 
@@ -69,6 +73,7 @@ export function CwvExecucaoClient() {
   const [conectandoSSE, setConectandoSSE] = useState(false);
   const [healthScore, setHealthScore] = useState<HealthScoreResposta | null>(null);
   const [pageExperience, setPageExperience] = useState<PageExperienceListResponse | null>(null);
+  const [exportandoExecucao, setExportandoExecucao] = useState(false);
   const [nodeStatuses, setNodeStatuses] = useState<Record<string, NodeStatus>>({});
   const closeRef = useRef<{ close: () => void } | null>(null);
   const router = useRouter();
@@ -168,6 +173,26 @@ export function CwvExecucaoClient() {
   const resultado = execucao?.resultado_json as Record<string, unknown> | null;
   const analiseIds = (resultado?.analise_ids as string[]) ?? [];
 
+  async function handleExportarExecucao() {
+    if (!id || exportandoExecucao) return;
+    setExportandoExecucao(true);
+    try {
+      const blob = await exportarExecucaoCwvDocx(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cwv-auditoria-${id.slice(0, 8)}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(mensagemErroAmigavel(e));
+    } finally {
+      setExportandoExecucao(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -218,6 +243,10 @@ export function CwvExecucaoClient() {
               )}
 
               <div className="flex gap-2 pt-2">
+                <Button onClick={handleExportarExecucao} disabled={exportandoExecucao}>
+                  {exportandoExecucao ? <Loader2Icon className="size-4 mr-1 animate-spin" /> : <DownloadIcon className="size-4 mr-1" />}
+                  Baixar relatório completo (.docx)
+                </Button>
                 <Button variant="outline" onClick={() => router.push("/ferramentas/core-web-vitals")}>
                   Nova análise
                 </Button>

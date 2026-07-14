@@ -133,6 +133,23 @@ async def buscar_analise_com_problemas(session, analise_id: str) -> dict | None:
     return _analise_to_dict(analise, problemas)
 
 
+async def buscar_analises_da_execucao(session, execucao_id: str) -> list[dict]:
+    """SPEC_CWV_Export_Consolidado_Execucao: todas as análises (com problemas)
+    de uma execução, para o DOCX consolidado.
+    """
+    resultado = await session.execute(
+        select(CwvAnalise)
+        .where(CwvAnalise.execucao_id == execucao_id)
+        .order_by(CwvAnalise.url_canonica, CwvAnalise.estrategia)
+    )
+    analises = resultado.scalars().all()
+    out: list[dict] = []
+    for a in analises:
+        probs = await buscar_problemas_analise(session, str(a.id))
+        out.append(_analise_to_dict(a, probs))
+    return out
+
+
 async def buscar_historico_url(session, cliente_id: str, url_canonica: str, estrategia: str | None = None) -> list[dict]:
     contagens = (
         select(

@@ -622,3 +622,56 @@ async def exportar_relatorio_docx(
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f'attachment; filename="{nome}.docx"'},
     )
+
+
+@router.get("/core-web-vitals/execucao/{execucao_id}/docx")
+async def exportar_execucao_docx(
+    execucao_id: str,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+    _: None = Depends(rate_limit_autenticado("cwv_export", max_requests=30, window_seconds=300)),
+) -> StreamingResponse:
+    """SPEC_CWV_Export_Consolidado_Execucao: DOCX consolidado da execução."""
+    import asyncio
+    import io
+
+    from app.models.cliente import Cliente as ClienteModel
+    from app.models.execucao_ferramenta import ExecucaoFerramenta
+    from app.services import cwv_persistencia
+    from app.services.cwv_export import relatorio_execucao_para_html, slugify_titulo
+    from app.services.parecer_service import html_para_docx_bytes
+
+    # Ownership 404 (nunca 403).
+    exec_result = await db.execute(
+        select(ExecucaoFerramenta).where(
+            ExecucaoFerramenta.id == execucao_id,
+            ExecucaoFerramenta.usuario_id == usuario.id,
+        )
+    )
+    execucao = exec_result.scalar_one_or_none()
+    if not execucao:
+        raise HTTPException(status_code=404, detail="Execucao nao encontrada")
+
+    analises = await cwv_persistencia.buscar_analises_da_execucao(db, execucao_id)
+
+    cliente_nome = ""
+    if execucao.cliente_id:
+        cliente = await db.get(ClienteModel, execucao.cliente_id)
+        cliente_nome = cliente.nome if cliente else ""
+
+    html = relatorio_execucao_para_html(
+        execucao={
+            "id": str(execucao.id),
+            "criado_em": str(execucao.criado_em),
+            "resultado_json": execucao.resultado_json,
+        },
+        analises=analises,
+        cliente_nome=cliente_nome,
+    )
+    docx = await asyncio.to_thread(html_para_docx_bytes, html)
+    nome = f"cwv-auditoria-{slugify_titulo(cliente_nome) if cliente_nome else str(execucao.criado_em)[:10]}"
+    return StreamingResponse(
+        io.BytesIO(docx),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{nome}.docx"'},
+    )
