@@ -233,3 +233,81 @@ export interface PageExperienceListResponse {
 export async function buscarPageExperienceCwv(execucaoId: string): Promise<PageExperienceListResponse> {
   return api.get<PageExperienceListResponse>(`/ferramentas/core-web-vitals/execucao/${execucaoId}/page-experience`);
 }
+
+// --- SPEC_CWV_Auditoria_Ciclo_De_Vida ---------------------------------------
+
+export type FaseAuditoria = "before" | "aguardando_implementacao" | "after" | "concluida";
+export type OrigemItem = "psi_audit" | "page_experience" | "field_data";
+export type StatusCheck = "pass" | "fail" | "na";
+export type StatusImplementacao = "nao_executado" | "em_andamento" | "implementado";
+
+export interface ChecklistItemResposta {
+  id: string;
+  origem: OrigemItem;
+  item_codigo: string;
+  titulo: string;
+  status_before: StatusCheck;
+  status_after: StatusCheck | null;
+  status_implementacao: StatusImplementacao;
+  nota_cliente: string | null;
+  nota_seo: string | null;
+  prioridade: number;
+  esforco: string | null;
+  escopo_json: Record<string, unknown>;
+}
+
+export interface AuditoriaResposta {
+  id: string;
+  cliente_id: string;
+  titulo: string;
+  fase: FaseAuditoria;
+  execucao_before_id: string | null;
+  execucao_after_id: string | null;
+  health_score_before: number | null;
+  health_score_after: number | null;
+  consolidacao_status: string;
+  checklist: ChecklistItemResposta[];
+  n_pass_before: number;
+  n_fail_before: number;
+  n_implementados: number;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+export interface AuditoriaResumo {
+  id: string;
+  titulo: string;
+  fase: FaseAuditoria;
+  health_score_before: number | null;
+  health_score_after: number | null;
+  n_itens: number;
+  criado_em: string;
+}
+
+export async function criarAuditoriaCwv(clienteId: string, execucaoId: string, titulo?: string): Promise<AuditoriaResposta> {
+  return api.post<AuditoriaResposta>("/ferramentas/core-web-vitals/auditorias", {
+    cliente_id: clienteId,
+    execucao_id: execucaoId,
+    titulo,
+  });
+}
+
+export async function listarAuditoriasCwv(clienteId: string): Promise<{ auditorias: AuditoriaResumo[] }> {
+  return api.get(`/ferramentas/core-web-vitals/auditorias?cliente_id=${clienteId}`);
+}
+
+export async function buscarAuditoriaCwv(auditoriaId: string): Promise<AuditoriaResposta> {
+  return api.get<AuditoriaResposta>(`/ferramentas/core-web-vitals/auditorias/${auditoriaId}`);
+}
+
+export async function atualizarAuditoriaCwv(auditoriaId: string, dados: { fase?: FaseAuditoria; titulo?: string }): Promise<AuditoriaResposta> {
+  return api.patch<AuditoriaResposta>(`/ferramentas/core-web-vitals/auditorias/${auditoriaId}`, dados);
+}
+
+export async function atualizarItemChecklistCwv(
+  auditoriaId: string,
+  itemId: string,
+  dados: { status_implementacao?: StatusImplementacao; nota_cliente?: string; nota_seo?: string },
+): Promise<ChecklistItemResposta> {
+  return api.patch<ChecklistItemResposta>(`/ferramentas/core-web-vitals/auditorias/${auditoriaId}/itens/${itemId}`, dados);
+}

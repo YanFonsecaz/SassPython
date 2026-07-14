@@ -27,6 +27,7 @@ import {
   buscarExecucaoCwv,
   buscarHealthScoreCwv,
   buscarPageExperienceCwv,
+  criarAuditoriaCwv,
   exportarExecucaoCwvDocx,
   type HealthScoreResposta,
   type PageExperienceListResponse,
@@ -45,6 +46,7 @@ interface ExecucaoCwv {
   resultado_json: Record<string, unknown> | null;
   erro_msg: string | null;
   concluida_em: string | null;
+  cliente_id?: string | null;
 }
 
 // SPEC_CWV_Page_Experience: lista fixa de etapas do workflow CWV (inclui o nó
@@ -74,6 +76,7 @@ export function CwvExecucaoClient() {
   const [healthScore, setHealthScore] = useState<HealthScoreResposta | null>(null);
   const [pageExperience, setPageExperience] = useState<PageExperienceListResponse | null>(null);
   const [exportandoExecucao, setExportandoExecucao] = useState(false);
+  const [criandoAuditoria, setCriandoAuditoria] = useState(false);
   const [nodeStatuses, setNodeStatuses] = useState<Record<string, NodeStatus>>({});
   const closeRef = useRef<{ close: () => void } | null>(null);
   const router = useRouter();
@@ -193,6 +196,20 @@ export function CwvExecucaoClient() {
     }
   }
 
+  async function handleCriarAuditoria() {
+    if (!id || !execucao?.cliente_id || criandoAuditoria) return;
+    setCriandoAuditoria(true);
+    try {
+      const auditoria = await criarAuditoriaCwv(execucao.cliente_id, id);
+      toast.success("Auditoria criada!");
+      router.push(`/ferramentas/core-web-vitals/auditoria/${auditoria.id}`);
+    } catch (e) {
+      toast.error(mensagemErroAmigavel(e));
+    } finally {
+      setCriandoAuditoria(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -242,12 +259,18 @@ export function CwvExecucaoClient() {
                 <PageExperienceSection pe={pageExperience} />
               )}
 
-              <div className="flex gap-2 pt-2">
+              <div className="flex flex-wrap gap-2 pt-2">
                 <Button onClick={handleExportarExecucao} disabled={exportandoExecucao}>
                   {exportandoExecucao ? <Loader2Icon className="size-4 mr-1 animate-spin" /> : <DownloadIcon className="size-4 mr-1" />}
                   Baixar relatório completo (.docx)
                 </Button>
-                <Button variant="outline" onClick={() => router.push("/ferramentas/core-web-vitals")}>
+                {execucao?.cliente_id && (
+                  <Button variant="outline" onClick={handleCriarAuditoria} disabled={criandoAuditoria}>
+                    {criandoAuditoria ? <Loader2Icon className="size-4 mr-1 animate-spin" /> : <ShieldCheckIcon className="size-4 mr-1" />}
+                    Criar auditoria
+                  </Button>
+                )}
+                <Button variant="ghost" onClick={() => router.push("/ferramentas/core-web-vitals")}>
                   Nova análise
                 </Button>
               </div>

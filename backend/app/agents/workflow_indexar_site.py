@@ -188,6 +188,7 @@ async def executar_workflow_indexar_site(execucao_id: str, ctx: dict[str, Any] |
             cliente_id_str = str(execucao.cliente_id) if execucao.cliente_id else None
             usuario_id = str(execucao.usuario_id)
             dominio = entrada.get("dominio", "")
+            sitemap_override = entrada.get("sitemap_url") or None
 
         if not cliente_id_str or not dominio:
             async with async_session_factory() as session:
@@ -206,15 +207,19 @@ async def executar_workflow_indexar_site(execucao_id: str, ctx: dict[str, Any] |
             f"Lendo sitemap de {dominio}...",
         )
 
-        urls = await coletar_urls_do_sitemap(dominio, teto=MAX_PAGINAS_SITE)
+        urls = await coletar_urls_do_sitemap(
+            dominio, teto=MAX_PAGINAS_SITE, sitemap_url=sitemap_override,
+        )
         if not urls:
             await _atualizar_indice(cliente_id_str, status="falhou",
-                                    erro_msg="Sitemap não encontrado ou vazio. Informe URLs manualmente.")
+                                    erro_msg="Sitemap não encontrado ou vazio. Informe a URL "
+                                             "do sitemap abaixo ou as URLs manualmente.")
             async with async_session_factory() as session:
                 await ferramenta_service.finalizar_falha(
                     session, execucao_id,
-                    f"Sitemap de {dominio} não encontrado ou vazio. "
-                    "Informe as URLs candidatas manualmente.",
+                    f"Sitemap de {dominio} não encontrado ou vazio (robots.txt e "
+                    "caminhos padrão). Informe a URL do sitemap no card do cliente "
+                    "ou as URLs candidatas manualmente.",
                     ferramenta="indexar_site",
                 )
                 await session.commit()

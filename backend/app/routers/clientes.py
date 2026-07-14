@@ -17,6 +17,7 @@ from app.schemas.cliente import (
     ClienteListResponse,
     ClienteResponse,
     ClienteUpdateRequest,
+    IndexarSiteRequest,
     MensagemResponse,
 )
 from app.services import cliente_service, ferramenta_service
@@ -153,6 +154,7 @@ async def obter_indice_site(
 @router.post("/{cliente_id}/indexar-site", status_code=202)
 async def indexar_site(
     cliente_id: str,
+    payload: IndexarSiteRequest | None = None,
     db: AsyncSession = Depends(get_db),
     usuario: Usuario = Depends(get_current_user),
     _: None = Depends(rate_limit_autenticado("indexar_site", max_requests=2, window_seconds=60)),
@@ -186,7 +188,10 @@ async def indexar_site(
         cliente_id=cliente_id,
         ferramenta="indexar_site",
         status="pendente",
-        entrada_json={"dominio": dominio},
+        entrada_json={
+            "dominio": dominio,
+            **({"sitemap_url": payload.sitemap_url} if payload and payload.sitemap_url else {}),
+        },
         thread_id=str(uuid.uuid4()),
         timeout_em=datetime.now(UTC) + timedelta(seconds=settings.indexar_workflow_timeout),
     )

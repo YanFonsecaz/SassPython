@@ -113,3 +113,25 @@ class ClienteListResponse(BaseModel):
 
 class MensagemResponse(BaseModel):
     mensagem: str
+
+
+class IndexarSiteRequest(BaseModel):
+    """Body opcional do POST /clientes/{id}/indexar-site.
+
+    sitemap_url: override manual quando o robots.txt e os caminhos padrão
+    não localizam o sitemap (SPEC_Inlinks_Descoberta_Automatica_Candidatas).
+    """
+
+    sitemap_url: str | None = Field(default=None, max_length=500)
+
+    @field_validator("sitemap_url")
+    @classmethod
+    def valida_sitemap_url(cls, v):
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            return None
+        if not v.startswith(("http://", "https://")):
+            raise ValueError("sitemap_url deve começar com http:// ou https://")
+        return v

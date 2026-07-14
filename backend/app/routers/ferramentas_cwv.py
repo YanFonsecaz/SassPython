@@ -132,6 +132,7 @@ async def buscar_execucao_cwv(
         "erro_msg": execucao.erro_msg,
         "criado_em": str(execucao.criado_em),
         "concluida_em": str(execucao.concluida_em) if execucao.concluida_em else None,
+        "cliente_id": str(execucao.cliente_id) if execucao.cliente_id else None,
     }
 
 

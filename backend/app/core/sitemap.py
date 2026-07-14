@@ -19,9 +19,14 @@ _MAX_BYTES = 2 * 1024 * 1024
 _MAX_INDEX_DEPTH = 3
 
 
+def _norm_host(host: str) -> str:
+    """Trata www.dominio e dominio como equivalentes (sitemaps misturam os dois)."""
+    return host.lower().removeprefix("www.")
+
+
 def _mesmo_dominio(url: str, dominio: str) -> bool:
     host = urlparse(url).hostname or ""
-    return host.lower() == dominio.lower()
+    return _norm_host(host) == _norm_host(dominio)
 
 
 async def _fetch(url: str) -> str | None:
@@ -76,6 +81,25 @@ def _parse(texto: str) -> tuple[list[str], list[str]]:
     return urls, sub_sitemaps
 
 
+async def _sitemaps_do_robots(dominio: str) -> list[str]:
+    """Descobre sitemaps pela diretiva `Sitemap:` do robots.txt (mecanismo padrão).
+
+    É o que o Google usa; cobre sites cujo sitemap não está em /sitemap.xml
+    (ex.: /wp-sitemap.xml do WordPress). A diretiva pode aparecer várias vezes.
+    """
+    texto = await _fetch(f"https://{dominio}/robots.txt")
+    if not texto:
+        return []
+    encontrados: list[str] = []
+    for linha in texto.splitlines():
+        linha = linha.strip()
+        if linha.lower().startswith("sitemap:"):
+            u = linha.split(":", 1)[1].strip()
+            if u.startswith(("http://", "https://")) and u not in encontrados:
+                encontrados.append(u)
+    return encontrados[:10]
+
+
 def _profundidade_path(url: str) -> int:
     """Heurística de prioridade: páginas rasas (poucos segmentos de path) primeiro."""
     path = urlparse(url).path or "/"
@@ -86,12 +110,15 @@ async def coletar_urls_do_sitemap(
     dominio: str,
     *,
     teto: int = 500,
+    sitemap_url: str | None = None,
 ) -> list[str]:
     """Baixa o sitemap do domínio e devolve até `teto` URLs do mesmo domínio.
 
-    Tenta /sitemap.xml e /sitemap_index.xml. Sitemap-index é recursivo (até
-    _MAX_INDEX_DEPTH). URLs de outro domínio (cross-domain no sitemap) são
-    descartadas. Ordena por profundidade de path (páginas principais primeiro).
+    Ordem de descoberta: `sitemap_url` explícito (override do usuário) →
+    diretivas `Sitemap:` do robots.txt → chutes /sitemap.xml e
+    /sitemap_index.xml. Sitemap-index é recursivo (até _MAX_INDEX_DEPTH).
+    URLs de outro domínio (cross-domain no sitemap) são descartadas
+    (www./não-www são equivalentes). Ordena por profundidade de path.
     """
     if _check_host(dominio) != "ok":
         logger.info("sitemap: host %s bloqueado pelo SSRF guard", dominio)
@@ -124,10 +151,16 @@ async def coletar_urls_do_sitemap(
                 return
             await _explorar(sub, depth + 1)
 
-    for path in ("/sitemap.xml", "/sitemap_index.xml"):
+    if sitemap_url:
+        fontes = [sitemap_url]
+    else:
+        fontes = await _sitemaps_do_robots(dominio)
+        fontes += [f"https://{dominio}/sitemap.xml", f"https://{dominio}/sitemap_index.xml"]
+
+    for fonte in fontes:
         if len(candidatos) >= teto:
             break
-        await _explorar(f"https://{dominio}{path}", depth=0)
+        await _explorar(fonte, depth=0)
 
     # Prioriza páginas rasas; corta no teto.
     candidatos.sort(key=_profundidade_path)
