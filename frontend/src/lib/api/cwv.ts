@@ -311,3 +311,7 @@ export async function atualizarItemChecklistCwv(
 ): Promise<ChecklistItemResposta> {
   return api.patch<ChecklistItemResposta>(`/ferramentas/core-web-vitals/auditorias/${auditoriaId}/itens/${itemId}`, dados);
 }
+
+export async function reauditarCwv(auditoriaId: string): Promise<{ id: string; status: string; custo_estimado: number; auditoria_id: string }> {
+  return api.post(`/ferramentas/core-web-vitals/auditorias/${auditoriaId}/reauditar`);
+}

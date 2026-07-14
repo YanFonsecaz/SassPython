@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_user, get_db
+from app.dependencies import get_current_user, get_db, rate_limit_autenticado
 from app.models.cliente import Cliente
 from app.models.cwv_auditoria import CwvAuditoria
 from app.models.cwv_checklist_item import CwvChecklistItem
@@ -28,6 +28,7 @@ from app.schemas.cwv_auditoria import (
     ChecklistItemResposta,
 )
 from app.services.cwv_auditoria_service import avancar_fase, criar_auditoria
+from app.services.ferramenta_service import calcular_custo_cwv
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -238,3 +239,112 @@ async def atualizar_item_checklist(
     await db.commit()
     await db.refresh(item)
     return _item_to_dict(item)
+
+
+@router.post("/core-web-vitals/auditorias/{auditoria_id}/reauditar", status_code=202)
+async def reauditar_auditoria(
+    auditoria_id: str,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+    _: None = Depends(rate_limit_autenticado("cwv_reanalisar", max_requests=3, window_seconds=300)),
+) -> dict[str, Any]:
+    """SPEC_CWV_Reauditoria_After: re-executa a análise nas mesmas URLs do before."""
+    import uuid
+    from datetime import UTC, datetime, timedelta
+
+    from app.config import settings
+    from app.services import credito_service
+
+    # Ownership.
+    aud_result = await db.execute(
+        select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id)
+    )
+    auditoria = aud_result.scalar_one_or_none()
+    if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
+        raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
+
+    # Fase deve ser aguardando_implementacao.
+    if auditoria.fase != "aguardando_implementacao":
+        raise HTTPException(status_code=409, detail="Auditoria precisa estar em fase 'aguardando_implementacao'")
+
+    # Re-tentar só após falha.
+    if auditoria.execucao_after_id:
+        exec_check = await db.execute(
+            select(ExecucaoFerramenta).where(ExecucaoFerramenta.id == auditoria.execucao_after_id)
+        )
+        exec_after = exec_check.scalar_one_or_none()
+        if exec_after and exec_after.status not in ("falhou", "cancelada"):
+            raise HTTPException(status_code=409, detail="Re-auditoria já em andamento ou concluída")
+
+    # Reconstrói urls_por_template da execução before.
+    exec_before_result = await db.execute(
+        select(ExecucaoFerramenta).where(ExecucaoFerramenta.id == auditoria.execucao_before_id)
+    )
+    exec_before = exec_before_result.scalar_one_or_none()
+    if not exec_before or not exec_before.entrada_json:
+        raise HTTPException(status_code=409, detail="Execução before não encontrada ou sem entrada")
+
+    urls_por_template = exec_before.entrada_json.get("urls_por_template")
+    if not urls_por_template:
+        raise HTTPException(status_code=409, detail="Execução before sem urls_por_template")
+
+    # Conta URLs e calcula custo (mesmo cálculo do analisar_cwv).
+    from app.schemas.cwv import UrlsPorTemplate
+
+    urls_obj = UrlsPorTemplate(**urls_por_template)
+    n_urls = urls_obj.total()
+    custo = calcular_custo_cwv(n_urls * 2)
+
+    try:
+        await credito_service.reservar_creditos(db, str(usuario.id), custo)
+    except ValueError as exc:
+        raise HTTPException(status_code=402, detail="Creditos insuficientes") from exc
+
+    # Cria execução com campos extras (auditoria_id, fase_auditoria) irmãos de urls_por_template.
+    entrada_json = {
+        "cliente_id": str(auditoria.cliente_id),
+        "urls_por_template": urls_por_template,  # shape idêntico — _obter_reserva_estimada lê este campo
+        "auditoria_id": str(auditoria.id),
+        "fase_auditoria": "after",
+    }
+    execucao = ExecucaoFerramenta(
+        usuario_id=str(usuario.id),
+        cliente_id=str(auditoria.cliente_id),
+        ferramenta="core_web_vitals",
+        status="pendente",
+        entrada_json={k: str(v) if isinstance(v, uuid.UUID) else v for k, v in entrada_json.items()},
+        thread_id=str(uuid.uuid4()),
+        timeout_em=datetime.now(UTC) + timedelta(seconds=settings.cwv_workflow_timeout),
+    )
+    db.add(execucao)
+    await db.flush()
+
+    try:
+        from app.core.redis_pool import get_redis_pool
+
+        redis = await get_redis_pool()
+        job = await redis.enqueue_job("executar_workflow_cwv", str(execucao.id))
+        execucao.job_id = job.job_id
+        execucao.status = "enfileirado"
+        await db.flush()
+    except Exception as e:
+        logger.error("Falha ao enfileirar re-auditoria: %s", e)
+        await credito_service.liberar_reserva(db, str(usuario.id), custo)
+        execucao.status = "falhou"
+        execucao.erro_msg = "Falha ao enfileirar workflow"
+        await db.flush()
+
+    # Atualiza auditoria: vincula execução after + avança fase.
+    auditoria.execucao_after_id = execucao.id
+    try:
+        avancar_fase(auditoria, "after")
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    await db.commit()
+
+    return {
+        "id": str(execucao.id),
+        "status": execucao.status,
+        "custo_estimado": custo,
+        "auditoria_id": str(auditoria.id),
+    }

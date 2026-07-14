@@ -608,6 +608,19 @@ async def _run_workflow_cwv(workflow, estado_inicial, config, execucao_id: str):
         await session.commit()
         logger.info("%s CWV concluida: %d URLs, custo=%d creditos", _log_prefix(execucao_id), n_sucesso, custo)
 
+        # SPEC_CWV_Reauditoria_After: se esta execução é o "after" de uma auditoria,
+        # aplica os resultados no checklist. Fail-open — nunca derruba a execução.
+        auditoria_id = (execucao.entrada_json or {}).get("auditoria_id")
+        if auditoria_id:
+            try:
+                from app.services.cwv_auditoria_service import aplicar_resultado_after
+
+                async with async_session_factory() as after_session:
+                    await aplicar_resultado_after(after_session, str(auditoria_id), execucao_id)
+                    await after_session.commit()
+            except Exception:
+                logger.warning("aplicar_resultado_after falhou para auditoria %s", auditoria_id, exc_info=True)
+
 
 async def _computar_health_score(session, analise_ids: list[str]) -> dict | None:
     """Busca análises persistidas + contagens de problemas e calcula o health.

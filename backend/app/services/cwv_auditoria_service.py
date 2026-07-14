@@ -259,3 +259,145 @@ async def criar_auditoria(
 
     await gerar_checklist(session, auditoria, execucao_id)
     return auditoria
+
+
+async def aplicar_resultado_after(session, auditoria_id: str, execucao_after_id: str) -> None:
+    """SPEC_CWV_Reauditoria_After: aplica os resultados da execução after no checklist.
+
+    Fail-open: se a auditoria não existe, retorna silenciosamente. Chamada pelo
+    hook no final do workflow (nunca pode derrubar a execução).
+    """
+    aud_result = await session.execute(
+        select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id)
+    )
+    auditoria = aud_result.scalar_one_or_none()
+    if not auditoria:
+        return
+
+    itens_result = await session.execute(
+        select(CwvChecklistItem).where(CwvChecklistItem.auditoria_id == auditoria_id)
+    )
+    itens = list(itens_result.scalars().all())
+    if not itens:
+        return
+
+    # Carrega problemas + análises da execução after.
+    analises_after = await session.execute(
+        select(CwvAnalise).where(
+            CwvAnalise.execucao_id == execucao_after_id,
+            CwvAnalise.status == "sucesso",
+        )
+    )
+    analises_after = list(analises_after.scalars().all())
+
+    problemas_after_result = await session.execute(
+        select(CwvProblema).where(
+            CwvProblema.analise_id.in_([a.id for a in analises_after])
+        )
+    )
+    problemas_after = list(problemas_after_result.scalars().all())
+
+    chaves_after = {chave_problema(p) for p in problemas_after}
+
+    # Mapa de audits saudáveis (score >= 0.9) -> kb_codigo.
+    from app.services.cwv_kb import mapeamento_audit_kb_com_aliases
+
+    audit_para_kb = mapeamento_audit_kb_com_aliases()
+    kb_saudaveis_after: set[str] = set()
+    for a in analises_after:
+        resumo = a.raw_resumo_json or {}
+        score_map = resumo.get("audits_score_map") or {}
+        for audit_id, score in score_map.items():
+            if score is not None and score >= 0.9 and audit_id in audit_para_kb:
+                kb_saudaveis_after.add(audit_para_kb[audit_id])
+
+    # URLs que tiveram análise de sucesso no after.
+    urls_com_sucesso_after = {a.url_canonica for a in analises_after}
+
+    # Field data after.
+    categorias_crux: dict[str, list[str]] = {"lcp": [], "inp": [], "cls": []}
+    for a in analises_after:
+        for chave, campo in [("lcp", "crux_lcp_categoria"), ("inp", "crux_inp_categoria"), ("cls", "crux_cls_categoria")]:
+            val = getattr(a, campo)
+            if val:
+                categorias_crux[chave].append(val)
+
+    # Page experience after.
+    pe_vereditos_after: dict[str, list[str]] = {}
+    try:
+        from app.models.cwv_page_experience import CwvPageExperience
+
+        pe_result = await session.execute(
+            select(CwvPageExperience).where(CwvPageExperience.execucao_id == execucao_after_id)
+        )
+        for row in pe_result.scalars().all():
+            for _, coluna, _ in PE_CHECKS:
+                v = getattr(row, coluna)
+                if v:
+                    pe_vereditos_after.setdefault(coluna, []).append(v)
+    except Exception:
+        logger.warning("aplicar_resultado_after: page_experience indisponível", exc_info=True)
+
+    n_pass = n_fail = 0
+    for item in itens:
+        escopo_urls = (item.escopo_json or {}).get("urls", [])
+
+        if item.origem == "psi_audit":
+            if item.item_codigo in chaves_after:
+                item.status_after = "fail"
+                n_fail += 1
+            elif item.item_codigo in kb_saudaveis_after:
+                item.status_after = "pass"
+                n_pass += 1
+            elif escopo_urls and all(u not in urls_com_sucesso_after for u in escopo_urls):
+                # Todas as URLs do escopo falharam no PSI after → sem dado.
+                item.status_after = "na"
+            else:
+                item.status_after = "pass"
+                n_pass += 1
+
+        elif item.origem == "field_data":
+            # item_codigo = crux_lcp / crux_inp / crux_cls
+            metrica = item.item_codigo.split("_")[1] if "_" in item.item_codigo else ""
+            cats = categorias_crux.get(metrica, [])
+            if not cats:
+                item.status_after = "na"
+            elif all(c == "FAST" for c in cats):
+                item.status_after = "pass"
+                n_pass += 1
+            else:
+                item.status_after = "fail"
+                n_fail += 1
+
+        elif item.origem == "page_experience":
+            # item_codigo = pe_https, pe_ssl, etc.
+            coluna = item.item_codigo.replace("pe_", "", 1)
+            vereditos = pe_vereditos_after.get(coluna, [])
+            if not vereditos:
+                item.status_after = "na"
+            elif any(v == "fail" for v in vereditos):
+                item.status_after = "fail"
+                n_fail += 1
+            elif any(v in ("erro", "na") for v in vereditos):
+                item.status_after = "na"
+            else:
+                item.status_after = "pass"
+                n_pass += 1
+
+    # Copia health_score_after.
+    from app.models.execucao_ferramenta import ExecucaoFerramenta
+
+    exec_result = await session.execute(
+        select(ExecucaoFerramenta).where(ExecucaoFerramenta.id == execucao_after_id)
+    )
+    execucao_after = exec_result.scalar_one_or_none()
+    if execucao_after and execucao_after.resultado_json:
+        hs = execucao_after.resultado_json.get("health_score")
+        if isinstance(hs, dict) and hs.get("health_score") is not None:
+            auditoria.health_score_after = hs["health_score"]
+
+    await session.flush()
+    logger.info(
+        "aplicar_resultado_after auditoria=%s: %d resolvidos, %d persistentes",
+        auditoria_id, n_pass, n_fail,
+    )

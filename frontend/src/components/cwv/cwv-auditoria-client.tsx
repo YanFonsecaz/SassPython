@@ -12,6 +12,7 @@ import {
   buscarAuditoriaCwv,
   atualizarItemChecklistCwv,
   atualizarAuditoriaCwv,
+  reauditarCwv,
   type AuditoriaResposta,
   type ChecklistItemResposta,
   type FaseAuditoria,
@@ -61,6 +62,7 @@ export function CwvAuditoriaClient() {
   const [auditoria, setAuditoria] = useState<AuditoriaResposta | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [salvandoId, setSalvandoId] = useState<string | null>(null);
+  const [reauditando, setReauditando] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -68,6 +70,20 @@ export function CwvAuditoriaClient() {
       setErro(mensagemErroAmigavel(e));
     });
   }, [id]);
+
+  async function handleReauditar() {
+    if (reauditando) return;
+    setReauditando(true);
+    try {
+      const resp = await reauditarCwv(id);
+      toast.success(`Re-auditoria iniciada (${resp.custo_estimado} créditos)`);
+      router.push(`/ferramentas/core-web-vitals/execucao/${resp.id}`);
+    } catch (e) {
+      toast.error(mensagemErroAmigavel(e));
+    } finally {
+      setReauditando(false);
+    }
+  }
 
   async function handleAtualizarItem(itemId: string, dados: { status_implementacao?: StatusImplementacao; nota_cliente?: string }) {
     setSalvandoId(itemId);
@@ -142,7 +158,15 @@ export function CwvAuditoriaClient() {
             </div>
             <div className="rounded-lg border bg-surface-light p-3">
               <p className="text-xs text-muted-foreground">Health After</p>
-              <p className="text-xl font-bold">{auditoria.health_score_after !== null ? `${auditoria.health_score_after}%` : "—"}</p>
+              <p className="text-xl font-bold">
+                {auditoria.health_score_after !== null ? `${auditoria.health_score_after}%` : "—"}
+                {auditoria.health_score_before !== null && auditoria.health_score_after !== null && (
+                  <span className={`ml-1 text-xs ${auditoria.health_score_after > auditoria.health_score_before ? "text-success" : "text-destructive"}`}>
+                    {auditoria.health_score_after > auditoria.health_score_before ? "↑" : "↓"}
+                    {Math.abs(auditoria.health_score_after - auditoria.health_score_before).toFixed(1)}p.p.
+                  </span>
+                )}
+              </p>
             </div>
             <div className="rounded-lg border bg-surface-light p-3">
               <p className="text-xs text-muted-foreground">Implementados</p>
@@ -172,7 +196,7 @@ export function CwvAuditoriaClient() {
           );
         })}
 
-        {/* Botão avançar fase (se aplicável) */}
+        {/* Botão avançar fase / re-auditar */}
         {auditoria.fase === "before" && (
           <button
             className="w-full rounded-lg border border-yellow-400 bg-yellow-50 px-4 py-2.5 text-sm font-medium text-yellow-800 hover:bg-yellow-100 transition-colors"
@@ -187,6 +211,15 @@ export function CwvAuditoriaClient() {
             }}
           >
             Avançar para "Aguardando implementação"
+          </button>
+        )}
+        {auditoria.fase === "aguardando_implementacao" && (
+          <button
+            className="w-full rounded-lg border border-purple-400 bg-purple-50 px-4 py-2.5 text-sm font-medium text-purple-800 hover:bg-purple-100 transition-colors disabled:opacity-50"
+            disabled={reauditando}
+            onClick={handleReauditar}
+          >
+            {reauditando ? "Iniciando re-auditoria..." : "Re-auditar (verificar implementações)"}
           </button>
         )}
       </div>
@@ -222,6 +255,14 @@ function ItemChecklist({
           <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium ${corStatus(item.status_before)}`}>
             {rotuloStatus(item.status_before)}
           </span>
+          {item.status_after && (
+            <>
+              <span className="text-muted-foreground text-[10px]">→</span>
+              <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium ${corStatus(item.status_after)}`}>
+                {rotuloStatus(item.status_after)}
+              </span>
+            </>
+          )}
           {item.esforco && (
             <Badge variant="outline" className="text-[9px]">{item.esforco}</Badge>
           )}
