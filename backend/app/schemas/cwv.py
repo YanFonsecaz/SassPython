@@ -115,6 +115,16 @@ class AnaliseResposta(BaseModel):
     llm_usado: bool = False
     llm_audits_processados: int = 0
     llm_audits_descartados: int = 0
+    # Field data CrUX (SPEC_CWV_Field_Data_Retencao_Payload).
+    crux_lcp_p75_ms: float | None = None
+    crux_inp_p75_ms: float | None = None
+    crux_cls_p75: float | None = None
+    crux_lcp_categoria: str | None = None
+    crux_inp_categoria: str | None = None
+    crux_cls_categoria: str | None = None
+    crux_overall_categoria: str | None = None
+    crux_origem_fallback: bool = False
+    field_data_disponivel: bool = False
 
 
 class AnaliseResumoResposta(BaseModel):

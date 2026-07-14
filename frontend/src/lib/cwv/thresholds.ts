@@ -149,3 +149,25 @@ export function rotuloEsforco(e: Esforco | null | undefined): string {
   if (e === "alto") return "Alto";
   return "—";
 }
+
+// --- SPEC_CWV_Field_Data_Retencao_Payload (CrUX) ---------------------------
+
+export type CruxBucket = "FAST" | "AVERAGE" | "SLOW";
+
+export function corCruxBucket(b: CruxBucket | string | null | undefined): {
+  text: string;
+  bg: string;
+  dot: string;
+} {
+  if (b === "FAST") return { text: "text-success", bg: "bg-success/10", dot: "bg-success" };
+  if (b === "AVERAGE") return { text: "text-yellow-600", bg: "bg-yellow-500/10", dot: "bg-yellow-500" };
+  if (b === "SLOW") return { text: "text-destructive", bg: "bg-destructive/10", dot: "bg-destructive" };
+  return { text: "text-muted-foreground", bg: "bg-muted/40", dot: "bg-muted-foreground" };
+}
+
+export function rotuloCruxBucket(b: CruxBucket | string | null | undefined): string {
+  if (b === "FAST") return "Rápido";
+  if (b === "AVERAGE") return "Médio";
+  if (b === "SLOW") return "Lento";
+  return "Sem dados";
+}

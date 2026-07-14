@@ -10,6 +10,8 @@ import {
   formatMs,
   formatCls,
   calcularDelta,
+  corCruxBucket,
+  rotuloCruxBucket,
   type ThresholdConfig,
 } from "@/lib/cwv/thresholds";
 import type { CwvAnaliseResposta, CwvAnaliseResumo } from "@/lib/api/cwv";
@@ -112,6 +114,8 @@ export function MetricasResumo({ analiseAtual, analiseAnterior }: MetricasResumo
         ))}
       </div>
 
+      <CruxFieldData analise={analiseAtual} />
+
       {analiseAnterior && (
         <div className="rounded-lg bg-surface-light border px-4 py-3">
           <p className="text-xs text-muted-foreground mb-2">
@@ -139,6 +143,58 @@ export function MetricasResumo({ analiseAtual, analiseAnterior }: MetricasResumo
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function CruxFieldData({ analise }: { analise: CwvAnaliseResposta }) {
+  // SPEC_CWV_Field_Data_Retencao_Payload: tiles de dados de campo (usuários reais).
+  const fieldDataDisponivel = analise.field_data_disponivel ?? false;
+
+  if (!fieldDataDisponivel) {
+    return (
+      <div className="rounded-lg border bg-muted/20 px-4 py-3">
+        <p className="text-xs text-muted-foreground">
+          <strong className="text-foreground">Dados de campo (CrUX):</strong>{" "}
+          sem dados de campo para esta página — avaliação baseada em testes de laboratório.
+        </p>
+      </div>
+    );
+  }
+
+  const tiles = [
+    { label: "LCP", p75: analise.crux_lcp_p75_ms, cat: analise.crux_lcp_categoria, fmt: formatMs },
+    { label: "INP", p75: analise.crux_inp_p75_ms, cat: analise.crux_inp_categoria, fmt: formatMs },
+    { label: "CLS", p75: analise.crux_cls_p75, cat: analise.crux_cls_categoria, fmt: formatCls },
+  ].filter((t) => t.cat);
+
+  return (
+    <div className="rounded-lg border bg-surface-light px-4 py-3">
+      <div className="flex items-baseline justify-between mb-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Dados de campo (CrUX — usuários reais)
+        </p>
+        {analise.crux_origem_fallback && (
+          <span className="text-[10px] text-muted-foreground" title="Os dados de campo vêm do domínio (origem), não desta URL específica — pode haver variação por página.">
+            dados da origem (domínio)
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {tiles.map((t) => {
+          const cores = corCruxBucket(t.cat);
+          return (
+            <div key={t.label} className={cn("rounded-md border px-3 py-2", cores.bg)}>
+              <p className="text-[11px] font-medium text-muted-foreground">{t.label} (p75)</p>
+              <p className={cn("text-lg font-bold tabular-nums", cores.text)}>{t.fmt(t.p75 ?? null)}</p>
+              <span className={cn("inline-flex items-center gap-1 text-[11px]", cores.text)}>
+                <span className={cn("h-1.5 w-1.5 rounded-full", cores.dot)} aria-hidden />
+                {rotuloCruxBucket(t.cat)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -33,6 +33,17 @@ class CwvAnalise(Base, UUIDPrimaryKeyMixin):
     ttfb_ms: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     tbt_ms: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     raw_psi_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    # SPEC_CWV_Field_Data_Retencao_Payload: resumo compacto do payload PSI
+    # (≤64KB, sem screenshots/details.items) + field data CrUX materializado.
+    raw_resumo_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="'{}'::jsonb")
+    crux_lcp_p75_ms: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    crux_inp_p75_ms: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    crux_cls_p75: Mapped[float | None] = mapped_column(Numeric(6, 4), nullable=True)
+    crux_lcp_categoria: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    crux_inp_categoria: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    crux_cls_categoria: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    crux_overall_categoria: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    crux_origem_fallback: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     erro_msg: Mapped[str | None] = mapped_column(String(500), nullable=True)
     audits_totais: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")

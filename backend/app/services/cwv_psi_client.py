@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from urllib.parse import urlparse
 
@@ -14,6 +15,20 @@ TIMEOUT_SECONDS = 90
 _PSI_MAX_RETRY = 2
 
 _PSI_CLIENT: httpx.AsyncClient | None = None
+
+# Teto defensivo do resumo compacto gravado em raw_resumo_json. Screenshots e
+# details.items NUNCA entram (pesados); se ainda assim exceder, removemos
+# entities e depois audits_score_map (ver _construir_resumo).
+_RESUMO_MAX_CHARS = 64_000
+
+# Chaves de audits cujo details.items são pesados e não agregam valor ao
+# resumo (screenshots base64, treemap, network). Nunca devem entrar no resumo.
+_AUDITS_DESCARTAR_NO_RESUMO = {
+    "final-screenshot",
+    "full-page-screenshot",
+    "screenshot-thumbnails",
+    "script-treemap-data",
+}
 
 
 class PSIError(Exception):
@@ -96,6 +111,119 @@ async def fetch_psi(url: str, estrategia: str = "mobile") -> dict:
     raise PSIError(f"PSI falhou em todas as keys: {ultimo_erro}")
 
 
+def _extrair_field_data(payload: dict) -> dict:
+    """Extrai o field data CrUX (usuários reais) do payload PSI.
+
+    Tenta ``loadingExperience`` (nível URL) e cai para
+    ``originLoadingExperience`` (nível origem), marcando ``crux_origem_fallback``.
+    Se nenhum tem ``metrics`` não-vazio, retorna todos os campos ``None`` e
+    fallback ``False``.
+
+    Atenção: ``CUMULATIVE_LAYOUT_SHIFT_SCORE.percentile`` vem multiplicado por
+    100 (ex.: 4 = CLS 0.04) — dividimos por 100 ao materializar.
+    ``INTERACTION_TO_NEXT_PAINT`` pode estar ausente em payloads antigos → None.
+    """
+    le = payload.get("loadingExperience") or {}
+    ole = payload.get("originLoadingExperience") or {}
+
+    def _metrics(obj):
+        return obj.get("metrics") if isinstance(obj, dict) else None
+
+    le_metrics = _metrics(le) or {}
+    ole_metrics = _metrics(ole) or {}
+
+    if le_metrics:
+        source = le
+        fallback = False
+    elif ole_metrics:
+        source = ole
+        fallback = True
+    else:
+        return {
+            "crux_lcp_p75_ms": None,
+            "crux_inp_p75_ms": None,
+            "crux_cls_p75": None,
+            "crux_lcp_categoria": None,
+            "crux_inp_categoria": None,
+            "crux_cls_categoria": None,
+            "crux_overall_categoria": None,
+            "crux_origem_fallback": False,
+        }
+
+    metrics = source.get("metrics", {})
+
+    def _metric_val(key: str, field: str = "percentile") -> float | None:
+        m = metrics.get(key)
+        if not m:
+            return None
+        v = m.get(field)
+        return float(v) if v is not None else None
+
+    def _metric_cat(key: str) -> str | None:
+        m = metrics.get(key)
+        return m.get("category") if m else None
+
+    # CLS vem multiplicado por 100 no percentile (CrUX quirk).
+    cls_p75 = _metric_val("CUMULATIVE_LAYOUT_SHIFT_SCORE")
+    if cls_p75 is not None:
+        cls_p75 = cls_p75 / 100
+
+    return {
+        "crux_lcp_p75_ms": _metric_val("LARGEST_CONTENTFUL_PAINT_MS"),
+        "crux_inp_p75_ms": _metric_val("INTERACTION_TO_NEXT_PAINT"),
+        "crux_cls_p75": cls_p75,
+        "crux_lcp_categoria": _metric_cat("LARGEST_CONTENTFUL_PAINT_MS"),
+        "crux_inp_categoria": _metric_cat("INTERACTION_TO_NEXT_PAINT"),
+        "crux_cls_categoria": _metric_cat("CUMULATIVE_LAYOUT_SHIFT_SCORE"),
+        "crux_overall_categoria": source.get("overall_category"),
+        "crux_origem_fallback": fallback,
+    }
+
+
+def _construir_resumo(payload: dict) -> dict:
+    """Constrói o resumo compacto (≤64KB) do payload PSI.
+
+    Inclui: loading_experience/origin_loading_experience completos, um
+    audits_score_map {audit_id: score} para todos os audits com score (habilita
+    checklist Pass/Fail completo em specs futuras), stack_packs (ids),
+    entities (names, máx 30), metadados do Lighthouse.
+
+    NUNCA inclui: final-screenshot, full-page-screenshot,
+    screenshot-thumbnails, details.items de audits. Se ainda exceder o teto,
+    remove entities e depois audits_score_map (defesa em profundidade).
+    """
+    lh = payload.get("lighthouseResult") or {}
+    audits = lh.get("audits") or {}
+
+    audits_score_map = {
+        aid: a.get("score")
+        for aid, a in audits.items()
+        if a.get("score") is not None and aid not in _AUDITS_DESCARTAR_NO_RESUMO
+    }
+
+    stack_packs = [sp.get("id") for sp in (lh.get("stackPacks") or []) if sp.get("id")]
+    entities = [e.get("name") for e in (lh.get("entities") or []) if e.get("name")][:30]
+    config_settings = lh.get("configSettings") or {}
+
+    resumo = {
+        "loading_experience": payload.get("loadingExperience"),
+        "origin_loading_experience": payload.get("originLoadingExperience"),
+        "audits_score_map": audits_score_map,
+        "stack_packs": stack_packs,
+        "entities": entities,
+        "lighthouse_version": lh.get("lighthouseVersion"),
+        "fetch_time": lh.get("fetchTime"),
+        "form_factor": config_settings.get("formFactor"),
+    }
+
+    # Truncagem defensiva: remove campos menos críticos até caber no teto.
+    if len(json.dumps(resumo, default=str)) > _RESUMO_MAX_CHARS:
+        resumo["entities"] = []
+    if len(json.dumps(resumo, default=str)) > _RESUMO_MAX_CHARS:
+        resumo["audits_score_map"] = {}
+    return resumo
+
+
 def parse_psi(payload: dict) -> dict:
     lh = payload["lighthouseResult"]
     categories = lh.get("categories", {})
@@ -114,6 +242,9 @@ def parse_psi(payload: dict) -> dict:
             break
 
     audits_com_score = sum(1 for a in audits.values() if a.get("score") is not None)
+
+    field_data = _extrair_field_data(payload)
+    resumo = _construir_resumo(payload)
 
     return {
         "score_performance": int((categories.get("performance", {}).get("score") or 0) * 100),
@@ -147,6 +278,9 @@ def parse_psi(payload: dict) -> dict:
         "audits_totais": audits_com_score,
         "n_network_requests": len(network_items),
         "main_document_size_bytes": main_doc_bytes,
+        # SPEC_CWV_Field_Data_Retencao_Payload: field data CrUX + resumo compacto.
+        **field_data,
+        "resumo": resumo,
     }
 
 

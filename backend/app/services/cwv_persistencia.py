@@ -74,6 +74,15 @@ async def persistir_analise(
         ttfb_ms=parsed.get("ttfb_ms"),
         tbt_ms=parsed.get("tbt_ms"),
         raw_psi_json={},
+        raw_resumo_json=parsed.get("resumo", {}),
+        crux_lcp_p75_ms=parsed.get("crux_lcp_p75_ms"),
+        crux_inp_p75_ms=parsed.get("crux_inp_p75_ms"),
+        crux_cls_p75=parsed.get("crux_cls_p75"),
+        crux_lcp_categoria=parsed.get("crux_lcp_categoria"),
+        crux_inp_categoria=parsed.get("crux_inp_categoria"),
+        crux_cls_categoria=parsed.get("crux_cls_categoria"),
+        crux_overall_categoria=parsed.get("crux_overall_categoria"),
+        crux_origem_fallback=bool(parsed.get("crux_origem_fallback", False)),
         status="sucesso",
         audits_totais=parsed.get("audits_totais", 0),
         n_network_requests=parsed.get("n_network_requests", 0),
@@ -278,6 +287,22 @@ def _analise_to_dict(analise: CwvAnalise, problemas: list[CwvProblema]) -> dict:
         "llm_usado": analise.llm_usado,
         "llm_audits_processados": analise.llm_audits_processados,
         "llm_audits_descartados": analise.llm_audits_descartados,
+        # Field data CrUX (SPEC_CWV_Field_Data_Retencao_Payload). raw_resumo_json
+        # NÃO é serializado na resposta padrão (payload de API menor).
+        "crux_lcp_p75_ms": float(analise.crux_lcp_p75_ms) if analise.crux_lcp_p75_ms is not None else None,
+        "crux_inp_p75_ms": float(analise.crux_inp_p75_ms) if analise.crux_inp_p75_ms is not None else None,
+        "crux_cls_p75": float(analise.crux_cls_p75) if analise.crux_cls_p75 is not None else None,
+        "crux_lcp_categoria": analise.crux_lcp_categoria,
+        "crux_inp_categoria": analise.crux_inp_categoria,
+        "crux_cls_categoria": analise.crux_cls_categoria,
+        "crux_overall_categoria": analise.crux_overall_categoria,
+        "crux_origem_fallback": bool(analise.crux_origem_fallback) if analise.crux_origem_fallback is not None else False,
+        "field_data_disponivel": any([
+            analise.crux_overall_categoria,
+            analise.crux_lcp_categoria,
+            analise.crux_inp_categoria,
+            analise.crux_cls_categoria,
+        ]),
         "problemas": [
             {
                 "id": str(p.id),

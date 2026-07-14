@@ -46,6 +46,16 @@ export interface CwvAnaliseResposta {
   llm_usado?: boolean;
   llm_audits_processados?: number;
   llm_audits_descartados?: number;
+  // Field data CrUX (SPEC_CWV_Field_Data_Retencao_Payload).
+  crux_lcp_p75_ms?: number | null;
+  crux_inp_p75_ms?: number | null;
+  crux_cls_p75?: number | null;
+  crux_lcp_categoria?: string | null;
+  crux_inp_categoria?: string | null;
+  crux_cls_categoria?: string | null;
+  crux_overall_categoria?: string | null;
+  crux_origem_fallback?: boolean;
+  field_data_disponivel?: boolean;
 }
 
 export interface CwvAnaliseResumo {
