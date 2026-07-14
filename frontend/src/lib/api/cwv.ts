@@ -207,3 +207,25 @@ export interface HealthScoreResposta {
 export async function buscarHealthScoreCwv(execucaoId: string): Promise<HealthScoreResposta> {
   return api.get<HealthScoreResposta>(`/ferramentas/core-web-vitals/execucao/${execucaoId}/health-score`);
 }
+
+export type VereditoPageExperience = "pass" | "fail" | "erro" | "na";
+
+export interface PageExperienceResposta {
+  origem: string;
+  https: VereditoPageExperience;
+  ssl: VereditoPageExperience;
+  redirect_301: VereditoPageExperience;
+  security_headers: VereditoPageExperience;
+  safe_browsing: VereditoPageExperience;
+  mixed_content: VereditoPageExperience;
+  mobile_friendly: VereditoPageExperience;
+  detalhes_json: Record<string, unknown>;
+}
+
+export interface PageExperienceListResponse {
+  origens: PageExperienceResposta[];
+}
+
+export async function buscarPageExperienceCwv(execucaoId: string): Promise<PageExperienceListResponse> {
+  return api.get<PageExperienceListResponse>(`/ferramentas/core-web-vitals/execucao/${execucaoId}/page-experience`);
+}

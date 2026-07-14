@@ -1,13 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeftIcon, CheckCircle2Icon, Loader2Icon, ArrowRightIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  CheckCircle2Icon,
+  Loader2Icon,
+  ArrowRightIcon,
+  CircleIcon,
+  GaugeIcon,
+  NetworkIcon,
+  LayersIcon,
+  SearchIcon,
+  FileTextIcon,
+  ListOrderedIcon,
+  SaveIcon,
+  ShieldCheckIcon,
+} from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { createSSEConnection } from "@/lib/sse-client";
-import { buscarExecucaoCwv, buscarHealthScoreCwv, type HealthScoreResposta } from "@/lib/api/cwv";
+import {
+  buscarExecucaoCwv,
+  buscarHealthScoreCwv,
+  buscarPageExperienceCwv,
+  type HealthScoreResposta,
+  type PageExperienceListResponse,
+} from "@/lib/api/cwv";
 import { CwvErroExecucao } from "@/components/cwv/cwv-erro-execucao";
 import { classificarMetrica, corClassificacao, rotuloClassificacao, THRESHOLDS } from "@/lib/cwv/thresholds";
 
@@ -23,6 +43,22 @@ interface ExecucaoCwv {
   concluida_em: string | null;
 }
 
+// SPEC_CWV_Page_Experience: lista fixa de etapas do workflow CWV (inclui o nó
+// novo coletar_page_experience). O stepper acende conforme node_start/
+// node_complete chegam via SSE. Ordem = ordem do grafo em construir_workflow().
+const ETAPAS_CWV: { node: string; label: string; icon: React.ElementType }[] = [
+  { node: "coletar_psi", label: "Coletar métricas", icon: GaugeIcon },
+  { node: "coletar_page_experience", label: "Page Experience", icon: ShieldCheckIcon },
+  { node: "detectar_plataformas", label: "Detectar plataformas", icon: LayersIcon },
+  { node: "analisar_seo", label: "Analisar SEO", icon: SearchIcon },
+  { node: "documentar", label: "Documentar problemas", icon: FileTextIcon },
+  { node: "pesquisar_outros", label: "Pesquisar residual", icon: NetworkIcon },
+  { node: "priorizar", label: "Priorizar", icon: ListOrderedIcon },
+  { node: "persistir", label: "Salvar análises", icon: SaveIcon },
+];
+
+type NodeStatus = "pendente" | "andamento" | "concluida";
+
 export function CwvExecucaoClient() {
   const pathname = usePathname();
   const id = pathname.split("/").filter(Boolean).pop() || "";
@@ -32,6 +68,8 @@ export function CwvExecucaoClient() {
   const [erroMsg, setErroMsg] = useState<string | null>(null);
   const [conectandoSSE, setConectandoSSE] = useState(false);
   const [healthScore, setHealthScore] = useState<HealthScoreResposta | null>(null);
+  const [pageExperience, setPageExperience] = useState<PageExperienceListResponse | null>(null);
+  const [nodeStatuses, setNodeStatuses] = useState<Record<string, NodeStatus>>({});
   const closeRef = useRef<{ close: () => void } | null>(null);
   const router = useRouter();
 
@@ -63,6 +101,14 @@ export function CwvExecucaoClient() {
         if (type === "status") {
           setEtapaAtual(evt.etapa as string | null);
           setExecucao((prev) => prev ? { ...prev, status: evt.status as string, etapa_atual: evt.etapa as string | null } : prev);
+        } else if (type === "node_start") {
+          const node = evt.node as string;
+          setNodeStatuses((prev) => ({ ...prev, [node]: "andamento" }));
+          setEtapaAtual(evt.detail as string | null);
+        } else if (type === "node_complete") {
+          const node = evt.node as string;
+          setNodeStatuses((prev) => ({ ...prev, [node]: "concluida" }));
+          setEtapaAtual(evt.detail as string | null);
         } else if (type === "node_progress") {
           setEtapaAtual(evt.detail as string | null);
         } else if (type === "concluida") {
@@ -100,6 +146,12 @@ export function CwvExecucaoClient() {
     }
     buscarHealthScoreCwv(id).then(setHealthScore).catch(() => setHealthScore(null));
   }, [id, statusFinal, execucao]);
+
+  // SPEC_CWV_Page_Experience: busca checagens por origem ao concluir.
+  useEffect(() => {
+    if (!id || statusFinal !== "concluida") return;
+    buscarPageExperienceCwv(id).then(setPageExperience).catch(() => setPageExperience(null));
+  }, [id, statusFinal]);
 
   if (!execucao && !erroMsg) {
     return (
@@ -161,6 +213,10 @@ export function CwvExecucaoClient() {
 
               {healthScore && <HealthScoreCard hs={healthScore} />}
 
+              {pageExperience && pageExperience.origens.length > 0 && (
+                <PageExperienceSection pe={pageExperience} />
+              )}
+
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" onClick={() => router.push("/ferramentas/core-web-vitals")}>
                   Nova análise
@@ -184,11 +240,7 @@ export function CwvExecucaoClient() {
                   <p className="text-sm text-muted-foreground">{etapaAtual || "Aguardando..."}</p>
                 </div>
               </div>
-              <div className="space-y-2">
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full gradient-bg animate-pulse w-2/3" />
-                </div>
-              </div>
+              <StepperCWV nodeStatuses={nodeStatuses} />
             </>
           )}
         </div>
@@ -231,6 +283,91 @@ function HealthScoreCard({ hs }: { hs: HealthScoreResposta }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function StepperCWV({ nodeStatuses }: { nodeStatuses: Record<string, NodeStatus> }) {
+  return (
+    <div className="space-y-1.5">
+      {ETAPAS_CWV.map((etapa, idx) => {
+        const status = nodeStatuses[etapa.node] ?? "pendente";
+        const Icon = etapa.icon;
+        const isLast = idx === ETAPAS_CWV.length - 1;
+        return (
+          <div key={etapa.node} className="flex items-center gap-3">
+            <div className="flex flex-col items-center">
+              {status === "concluida" ? (
+                <CheckCircle2Icon className="size-5 text-success shrink-0" />
+              ) : status === "andamento" ? (
+                <Loader2Icon className="size-5 text-brand-dark animate-spin shrink-0" />
+              ) : (
+                <CircleIcon className="size-5 text-muted-foreground/40 shrink-0" />
+              )}
+              {!isLast && <div className="w-px h-4 bg-border" />}
+            </div>
+            <div className="flex items-center gap-2 pb-4">
+              <Icon className={`size-3.5 ${status === "pendente" ? "text-muted-foreground/40" : "text-muted-foreground"}`} />
+              <span className={`text-sm ${status === "pendente" ? "text-muted-foreground/50" : status === "andamento" ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                {etapa.label}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const VEREDITO_LABELS: Record<string, string> = {
+  pass: "OK",
+  fail: "Falha",
+  erro: "Inconclusivo",
+  na: "N/A",
+};
+
+function corVeredito(v: string): string {
+  if (v === "pass") return "border-success/30 text-success bg-success/10";
+  if (v === "fail") return "border-destructive/30 text-destructive bg-destructive/10";
+  if (v === "erro") return "border-yellow-500/30 text-yellow-600 bg-yellow-500/10";
+  return "border-border text-muted-foreground bg-muted/40";
+}
+
+const PAGE_EXP_CHECKS: { key: string; label: string }[] = [
+  { key: "https", label: "HTTPS" },
+  { key: "ssl", label: "SSL" },
+  { key: "redirect_301", label: "Redirect 301" },
+  { key: "security_headers", label: "Headers de segurança" },
+  { key: "safe_browsing", label: "Safe Browsing" },
+  { key: "mixed_content", label: "Mixed content" },
+  { key: "mobile_friendly", label: "Mobile-friendly" },
+];
+
+function PageExperienceSection({ pe }: { pe: PageExperienceListResponse }) {
+  return (
+    <div className="rounded-xl border bg-surface-light p-4">
+      <p className="text-sm font-medium mb-3">Page Experience (por origem)</p>
+      <div className="space-y-3">
+        {pe.origens.map((o) => (
+          <div key={o.origem} className="space-y-1.5">
+            <p className="text-xs font-mono text-muted-foreground truncate" title={o.origem}>{o.origem}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {PAGE_EXP_CHECKS.map((c) => {
+                const v = o[c.key as keyof typeof o] as string;
+                return (
+                  <span
+                    key={c.key}
+                    className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium ${corVeredito(v)}`}
+                    title={`${c.label}: ${VEREDITO_LABELS[v] ?? v}`}
+                  >
+                    {c.label}: {VEREDITO_LABELS[v] ?? v}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
