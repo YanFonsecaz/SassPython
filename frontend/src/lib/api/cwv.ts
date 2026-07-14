@@ -315,3 +315,26 @@ export async function atualizarItemChecklistCwv(
 export async function reauditarCwv(auditoriaId: string): Promise<{ id: string; status: string; custo_estimado: number; auditoria_id: string }> {
   return api.post(`/ferramentas/core-web-vitals/auditorias/${auditoriaId}/reauditar`);
 }
+
+export interface ProblemaConsolidadoResposta {
+  id: string;
+  titulo: string;
+  causa_raiz: string;
+  kb_codigo: string | null;
+  severidade: number;
+  prioridade_ordem: number;
+  esforco: string | null;
+  metricas_afetadas: string[];
+  escopo_json: { urls?: string[]; estrategias?: string[]; descricao?: string };
+  evidencias_json: Record<string, unknown>;
+  recomendacao_md: string;
+  problemas_origem_ids: string[];
+}
+
+export async function consolidarAuditoriaCwv(auditoriaId: string): Promise<{ status: string; auditoria_id: string }> {
+  return api.post(`/ferramentas/core-web-vitals/auditorias/${auditoriaId}/consolidar`);
+}
+
+export async function buscarConsolidadosCwv(auditoriaId: string): Promise<{ consolidados: ProblemaConsolidadoResposta[]; status: string }> {
+  return api.get(`/ferramentas/core-web-vitals/auditorias/${auditoriaId}/consolidados`);
+}

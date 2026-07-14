@@ -66,6 +66,11 @@ cwv_kb_miss_total = Counter(
     "CWV KB misses (unmapped audit_ids)",
     ["audit_id"],
 )
+cwv_consolidador_fallback_total = Counter(
+    "cwv_consolidador_fallback_total",
+    "CWV Consolidador LLM fallback to deterministic merge",
+    ["motivo"],
+)
 parecer_geracoes_total = Counter(
     "parecer_geracoes_total",
     "Parecer tecnico generation attempts",

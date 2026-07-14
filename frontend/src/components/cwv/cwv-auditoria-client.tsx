@@ -13,10 +13,13 @@ import {
   atualizarItemChecklistCwv,
   atualizarAuditoriaCwv,
   reauditarCwv,
+  consolidarAuditoriaCwv,
+  buscarConsolidadosCwv,
   type AuditoriaResposta,
   type ChecklistItemResposta,
   type FaseAuditoria,
   type OrigemItem,
+  type ProblemaConsolidadoResposta,
   type StatusCheck,
   type StatusImplementacao,
 } from "@/lib/api/cwv";
@@ -63,13 +66,45 @@ export function CwvAuditoriaClient() {
   const [erro, setErro] = useState<string | null>(null);
   const [salvandoId, setSalvandoId] = useState<string | null>(null);
   const [reauditando, setReauditando] = useState(false);
+  const [consolidando, setConsolidando] = useState(false);
+  const [consolidados, setConsolidados] = useState<ProblemaConsolidadoResposta[] | null>(null);
 
   useEffect(() => {
     if (!id) return;
     buscarAuditoriaCwv(id).then(setAuditoria).catch((e) => {
       setErro(mensagemErroAmigavel(e));
     });
+    buscarConsolidadosCwv(id).then((resp) => {
+      if (resp.status === "concluida") setConsolidados(resp.consolidados);
+    }).catch(() => {});
   }, [id]);
+
+  async function handleConsolidar() {
+    if (consolidando) return;
+    setConsolidando(true);
+    try {
+      await consolidarAuditoriaCwv(id);
+      toast.success("Consolidação iniciada");
+      // Polling leve para detectar conclusão.
+      const poll = setInterval(async () => {
+        try {
+          const resp = await buscarConsolidadosCwv(id);
+          if (resp.status === "concluida") {
+            setConsolidados(resp.consolidados);
+            clearInterval(poll);
+            setConsolidando(false);
+          } else if (resp.status === "falhou") {
+            clearInterval(poll);
+            setConsolidando(false);
+            toast.error("Consolidação falhou");
+          }
+        } catch { /* ignora erro transiente */ }
+      }, 3000);
+    } catch (e) {
+      toast.error(mensagemErroAmigavel(e));
+      setConsolidando(false);
+    }
+  }
 
   async function handleReauditar() {
     if (reauditando) return;
@@ -195,6 +230,56 @@ export function CwvAuditoriaClient() {
             </div>
           );
         })}
+
+        {/* Botão consolidar + seção de consolidados */}
+        {auditoria.consolidacao_status !== "executando" && !consolidados && (
+          <button
+            className="w-full rounded-lg border border-blue-400 bg-blue-50 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+            onClick={handleConsolidar}
+          >
+            Consolidar problemas (dedup cross-URL + causa raiz)
+          </button>
+        )}
+        {consolidando && (
+          <div className="flex items-center justify-center gap-2 rounded-lg border bg-surface-light px-4 py-3 text-sm text-muted-foreground">
+            <Loader2Icon className="size-4 animate-spin" /> Consolidando problemas...
+          </div>
+        )}
+        {consolidados && consolidados.length > 0 && (
+          <div className="glass-card rounded-2xl p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Plano consolidado ({consolidados.length})</h2>
+              <button className="text-[11px] text-muted-foreground hover:text-foreground" onClick={handleConsolidar}>
+                Re-consolidar
+              </button>
+            </div>
+            <div className="space-y-2">
+              {consolidados.map((c) => (
+                <div key={c.id} className="rounded-lg border bg-surface-light px-4 py-3 space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-medium flex-1">{c.titulo}</p>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Badge variant="outline" className="text-[9px]">Sev {c.severidade}</Badge>
+                      {c.esforco && <Badge variant="outline" className="text-[9px]">{c.esforco}</Badge>}
+                    </div>
+                  </div>
+                  {c.causa_raiz && (
+                    <p className="text-xs text-muted-foreground"><strong>Causa raiz:</strong> {c.causa_raiz}</p>
+                  )}
+                  {c.escopo_json.descricao && (
+                    <p className="text-xs text-muted-foreground"><strong>Escopo:</strong> {c.escopo_json.descricao}</p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    {(c.escopo_json.urls ?? []).length} URL(s) · {(c.escopo_json.estrategias ?? []).join(", ")}
+                  </p>
+                  {c.recomendacao_md && (
+                    <p className="text-xs text-muted-foreground mt-1">{c.recomendacao_md}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Botão avançar fase / re-auditar */}
         {auditoria.fase === "before" && (

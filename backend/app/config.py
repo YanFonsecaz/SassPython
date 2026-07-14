@@ -107,6 +107,12 @@ class Settings(BaseSettings):
     cwv_analisador_llm_temperature: float = 0.1
     cwv_pesquisador_llm_model: str = "gpt-4.1"
     cwv_pesquisador_llm_temperature: float = 0.4
+    cwv_consolidador_llm_model: str = "gpt-4o-mini"
+    cwv_consolidador_llm_temperature: float = 0.1
+    cwv_consolidador_llm_habilitado: bool = True
+    cwv_redator_llm_model: str = "gpt-4.1"
+    cwv_redator_llm_temperature: float = 0.3
+    cwv_redator_llm_habilitado: bool = True
     cwv_admin_reload_token: str = ""
     cwv_alerta_webhook_url: str = ""
 

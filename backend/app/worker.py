@@ -158,8 +158,15 @@ async def executar_indexar_site(ctx, execucao_id: str):
     await _executar_job(ctx, "app.agents.workflow_indexar_site", "executar_workflow_indexar_site", execucao_id)
 
 
+async def executar_consolidador_cwv(ctx, auditoria_id: str):
+    """SPEC_CWV_Consolidador_Cross_URL: consolidação de auditoria (job direto)."""
+    from app.agents.cwv.consolidador import executar_consolidacao
+
+    await executar_consolidacao(auditoria_id)
+
+
 class WorkerSettings:
-    functions = [executar_workflow, retomar_workflow_job, executar_inlinks, executar_distribuir_inlinks, executar_workflow_cwv, executar_workflow_parecer, executar_indexar_site]  # noqa: RUF012
+    functions = [executar_workflow, retomar_workflow_job, executar_inlinks, executar_distribuir_inlinks, executar_workflow_cwv, executar_workflow_parecer, executar_indexar_site, executar_consolidador_cwv]  # noqa: RUF012
     on_startup = ctx_startup
     on_shutdown = ctx_shutdown
     redis_settings = RedisSettings.from_dsn(settings.redis_url)

@@ -348,3 +348,77 @@ async def reauditar_auditoria(
         "custo_estimado": custo,
         "auditoria_id": str(auditoria.id),
     }
+
+
+@router.post("/core-web-vitals/auditorias/{auditoria_id}/consolidar", status_code=202)
+async def consolidar_auditoria(
+    auditoria_id: str,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+) -> dict[str, Any]:
+    """SPEC_CWV_Consolidador_Cross_URL: enfileira a consolidação."""
+    aud_result = await db.execute(
+        select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id)
+    )
+    auditoria = aud_result.scalar_one_or_none()
+    if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
+        raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
+    if not auditoria.execucao_before_id:
+        raise HTTPException(status_code=409, detail="Auditoria sem execucao before")
+    if auditoria.consolidacao_status == "executando":
+        raise HTTPException(status_code=409, detail="Consolidação já em andamento")
+
+    try:
+        from app.core.redis_pool import get_redis_pool
+
+        redis = await get_redis_pool()
+        await redis.enqueue_job("executar_consolidador_cwv", auditoria_id)
+        auditoria.consolidacao_status = "executando"
+        await db.commit()
+    except Exception as e:
+        logger.error("Falha ao enfileirar consolidação: %s", e)
+        auditoria.consolidacao_status = "falhou"
+        await db.commit()
+        raise HTTPException(status_code=500, detail="Falha ao enfileirar consolidação") from e
+
+    return {"status": "executando", "auditoria_id": auditoria_id}
+
+
+@router.get("/core-web-vitals/auditorias/{auditoria_id}/consolidados")
+async def listar_consolidados(
+    auditoria_id: str,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+) -> dict[str, Any]:
+    """SPEC_CWV_Consolidador_Cross_URL: lista consolidados da auditoria."""
+    from app.models.cwv_problema_consolidado import CwvProblemaConsolidado
+
+    aud_result = await db.execute(
+        select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id)
+    )
+    auditoria = aud_result.scalar_one_or_none()
+    if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
+        raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
+
+    result = await db.execute(
+        select(CwvProblemaConsolidado)
+        .where(CwvProblemaConsolidado.auditoria_id == auditoria_id)
+        .order_by(CwvProblemaConsolidado.prioridade_ordem)
+    )
+    consolidados = []
+    for c in result.scalars().all():
+        consolidados.append({
+            "id": str(c.id),
+            "titulo": c.titulo,
+            "causa_raiz": c.causa_raiz,
+            "kb_codigo": c.kb_codigo,
+            "severidade": c.severidade,
+            "prioridade_ordem": c.prioridade_ordem,
+            "esforco": c.esforco,
+            "metricas_afetadas": c.metricas_afetadas or [],
+            "escopo_json": c.escopo_json or {},
+            "evidencias_json": c.evidencias_json or {},
+            "recomendacao_md": c.recomendacao_md,
+            "problemas_origem_ids": c.problemas_origem_ids or [],
+        })
+    return {"consolidados": consolidados, "status": auditoria.consolidacao_status}
