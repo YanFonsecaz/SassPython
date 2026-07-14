@@ -87,6 +87,7 @@ async def persistir_analise(
             contexto_especifico=p.get("contexto_especifico"),
             documentacao_md=p.get("documentacao_md", ""),
             pesquisado=bool(p.get("pesquisado", False)),
+            esforco=p.get("esforco"),
         )
         session.add(problema)
 
@@ -278,6 +279,7 @@ def _analise_to_dict(analise: CwvAnalise, problemas: list[CwvProblema]) -> dict:
                 "contexto_especifico": p.contexto_especifico,
                 "documentacao_md": p.documentacao_md,
                 "pesquisado": p.pesquisado,
+                "esforco": p.esforco,
             }
             for p in problemas
         ],

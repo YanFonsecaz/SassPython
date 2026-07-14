@@ -86,6 +86,7 @@ class ProblemaResposta(BaseModel):
     contexto_especifico: dict | None = None
     documentacao_md: str
     pesquisado: bool = False
+    esforco: str | None = None
 
 
 class AnaliseResposta(BaseModel):

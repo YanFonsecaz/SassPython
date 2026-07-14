@@ -4,6 +4,8 @@ function fetchBlobAuth(path: string): Promise<Blob> {
   return api.blob(`/ferramentas${path}`);
 }
 
+export type CwvEsforco = "baixo" | "medio" | "alto";
+
 export interface CwvProblemaResposta {
   id: string;
   kb_codigo: string | null;
@@ -15,6 +17,7 @@ export interface CwvProblemaResposta {
   contexto_especifico: Record<string, unknown>;
   documentacao_md: string;
   pesquisado?: boolean;
+  esforco?: CwvEsforco | null;
 }
 
 export interface CwvAnaliseResposta {

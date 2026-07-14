@@ -131,3 +131,21 @@ export function calcularDelta(
   }
   return { text: `${diff > 0 ? "+" : ""}${Math.round(diff)}`, color, improved };
 }
+
+// --- SPEC_CWV_Estimador_Esforco -------------------------------------------
+
+export type Esforco = "baixo" | "medio" | "alto";
+
+export function corEsforco(e: Esforco | null | undefined): { text: string; bg: string } {
+  if (e === "baixo") return { text: "text-success", bg: "bg-success/10 border-success/30" };
+  if (e === "medio") return { text: "text-yellow-600", bg: "bg-yellow-500/10 border-yellow-500/30" };
+  if (e === "alto") return { text: "text-destructive", bg: "bg-destructive/10 border-destructive/30" };
+  return { text: "text-muted-foreground", bg: "bg-muted/40 border-border" };
+}
+
+export function rotuloEsforco(e: Esforco | null | undefined): string {
+  if (e === "baixo") return "Baixo";
+  if (e === "medio") return "Médio";
+  if (e === "alto") return "Alto";
+  return "—";
+}

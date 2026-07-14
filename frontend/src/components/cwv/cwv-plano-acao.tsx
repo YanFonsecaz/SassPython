@@ -10,6 +10,7 @@ import type { CwvProblemaResposta } from "@/lib/api/cwv";
 import { exportarProblemaCwvDocx } from "@/lib/api/cwv";
 import { mensagemErroAmigavel } from "@/lib/api";
 import { ProblemaDetalhes } from "./cwv-problema-detalhes";
+import { corEsforco, rotuloEsforco } from "@/lib/cwv/thresholds";
 
 function SeveridadeIcon({ severidade }: { severidade: number }) {
   if (severidade >= 4) return <span aria-label="critico" className="text-base">🔴</span>;
@@ -97,6 +98,15 @@ export function PlanoAcaoAccordion({ problemas }: PlanoAcaoProps) {
                     {p.severidade >= 4 && <Badge variant="destructive" className="text-[10px] px-1.5">critico</Badge>}
                     {isDuplicate && p.audit_id && (
                       <Badge variant="outline" className="text-[10px] px-1.5 font-mono">{p.audit_id}</Badge>
+                    )}
+                    {p.esforco && (
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] px-1.5 ${corEsforco(p.esforco).text} ${corEsforco(p.esforco).bg}`}
+                        title="Esforço estimado de implementação"
+                      >
+                        esforço: {rotuloEsforco(p.esforco).toLowerCase()}
+                      </Badge>
                     )}
                     {!p.kb_codigo && (
                       <Badge variant="outline" className="text-[10px] px-1.5 border-amber-400 text-amber-700 dark:text-amber-300" title={p.audit_id ? `Audit ${p.audit_id} sem entrada na base de conhecimento` : "Audit sem mapeamento na KB"}>

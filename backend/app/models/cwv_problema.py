@@ -15,6 +15,10 @@ class CwvProblema(Base, UUIDPrimaryKeyMixin):
             "severidade BETWEEN 1 AND 5",
             name="cwv_problema_severidade_check",
         ),
+        CheckConstraint(
+            "esforco IS NULL OR esforco IN ('baixo', 'medio', 'alto')",
+            name="cwv_problema_esforco_check",
+        ),
         Index("ix_cwv_problema_analise", "analise_id", "prioridade_ordem"),
         Index("ix_cwv_problema_audit_id", "audit_id"),
     )
@@ -33,6 +37,7 @@ class CwvProblema(Base, UUIDPrimaryKeyMixin):
     pesquisado: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false",
     )
+    esforco: Mapped[str | None] = mapped_column(String(10), nullable=True)
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default="now()", nullable=False,
     )
