@@ -1,6 +1,6 @@
 # Core Web Vitals
 
-**Estado:** ✅ implementado · **Rota:** `/ferramentas/core-web-vitals` · **Slug:** `core_web_vitals`
+**Estado:** ✅ implementado (núcleo) · 📋 programa de paridade com a planilha NPBR em andamento (ver seção "Paridade NPBR") · **Rota:** `/ferramentas/core-web-vitals` · **Slug:** `core_web_vitals`
 **Créditos:** `15 + 1·N_urls` (teto 100; cada URL mede **mobile + desktop**) — `calcular_custo_cwv()`
 **Código:** `backend/app/agents/cwv/*` · `routers/ferramentas_cwv.py`, `admin_cwv.py` · `services/cwv_*` · `models/cwv_analise.py`, `cwv_problema.py`
 
@@ -40,13 +40,17 @@ Admin/manutenção da KB e reprocessamento: `routers/admin_cwv.py`. Modelos LLM 
 | Orquestração | LangGraph `ainvoke` (não `astream v2`) | Celery/Temporal |
 | Persistência | 2 tabelas (`cwv_analise`, `cwv_problema`) | Tudo em `resultado_json` |
 | Chart | shadcn chart (recharts) | Tremor; chart.js |
-| Cobrança | `15 + 1·N` (teto 100); mede mobile+desktop | Flat por URL |
+| Cobrança | `15 + 1·N` (teto 100); mede mobile+desktop; novas capacidades do programa NPBR **não cobram extra** | Flat por URL; produto pago à parte |
+| Field data | Colunas `crux_*` materializadas + `raw_resumo_json` compacto (≤64KB, sem screenshot) — o payload bruto continua FORA do DB/estado (compatível com `SPEC_Payload_PSI_Bruto`) | Guardar payload inteiro; screenshot no Postgres |
+| Page Experience | Checks HTTP próprios por origem + payload PSI | GTmetrix (integração paga; checks exclusivos deriváveis de headers/Lighthouse) |
+| Consolidação cross-URL | Dedup determinístico + 1 LLM juiz por auditoria (kill-switch) | LLM por problema |
 
 ## Não-objetivos
 
-Crawl via sitemap · URLs autenticadas · re-análise agendada · integração CMS · alertas por e-mail ·
-benchmark entre clientes · field data CrUX · UI admin para editar KB (PR no git basta) · export PDF ·
-compartilhamento por link público.
+Crawl via sitemap · URLs autenticadas · integração CMS · benchmark entre clientes · UI admin para
+editar KB (PR no git basta) · export PDF · compartilhamento por link público · **GTmetrix** (decisão
+travada 2026-07) · **screenshot persistido no Postgres** (se V3 Inspetor Visual precisar, será object
+storage) · **OAuth GSC/GA4** (roadmap V3).
 
 ## Specs
 
@@ -80,6 +84,48 @@ compartilhamento por link público.
 | [SPEC_Performance_PSI_Pesquisador](SPEC_Performance_PSI_Pesquisador.md) | Pesquisador paralelo + PSI com pool/retry | `e50a3e6` |
 | [SPEC_Robustez_Limpeza_CWV](SPEC_Robustez_Limpeza_CWV.md) | Checkpointer, cache de LLM, cancelamento, export async | `e50a3e6` |
 | [SPEC_CWV_Testes_Automatizados](SPEC_CWV_Testes_Automatizados.md) · [SPEC_CWV_Hardening_Pre_Producao](SPEC_CWV_Hardening_Pre_Producao.md) · [SPEC_CWV_Correcoes_Pos_Validacao](SPEC_CWV_Correcoes_Pos_Validacao.md) | Testes + hardening + correções pós-validação | aplicado |
+
+### Paridade NPBR (programa 2026-07 — ✅ Onda 1 implementada)
+
+**Implementado (Onda 1 — 2026-07):** S1, S2, S4, S6, S7. **Pendentes:** S3, S5, S8, S9, S10 (Ondas 2–4).
+
+Objetivo: substituir a planilha `[OFFICIAL ENTERPRISE TEMPLATE - 2026] CWV and Loading Speed Audit`.
+Análise-base: [AUDITORIA_Planilha_NPBR_vs_Ferramenta_2026-07](AUDITORIA_Planilha_NPBR_vs_Ferramenta_2026-07.md)
+(inventário das 58 abas, gap analysis campo a campo, arquitetura proposta).
+
+| # | Spec | Escopo | Migração |
+|---|---|---|---|
+| S1 | [SPEC_CWV_Field_Data_Retencao_Payload](SPEC_CWV_Field_Data_Retencao_Payload.md) | Field data CrUX + `raw_resumo_json` (assessments LCP/INP/CLS reais) | `0024` |
+| S2 | [SPEC_CWV_Health_Score](SPEC_CWV_Health_Score.md) | Health score % da execução (regra da planilha) | — |
+| S3 | [SPEC_CWV_Export_Consolidado_Execucao](SPEC_CWV_Export_Consolidado_Execucao.md) | DOCX consolidado multi-URL | — |
+| S4 | [SPEC_CWV_Evidencias_Destacadas](SPEC_CWV_Evidencias_Destacadas.md) | Evidências com thresholds ("< 100 ms por tarefa") | — |
+| S5 | [SPEC_CWV_Auditoria_Ciclo_De_Vida](SPEC_CWV_Auditoria_Ciclo_De_Vida.md) | Campanha before→implementação→after + checklist do cliente | `0026` |
+| S6 | [SPEC_CWV_Page_Experience](SPEC_CWV_Page_Experience.md) | HTTPS/SSL/mixed/redirect/headers/Safe Browsing/mobile-friendly por origem | `0027` |
+| S7 | [SPEC_CWV_Estimador_Esforco](SPEC_CWV_Estimador_Esforco.md) | Esforço baixo/médio/alto por problema | `0025` |
+| S8 | [SPEC_CWV_Consolidador_Cross_URL](SPEC_CWV_Consolidador_Cross_URL.md) | Dedup + causa raiz + escopo (LLM juiz, kill-switch) | `0028` |
+| S9 | [SPEC_CWV_Relatorio_Executivo](SPEC_CWV_Relatorio_Executivo.md) | Redator LLM + DOCX da auditoria (8 seções) | — |
+| S10 | [SPEC_CWV_Reauditoria_After](SPEC_CWV_Reauditoria_After.md) | Fechar o ciclo: status after + health delta | — |
+
+**Ordem de implementação (ondas — specs da mesma onda são independentes entre si):**
+1. **Onda 1:** S1, S2, S4, S6, S7
+2. **Onda 2:** S3 (usa S2) · S5 (usa S1+S2; integra S6 se pronta)
+3. **Onda 3:** S8 (usa S5+S7) · S10 (usa S5)
+4. **Onda 4:** S9 (usa S8; reusa S3/S4)
+
+> Migrações: a série `0024–0028` está reservada acima, mas cada implementação DEVE conferir a última
+> migração real em `backend/migrations/versions/` e encadear `down_revision` nela (ondas podem ser
+> implementadas fora de ordem).
+
+## Roadmap V2/V3 (sem spec ainda — não implementar sem spec)
+
+- **V2:** CrUX History API (evolução 25 semanas por origem/URL — substitui prints do GSC, sem OAuth) ·
+  Benchmark de concorrentes (PSI em até 3 URLs de referência + tabela comparativa) · matriz de
+  prioridade por template (visão agregada da aba AUDITORIA da planilha) · recomendação personalizada
+  (documentador nomeia recursos reais no texto da solução) · device split aproximado via CrUX
+  `form_factors`.
+- **V3:** OAuth Google (GSC Page Experience real + GA4 visitas) · monitoramento agendado (cron
+  re-audit + alertas de regressão) · Inspetor Visual de pop-ups/interstitiais (screenshot + LLM
+  vision, com revisão humana) · export Google Sheets no layout NPBR.
 
 ### Histórico
 - [SPEC_CWV_Bugs_Postmortem](SPEC_CWV_Bugs_Postmortem.md) · [POSTMORTEM_E2E_Sites_Reais_2026-05](POSTMORTEM_E2E_Sites_Reais_2026-05.md) — 🗄️ postmortems.
