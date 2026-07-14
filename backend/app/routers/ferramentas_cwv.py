@@ -18,6 +18,7 @@ from app.schemas.cwv import (
     CustoCwvResponse,
     HealthScoreResposta,
     HistoricoListResponse,
+    PageExperienceListResponse,
     PlataformaOverrideRequest,
 )
 from app.services.ferramenta_service import (
@@ -191,6 +192,50 @@ async def health_score_cwv(
     if hs is None:
         return {"health_score": None, "n_pass": 0, "n_total": 0, "por_estrategia": {}}
     return hs
+
+
+@router.get(
+    "/core-web-vitals/execucao/{execucao_id}/page-experience",
+    response_model=PageExperienceListResponse,
+)
+async def page_experience_cwv(
+    execucao_id: str,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Checagens de Page Experience por origem da execução (SPEC_CWV_Page_Experience)."""
+    from app.models.cwv_page_experience import CwvPageExperience
+    from app.models.execucao_ferramenta import ExecucaoFerramenta
+
+    # Ownership: confirma que a execução é do usuário (404 se não).
+    exec_result = await db.execute(
+        select(ExecucaoFerramenta.id).where(
+            ExecucaoFerramenta.id == execucao_id,
+            ExecucaoFerramenta.usuario_id == usuario.id,
+        )
+    )
+    if exec_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Execucao nao encontrada")
+
+    resultado = await db.execute(
+        select(CwvPageExperience)
+        .where(CwvPageExperience.execucao_id == execucao_id)
+        .order_by(CwvPageExperience.origem)
+    )
+    origens = []
+    for row in resultado.scalars().all():
+        origens.append({
+            "origem": row.origem,
+            "https": row.https,
+            "ssl": row.ssl,
+            "redirect_301": row.redirect_301,
+            "security_headers": row.security_headers,
+            "safe_browsing": row.safe_browsing,
+            "mixed_content": row.mixed_content,
+            "mobile_friendly": row.mobile_friendly,
+            "detalhes_json": row.detalhes_json or {},
+        })
+    return {"origens": origens}
 
 
 @router.get("/core-web-vitals/analise/{analise_id}", response_model=AnaliseResposta)

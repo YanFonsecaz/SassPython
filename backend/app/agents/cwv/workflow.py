@@ -30,6 +30,7 @@ class EstadoCWV(TypedDict):
     problemas_por_url: dict[str, list[dict]]
     analises_persistidas: list[str]
     llm_stats_por_url: dict[str, dict]
+    page_experience_por_origem: dict[str, dict]
 
 
 def _log_prefix(eid: str) -> str:
@@ -77,6 +78,82 @@ async def node_coletar_psi(estado: EstadoCWV) -> dict[str, Any]:
 
     await publish_event(eid, "node_complete", "coletar_psi", f"PSI concluido: {n_ok} OK, {n_fail} falharam")
     return {"psi_resultados": psi_dict}
+
+
+async def node_coletar_page_experience(estado: EstadoCWV) -> dict[str, Any]:
+    """SPEC_CWV_Page_Experience: checagens por origem (HTTPS/SSL/redirect/headers/SB/mixed/mobile).
+
+    DEVE rodar antes de ``node_detectar_plataformas`` (que remove o payload
+    bruto do estado). Fail-open total: nenhuma exceção aqui derruba o workflow.
+    """
+    from app.core.workflow_events import publish_event
+    from app.services.cwv_page_experience import _origem, auditar_origem
+
+    eid = estado["execucao_id"]
+    try:
+        # Deriva origens únicas e agrupa payloads OK por origem.
+        payloads_por_origem: dict[str, list[dict]] = {}
+        for _, url, _estrategia in estado["jobs"]:
+            chave = _chave(url, _estrategia)
+            r = estado["psi_resultados"].get(chave, {})
+            if r.get("ok") and r.get("payload"):
+                origem = _origem(url)
+                payloads_por_origem.setdefault(origem, []).append(r["payload"])
+
+        origens = list(payloads_por_origem.keys())
+        await publish_event(
+            eid, "node_start", "coletar_page_experience",
+            f"Verificando page experience de {len(origens)} origem(ns)...",
+        )
+
+        async def _auditar(o: str) -> tuple[str, dict]:
+            return o, await auditar_origem(o, payloads_por_origem[o])
+
+        try:
+            resultados = await asyncio.wait_for(
+                asyncio.gather(*[_auditar(o) for o in origens], return_exceptions=True),
+                timeout=90,
+            )
+        except TimeoutError:
+            logger.warning("%s page_experience excedeu budget de 90s", _log_prefix(eid))
+            resultados = [(o, _vereditos_erro()) for o in origens]
+
+        page_experience_por_origem: dict[str, dict] = {}
+        n_pass = n_fail = n_erro = 0
+        for res in resultados:
+            if isinstance(res, Exception):
+                logger.warning("%s page_experience origem falhou: %s", _log_prefix(eid), res)
+                continue
+            o, resultado = res
+            page_experience_por_origem[o] = resultado
+            for v in (resultado.get("https"), resultado.get("ssl"), resultado.get("redirect_301"),
+                      resultado.get("security_headers"), resultado.get("safe_browsing"),
+                      resultado.get("mixed_content"), resultado.get("mobile_friendly")):
+                if v == "pass":
+                    n_pass += 1
+                elif v == "fail":
+                    n_fail += 1
+                elif v == "erro":
+                    n_erro += 1
+
+        await publish_event(
+            eid, "node_complete", "coletar_page_experience",
+            f"Page experience: {n_pass} pass / {n_fail} fail / {n_erro} erro",
+        )
+        return {"page_experience_por_origem": page_experience_por_origem}
+    except Exception:
+        logger.exception("%s node_coletar_page_experience falhou (fail-open)", _log_prefix(eid))
+        await publish_event(eid, "node_complete", "coletar_page_experience", "Page experience: indisponível")
+        return {"page_experience_por_origem": {}}
+
+
+def _vereditos_erro() -> dict:
+    return {
+        "https": "erro", "ssl": "erro", "redirect_301": "erro",
+        "security_headers": "erro", "safe_browsing": "erro",
+        "mixed_content": "erro", "mobile_friendly": "erro",
+        "detalhes": {"erro": "timeout do nó"},
+    }
 
 
 async def node_detectar_plataformas(estado: EstadoCWV) -> dict[str, Any]:
@@ -294,6 +371,17 @@ async def node_persistir(estado: EstadoCWV) -> dict[str, Any]:
             analises_ids.append(analise_id)
             if r.get("ok"):
                 cwv_problemas_por_analise.observe(len(problemas_url))
+
+        # SPEC_CWV_Page_Experience: grava checagens por origem (mesma sessão/commit).
+        from app.services.cwv_persistencia import persistir_page_experience
+        for origem, resultado in estado.get("page_experience_por_origem", {}).items():
+            try:
+                await persistir_page_experience(
+                    session, execucao_id=eid, origem=origem, resultado=resultado,
+                )
+            except Exception:
+                logger.warning("%s persistir_page_experience falhou para %s", _log_prefix(eid), origem, exc_info=True)
+
         await session.commit()
 
     await publish_event(eid, "node_complete", "persistir", f"{len(analises_ids)} analises persistidas")
@@ -303,6 +391,7 @@ async def node_persistir(estado: EstadoCWV) -> dict[str, Any]:
 def construir_workflow():
     g = StateGraph(EstadoCWV)
     g.add_node("coletar_psi", node_coletar_psi)
+    g.add_node("coletar_page_experience", node_coletar_page_experience)
     g.add_node("detectar_plataformas", node_detectar_plataformas)
     g.add_node("analisar_seo", node_analisar_seo)
     g.add_node("documentar", node_documentar)
@@ -310,7 +399,8 @@ def construir_workflow():
     g.add_node("priorizar", node_priorizar)
     g.add_node("persistir", node_persistir)
     g.set_entry_point("coletar_psi")
-    g.add_edge("coletar_psi", "detectar_plataformas")
+    g.add_edge("coletar_psi", "coletar_page_experience")
+    g.add_edge("coletar_page_experience", "detectar_plataformas")
     g.add_edge("detectar_plataformas", "analisar_seo")
     g.add_edge("analisar_seo", "documentar")
     g.add_edge("documentar", "pesquisar_outros")
@@ -387,6 +477,7 @@ async def executar_workflow_cwv(execucao_id: str, ctx: dict[str, Any] | None = N
             "problemas_por_url": {},
             "analises_persistidas": [],
             "llm_stats_por_url": {},
+            "page_experience_por_origem": {},
         }
 
         workflow = construir_workflow()

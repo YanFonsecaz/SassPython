@@ -339,6 +339,42 @@ def _analise_resumo(a: CwvAnalise, *, n_problemas: int = 0, n_alta: int = 0) -> 
     }
 
 
+async def persistir_page_experience(
+    session, *, execucao_id: str, origem: str, resultado: dict
+) -> None:
+    """Insere uma linha de Page Experience por origem (SPEC_CWV_Page_Experience).
+
+    Roda dentro da mesma sessão/commit do ``node_persistir`` — não committa aqui.
+    UNIQUE (execucao_id, origem): se a origem já existe (reexecução), atualiza.
+    """
+    from app.models.cwv_page_experience import CwvPageExperience
+
+    existente = await session.execute(
+        select(CwvPageExperience).where(
+            CwvPageExperience.execucao_id == execucao_id,
+            CwvPageExperience.origem == origem,
+        )
+    )
+    row = existente.scalar_one_or_none()
+    vereditos = {k: resultado.get(k, "na") for k in (
+        "https", "ssl", "redirect_301", "security_headers",
+        "safe_browsing", "mixed_content", "mobile_friendly",
+    )}
+    detalhes = resultado.get("detalhes", {})
+    if row:
+        for k, v in vereditos.items():
+            setattr(row, k, v)
+        row.detalhes_json = detalhes
+    else:
+        session.add(CwvPageExperience(
+            execucao_id=execucao_id,
+            origem=origem,
+            detalhes_json=detalhes,
+            **vereditos,
+        ))
+    await session.flush()
+
+
 async def contar_problemas_por_analise(session, analise_ids: list[str]) -> dict[str, int]:
     """Contagem agregada de problemas por análise (query única, evita N+1).
 

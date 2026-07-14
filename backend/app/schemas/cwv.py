@@ -191,3 +191,22 @@ class HealthScoreResposta(BaseModel):
     n_pass: int = 0
     n_total: int = 0
     por_estrategia: HealthScorePorEstrategia = Field(default_factory=HealthScorePorEstrategia)
+
+
+VereditoPageExperience = Literal["pass", "fail", "erro", "na"]
+
+
+class PageExperienceResposta(BaseModel):
+    origem: str
+    https: VereditoPageExperience = "na"
+    ssl: VereditoPageExperience = "na"
+    redirect_301: VereditoPageExperience = "na"
+    security_headers: VereditoPageExperience = "na"
+    safe_browsing: VereditoPageExperience = "na"
+    mixed_content: VereditoPageExperience = "na"
+    mobile_friendly: VereditoPageExperience = "na"
+    detalhes_json: dict = Field(default_factory=dict)
+
+
+class PageExperienceListResponse(BaseModel):
+    origens: list[PageExperienceResposta]

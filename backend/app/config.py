@@ -121,6 +121,7 @@ class Settings(BaseSettings):
     api_context7_key: str = ""
     api_psi_key: str = ""
     api_psi_key2: str = ""
+    api_safe_browsing_key: str = ""
 
     cwv_workflow_timeout: int = 1200
     cwv_max_urls_por_execucao: int = 50
