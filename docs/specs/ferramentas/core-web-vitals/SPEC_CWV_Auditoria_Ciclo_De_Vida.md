@@ -1,6 +1,6 @@
 # SPEC — Auditoria (campanha): ciclo before → implementação → after
 
-**Status:** 📋 planejado
+**Status:** ✅ implementado
 **Capacidade:** `core-web-vitals`
 **Escopo:** ambos — backend (2 tabelas, service, router novo) + frontend (página da auditoria)
 **Código:** `backend/app/models/cwv_auditoria.py` (novo), `backend/app/models/cwv_checklist_item.py` (novo), `backend/app/services/cwv_auditoria_service.py` (novo), `backend/app/routers/ferramentas_cwv_auditoria.py` (novo), `backend/app/schemas/cwv_auditoria.py` (novo), `backend/migrations/versions/0026_cwv_auditoria_checklist.py`, `frontend/src/app/(app)/ferramentas/core-web-vitals/auditoria/[auditoriaId]/page.tsx` (novo), `frontend/src/components/cwv/cwv-auditoria-client.tsx` (novo), `frontend/src/lib/api/cwv.ts`  ·  **Rota:** `core-web-vitals/auditoria/[auditoriaId]`

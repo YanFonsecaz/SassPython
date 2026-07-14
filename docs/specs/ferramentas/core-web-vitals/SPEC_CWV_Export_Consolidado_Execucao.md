@@ -1,6 +1,6 @@
 # SPEC — Export DOCX consolidado da execução (todas as URLs)
 
-**Status:** 📋 planejado
+**Status:** ✅ implementado
 **Capacidade:** `core-web-vitals`
 **Escopo:** ambos — backend (export + endpoint) e frontend (botão)
 **Código:** `backend/app/services/cwv_export.py`, `backend/app/routers/ferramentas_cwv.py`, `frontend/src/components/cwv/cwv-execucao-client.tsx`, `frontend/src/lib/api/cwv.ts`  ·  **Rota:** `core-web-vitals`
