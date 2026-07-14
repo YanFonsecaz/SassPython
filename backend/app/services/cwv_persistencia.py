@@ -300,6 +300,24 @@ def _analise_resumo(a: CwvAnalise, *, n_problemas: int = 0, n_alta: int = 0) -> 
     }
 
 
+async def contar_problemas_por_analise(session, analise_ids: list[str]) -> dict[str, int]:
+    """Contagem agregada de problemas por análise (query única, evita N+1).
+
+    Usada por ``cwv_health.calcular_health_score`` ao montar o health score
+    da execução. Retorna ``{analise_id: n_problemas}`` — analises sem
+    problemas aparecem com 0 se estiverem em ``analise_ids``.
+    """
+    if not analise_ids:
+        return {}
+    resultado = await session.execute(
+        select(CwvProblema.analise_id, func.count(CwvProblema.id))
+        .where(CwvProblema.analise_id.in_(analise_ids))
+        .group_by(CwvProblema.analise_id)
+    )
+    contagens = {str(aid): int(n) for aid, n in resultado.all()}
+    return {aid: contagens.get(aid, 0) for aid in analise_ids}
+
+
 async def buscar_problemas_analise(session, analise_id: str) -> list[CwvProblema]:
     resultado = await session.execute(
         select(CwvProblema)

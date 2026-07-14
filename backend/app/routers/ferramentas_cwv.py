@@ -16,6 +16,7 @@ from app.schemas.cwv import (
     AnaliseResposta,
     ComparacaoResposta,
     CustoCwvResponse,
+    HealthScoreResposta,
     HistoricoListResponse,
     PlataformaOverrideRequest,
 )
@@ -131,6 +132,65 @@ async def buscar_execucao_cwv(
         "criado_em": str(execucao.criado_em),
         "concluida_em": str(execucao.concluida_em) if execucao.concluida_em else None,
     }
+
+
+@router.get("/core-web-vitals/execucao/{execucao_id}/health-score", response_model=HealthScoreResposta)
+async def health_score_cwv(
+    execucao_id: str,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Health Score % da execução (proporção de audits saudáveis).
+
+    Se a execução já tem ``resultado_json["health_score"]``, devolve direto
+    (inclui ``None`` quando a execução falhou sem análises de sucesso).
+    Caso contrário (execução antiga), calcula on-the-fly a partir das análises
+    persistidas — sem persistir.
+    """
+    from app.models.cwv_analise import CwvAnalise
+    from app.models.execucao_ferramenta import ExecucaoFerramenta
+    from app.services.cwv_health import calcular_health_score
+    from app.services.cwv_persistencia import contar_problemas_por_analise
+
+    resultado = await db.execute(
+        select(ExecucaoFerramenta).where(
+            ExecucaoFerramenta.id == execucao_id,
+            ExecucaoFerramenta.usuario_id == usuario.id,
+        )
+    )
+    execucao = resultado.scalar_one_or_none()
+    if not execucao:
+        raise HTTPException(status_code=404, detail="Execucao nao encontrada")
+
+    # Execuções novas: o workflow já gravou o health_score (pode ser None).
+    if execucao.resultado_json and "health_score" in execucao.resultado_json:
+        hs = execucao.resultado_json["health_score"]
+        if hs is None:
+            return {"health_score": None, "n_pass": 0, "n_total": 0, "por_estrategia": {}}
+        return hs
+
+    # Execução antiga sem o campo: cálculo on-the-fly.
+    res = await db.execute(
+        select(CwvAnalise.id, CwvAnalise.status, CwvAnalise.estrategia, CwvAnalise.audits_totais)
+        .where(CwvAnalise.execucao_id == execucao_id)
+    )
+    rows = res.all()
+    if not rows:
+        return {"health_score": None, "n_pass": 0, "n_total": 0, "por_estrategia": {}}
+    contagens = await contar_problemas_por_analise(db, [str(r[0]) for r in rows])
+    analises = [
+        {
+            "status": str(status),
+            "estrategia": str(estrategia),
+            "audits_totais": int(audits_totais or 0),
+            "n_problemas": contagens.get(str(aid), 0),
+        }
+        for aid, status, estrategia, audits_totais in rows
+    ]
+    hs = calcular_health_score(analises)
+    if hs is None:
+        return {"health_score": None, "n_pass": 0, "n_total": 0, "por_estrategia": {}}
+    return hs
 
 
 @router.get("/core-web-vitals/analise/{analise_id}", response_model=AnaliseResposta)

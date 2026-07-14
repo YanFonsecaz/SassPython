@@ -469,6 +469,7 @@ async def _run_workflow_cwv(workflow, estado_inicial, config, execucao_id: str):
                 "n_urls_analisadas": 0,
                 "n_urls_falharam": n_total_jobs,
                 "analise_ids": analises_ids,
+                "health_score": None,
                 "motivo_falha": "psi_total",
             }
             execucao.concluida_em = datetime.now(UTC)
@@ -477,6 +478,11 @@ async def _run_workflow_cwv(workflow, estado_inicial, config, execucao_id: str):
             return
 
         custo = ferramenta_service.calcular_custo_cwv(n_sucesso)
+
+        # SPEC_CWV_Health_Score: agrega proporção de audits saudáveis.
+        # Roda dentro da mesma sessão/fluxo de billing existente — sem commits
+        # extras nem alteração na ordem reserva→débito (aviso #2 da spec).
+        health_score = await _computar_health_score(session, analises_ids)
 
         try:
             await credito_service.confirmar_debito(
@@ -501,6 +507,7 @@ async def _run_workflow_cwv(workflow, estado_inicial, config, execucao_id: str):
             "n_urls_analisadas": n_sucesso,
             "n_urls_falharam": n_total_jobs - n_sucesso,
             "analise_ids": analises_ids,
+            "health_score": health_score,
         }
 
         execucao.status = "concluida"
@@ -509,3 +516,34 @@ async def _run_workflow_cwv(workflow, estado_inicial, config, execucao_id: str):
         execucao.concluida_em = datetime.now(UTC)
         await session.commit()
         logger.info("%s CWV concluida: %d URLs, custo=%d creditos", _log_prefix(execucao_id), n_sucesso, custo)
+
+
+async def _computar_health_score(session, analise_ids: list[str]) -> dict | None:
+    """Busca análises persistidas + contagens de problemas e calcula o health.
+
+    Espelha ``cwv_health.calcular_health_score`` sobre dados do banco. Retorna
+    ``None`` se não houver análises de sucesso com audits.
+    """
+    if not analise_ids:
+        return None
+    from sqlalchemy import select
+
+    from app.models.cwv_analise import CwvAnalise
+    from app.services.cwv_health import calcular_health_score
+    from app.services.cwv_persistencia import contar_problemas_por_analise
+
+    resultado = await session.execute(
+        select(CwvAnalise.id, CwvAnalise.status, CwvAnalise.estrategia, CwvAnalise.audits_totais)
+        .where(CwvAnalise.id.in_(analise_ids))
+    )
+    contagens = await contar_problemas_por_analise(session, analise_ids)
+    analises = [
+        {
+            "status": str(status),
+            "estrategia": str(estrategia),
+            "audits_totais": int(audits_totais or 0),
+            "n_problemas": contagens.get(str(aid), 0),
+        }
+        for aid, status, estrategia, audits_totais in resultado.all()
+    ]
+    return calcular_health_score(analises)

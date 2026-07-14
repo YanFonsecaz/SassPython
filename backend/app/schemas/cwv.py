@@ -167,3 +167,15 @@ class ComparacaoResposta(BaseModel):
     problemas_resolvidos: list[ProblemaComparado]
     problemas_novos: list[ProblemaComparado]
     problemas_persistentes: list[ProblemaComparado]
+
+
+class HealthScorePorEstrategia(BaseModel):
+    mobile: float | None = None
+    desktop: float | None = None
+
+
+class HealthScoreResposta(BaseModel):
+    health_score: float | None
+    n_pass: int = 0
+    n_total: int = 0
+    por_estrategia: HealthScorePorEstrategia = Field(default_factory=HealthScorePorEstrategia)
