@@ -165,8 +165,15 @@ async def executar_consolidador_cwv(ctx, auditoria_id: str):
     await executar_consolidacao(auditoria_id)
 
 
+async def executar_relatorio_cwv(ctx, auditoria_id: str):
+    """SPEC_CWV_Relatorio_Executivo: geração do relatório executivo (job direto)."""
+    from app.agents.cwv.redator import executar_relatorio
+
+    await executar_relatorio(auditoria_id)
+
+
 class WorkerSettings:
-    functions = [executar_workflow, retomar_workflow_job, executar_inlinks, executar_distribuir_inlinks, executar_workflow_cwv, executar_workflow_parecer, executar_indexar_site, executar_consolidador_cwv]  # noqa: RUF012
+    functions = [executar_workflow, retomar_workflow_job, executar_inlinks, executar_distribuir_inlinks, executar_workflow_cwv, executar_workflow_parecer, executar_indexar_site, executar_consolidador_cwv, executar_relatorio_cwv]  # noqa: RUF012
     on_startup = ctx_startup
     on_shutdown = ctx_shutdown
     redis_settings = RedisSettings.from_dsn(settings.redis_url)

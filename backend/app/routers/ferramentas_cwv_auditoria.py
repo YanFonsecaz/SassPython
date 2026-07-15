@@ -10,6 +10,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -422,3 +423,129 @@ async def listar_consolidados(
             "problemas_origem_ids": c.problemas_origem_ids or [],
         })
     return {"consolidados": consolidados, "status": auditoria.consolidacao_status}
+
+
+@router.post("/core-web-vitals/auditorias/{auditoria_id}/relatorio", status_code=202)
+async def gerar_relatorio_auditoria(
+    auditoria_id: str,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+) -> dict[str, Any]:
+    """SPEC_CWV_Relatorio_Executivo: enfileira a geração do relatório executivo."""
+    aud_result = await db.execute(
+        select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id)
+    )
+    auditoria = aud_result.scalar_one_or_none()
+    if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
+        raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
+    if auditoria.consolidacao_status != "concluida":
+        raise HTTPException(status_code=409, detail="Consolidação precisa estar concluída antes do relatório")
+
+    rel = auditoria.relatorio_json or {}
+    if isinstance(rel, dict) and rel.get("status") == "gerando":
+        raise HTTPException(status_code=409, detail="Geração de relatório já em andamento")
+
+    try:
+        from app.core.redis_pool import get_redis_pool
+
+        redis = await get_redis_pool()
+        await redis.enqueue_job("executar_relatorio_cwv", auditoria_id)
+        auditoria.relatorio_json = {"status": "gerando"}
+        await db.commit()
+    except Exception as e:
+        logger.error("Falha ao enfileirar relatório: %s", e)
+        raise HTTPException(status_code=500, detail="Falha ao enfileirar relatório") from e
+
+    return {"status": "gerando", "auditoria_id": auditoria_id}
+
+
+@router.get("/core-web-vitals/auditorias/{auditoria_id}/docx")
+async def exportar_auditoria_docx(
+    auditoria_id: str,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+    _: None = Depends(rate_limit_autenticado("cwv_export", max_requests=30, window_seconds=300)),
+) -> StreamingResponse:
+    """SPEC_CWV_Relatorio_Executivo: DOCX da auditoria completa (8 seções)."""
+    import asyncio
+    import io
+
+    from app.models.cwv_page_experience import CwvPageExperience
+    from app.models.cwv_problema_consolidado import CwvProblemaConsolidado
+    from app.services.cwv_export import relatorio_auditoria_para_html, slugify_titulo
+    from app.services.cwv_persistencia import buscar_analises_da_execucao
+    from app.services.parecer_service import html_para_docx_bytes
+
+    aud_result = await db.execute(
+        select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id)
+    )
+    auditoria = aud_result.scalar_one_or_none()
+    if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
+        raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
+
+    # Checklist.
+    itens_result = await db.execute(
+        select(CwvChecklistItem).where(CwvChecklistItem.auditoria_id == auditoria_id)
+        .order_by(CwvChecklistItem.status_before != "fail", CwvChecklistItem.prioridade)
+    )
+    checklist = [{
+        "item_codigo": i.item_codigo, "titulo": i.titulo,
+        "status_before": i.status_before, "status_after": i.status_after,
+        "status_implementacao": i.status_implementacao,
+        "prioridade": i.prioridade, "esforco": i.esforco,
+    } for i in itens_result.scalars().all()]
+
+    # Consolidados.
+    consol_result = await db.execute(
+        select(CwvProblemaConsolidado).where(CwvProblemaConsolidado.auditoria_id == auditoria_id)
+        .order_by(CwvProblemaConsolidado.prioridade_ordem)
+    )
+    consolidados = [{
+        "titulo": c.titulo, "causa_raiz": c.causa_raiz, "esforco": c.esforco,
+        "escopo_json": c.escopo_json or {}, "recomendacao_md": c.recomendacao_md,
+    } for c in consol_result.scalars().all()]
+
+    # Page experience.
+    pe_result = await db.execute(
+        select(CwvPageExperience).where(CwvPageExperience.execucao_id == auditoria.execucao_before_id)
+    )
+    page_exp = [{
+        "origem": r.origem, "https": r.https, "ssl": r.ssl, "redirect_301": r.redirect_301,
+        "security_headers": r.security_headers, "mixed_content": r.mixed_content,
+        "mobile_friendly": r.mobile_friendly,
+    } for r in pe_result.scalars().all()]
+
+    # Análises (para CrUX).
+    analises = []
+    if auditoria.execucao_before_id:
+        analises = await buscar_analises_da_execucao(db, str(auditoria.execucao_before_id))
+
+    # Cliente.
+    cliente_nome = ""
+    from app.models.cliente import Cliente as ClienteModel
+
+    if auditoria.cliente_id:
+        cliente = await db.get(ClienteModel, auditoria.cliente_id)
+        cliente_nome = cliente.nome if cliente else ""
+
+    html = relatorio_auditoria_para_html(
+        auditoria={
+            "criado_em": auditoria.criado_em.isoformat() if auditoria.criado_em else "",
+            "fase": auditoria.fase,
+            "health_score_before": float(auditoria.health_score_before) if auditoria.health_score_before is not None else None,
+            "health_score_after": float(auditoria.health_score_after) if auditoria.health_score_after is not None else None,
+            "relatorio_json": auditoria.relatorio_json,
+        },
+        checklist=checklist,
+        consolidados=consolidados,
+        page_experience=page_exp,
+        analises=analises,
+        cliente_nome=cliente_nome,
+    )
+    docx = await asyncio.to_thread(html_para_docx_bytes, html)
+    nome = f"cwv-relatorio-auditoria-{slugify_titulo(cliente_nome) if cliente_nome else auditoria_id[:8]}"
+    return StreamingResponse(
+        io.BytesIO(docx),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{nome}.docx"'},
+    )

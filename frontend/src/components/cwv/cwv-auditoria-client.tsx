@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeftIcon, Loader2Icon } from "lucide-react";
+import { ArrowLeftIcon, DownloadIcon, FileTextIcon, Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
-import { buttonVariants } from "@/components/ui/button";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import {
@@ -15,6 +17,8 @@ import {
   reauditarCwv,
   consolidarAuditoriaCwv,
   buscarConsolidadosCwv,
+  gerarRelatorioCwv,
+  exportarAuditoriaDocxCwv,
   type AuditoriaResposta,
   type ChecklistItemResposta,
   type FaseAuditoria,
@@ -68,6 +72,8 @@ export function CwvAuditoriaClient() {
   const [reauditando, setReauditando] = useState(false);
   const [consolidando, setConsolidando] = useState(false);
   const [consolidados, setConsolidados] = useState<ProblemaConsolidadoResposta[] | null>(null);
+  const [gerandoRelatorio, setGerandoRelatorio] = useState(false);
+  const [baixandoDocx, setBaixandoDocx] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -103,6 +109,52 @@ export function CwvAuditoriaClient() {
     } catch (e) {
       toast.error(mensagemErroAmigavel(e));
       setConsolidando(false);
+    }
+  }
+
+  async function handleGerarRelatorio() {
+    if (gerandoRelatorio) return;
+    setGerandoRelatorio(true);
+    try {
+      await gerarRelatorioCwv(id);
+      toast.success("Geração de relatório iniciada");
+      const poll = setInterval(async () => {
+        const att = await buscarAuditoriaCwv(id);
+        const rel = att.relatorio_json;
+        if (rel && typeof rel === "object" && "sumario_executivo_md" in rel) {
+          setAuditoria(att);
+          clearInterval(poll);
+          setGerandoRelatorio(false);
+          toast.success("Relatório gerado!");
+        } else if (rel && typeof rel === "object" && rel.status === "falhou") {
+          clearInterval(poll);
+          setGerandoRelatorio(false);
+          toast.error("Geração do relatório falhou");
+        }
+      }, 4000);
+    } catch (e) {
+      toast.error(mensagemErroAmigavel(e));
+      setGerandoRelatorio(false);
+    }
+  }
+
+  async function handleBaixarDocx() {
+    if (baixandoDocx) return;
+    setBaixandoDocx(true);
+    try {
+      const blob = await exportarAuditoriaDocxCwv(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cwv-auditoria-${id.slice(0, 8)}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(mensagemErroAmigavel(e));
+    } finally {
+      setBaixandoDocx(false);
     }
   }
 
@@ -278,6 +330,37 @@ export function CwvAuditoriaClient() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Relatório executivo + export DOCX */}
+        {auditoria.consolidacao_status === "concluida" && (
+          <div className="glass-card rounded-2xl p-5 space-y-3">
+            <h2 className="text-sm font-semibold">Relatório executivo</h2>
+            {(() => {
+              const rel = auditoria.relatorio_json;
+              if (rel && typeof rel === "object" && "sumario_executivo_md" in rel) {
+                return (
+                  <>
+                    <div className="rounded-lg border bg-surface-light px-4 py-3 prose prose-sm max-w-none text-muted-foreground">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {String((rel as Record<string, unknown>).sumario_executivo_md)}
+                      </ReactMarkdown>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleBaixarDocx} disabled={baixandoDocx}>
+                      {baixandoDocx ? <Loader2Icon className="size-4 mr-1 animate-spin" /> : <DownloadIcon className="size-4 mr-1" />}
+                      Baixar DOCX completo
+                    </Button>
+                  </>
+                );
+              }
+              return (
+                <Button size="sm" onClick={handleGerarRelatorio} disabled={gerandoRelatorio}>
+                  {gerandoRelatorio ? <Loader2Icon className="size-4 mr-1 animate-spin" /> : <FileTextIcon className="size-4 mr-1" />}
+                  {gerandoRelatorio ? "Gerando relatório..." : "Gerar relatório executivo"}
+                </Button>
+              );
+            })()}
           </div>
         )}
 

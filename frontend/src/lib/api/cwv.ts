@@ -266,6 +266,7 @@ export interface AuditoriaResposta {
   health_score_before: number | null;
   health_score_after: number | null;
   consolidacao_status: string;
+  relatorio_json: Record<string, unknown> | null;
   checklist: ChecklistItemResposta[];
   n_pass_before: number;
   n_fail_before: number;
@@ -337,4 +338,12 @@ export async function consolidarAuditoriaCwv(auditoriaId: string): Promise<{ sta
 
 export async function buscarConsolidadosCwv(auditoriaId: string): Promise<{ consolidados: ProblemaConsolidadoResposta[]; status: string }> {
   return api.get(`/ferramentas/core-web-vitals/auditorias/${auditoriaId}/consolidados`);
+}
+
+export async function gerarRelatorioCwv(auditoriaId: string): Promise<{ status: string; auditoria_id: string }> {
+  return api.post(`/ferramentas/core-web-vitals/auditorias/${auditoriaId}/relatorio`);
+}
+
+export async function exportarAuditoriaDocxCwv(auditoriaId: string): Promise<Blob> {
+  return fetchBlobAuth(`/core-web-vitals/auditorias/${auditoriaId}/docx`);
 }

@@ -409,6 +409,126 @@ def relatorio_execucao_para_html(
     return "\n".join(partes)
 
 
+def relatorio_auditoria_para_html(
+    auditoria: dict,
+    checklist: list[dict],
+    consolidados: list[dict],
+    page_experience: list[dict],
+    analises: list[dict],
+    cliente_nome: str = "",
+) -> str:
+    """SPEC_CWV_Relatorio_Executivo: DOCX da auditoria (8 seções espelhando a planilha).
+
+    Se ``relatorio_json`` (LLM) não tem ``sumario_executivo_md``, omite seções
+    narrativas — o documento ainda é útil com os dados estruturados.
+    """
+    partes: list[str] = []
+    rel = auditoria.get("relatorio_json") or {}
+    tem_narrativa = isinstance(rel, dict) and bool(rel.get("sumario_executivo_md"))
+
+    # 1. Capa
+    titulo_capa = _escape(cliente_nome) if cliente_nome else "Auditoria"
+    data = _escape((auditoria.get("criado_em") or "")[:10])
+    partes.append(f"<h1>Auditoria Core Web Vitals — {titulo_capa}</h1>")
+    partes.append(f"<p><em>{data} · Fase: {auditoria.get('fase', '—')}</em></p>")
+    hb = auditoria.get("health_score_before")
+    ha = auditoria.get("health_score_after")
+    if hb is not None:
+        partes.append(f"<p><strong>Health Before:</strong> {hb}%")
+        if ha is not None:
+            delta = ha - hb
+            sinal = "+" if delta >= 0 else ""
+            partes.append(f" · <strong>After:</strong> {ha}% ({sinal}{delta:.1f} p.p.)")
+        partes.append("</p>")
+
+    # 2. Sumário executivo (LLM)
+    if tem_narrativa:
+        partes.append("<h2>Sumário executivo</h2>")
+        partes.append(_md_to_html(rel["sumario_executivo_md"]))
+
+    # 3. Health Score + Checklist
+    if checklist:
+        partes.append("<h2>Checklist</h2>")
+        rows = []
+        for i in checklist:
+            rows.append([
+                i.get("titulo", "")[:50],
+                i.get("status_before", "—"),
+                i.get("status_after") or "—",
+                i.get("status_implementacao", "—"),
+                str(i.get("prioridade", 0)),
+                i.get("esforco") or "—",
+            ])
+        partes.append(_html_table(["Item", "Before", "After", "Impl.", "Prio.", "Esforço"], rows))
+
+    # 4. Dados de campo (CrUX) por URL
+    crux_urls = [a for a in analises if a.get("field_data_disponivel") or a.get("crux_overall_categoria")]
+    if crux_urls:
+        partes.append("<h2>Dados de campo (CrUX)</h2>")
+        rows = []
+        for a in crux_urls:
+            rows.append([
+                a.get("url_canonica", "")[:50],
+                a.get("estrategia", ""),
+                _fmt_ms(a.get("crux_lcp_p75_ms")),
+                str(a.get("crux_cls_p75", "—")),
+                _fmt_ms(a.get("crux_inp_p75_ms")),
+                a.get("crux_overall_categoria", "—"),
+            ])
+        partes.append(_html_table(["URL", "Estrat.", "LCP p75", "CLS p75", "INP p75", "Cat."], rows))
+
+    # 5. Page Experience
+    if page_experience:
+        partes.append("<h2>Page Experience</h2>")
+        rows = []
+        for pe in page_experience:
+            rows.append([
+                pe.get("origem", "")[:40],
+                pe.get("https", "—"),
+                pe.get("ssl", "—"),
+                pe.get("redirect_301", "—"),
+                pe.get("security_headers", "—"),
+                pe.get("mixed_content", "—"),
+                pe.get("mobile_friendly", "—"),
+            ])
+        partes.append(_html_table(["Origem", "HTTPS", "SSL", "Redirect", "Headers", "Mixed", "Mobile"], rows))
+
+    # 6. Plano de ação consolidado
+    if consolidados:
+        partes.append("<h2>Plano de ação consolidado</h2>")
+        for i, c in enumerate(consolidados, start=1):
+            partes.append(f"<h3>{i}. {_escape(c.get('titulo', ''))}</h3>")
+            escopo = c.get("escopo_json") or {}
+            urls = escopo.get("urls", [])
+            estrategias = escopo.get("estrategias", [])
+            partes.append(f"<p><em>{len(urls)} URL(s) · {', '.join(estrategias)} · Esforço: {c.get('esforco', '—')}</em></p>")
+            if c.get("causa_raiz"):
+                partes.append(f"<p><strong>Causa raiz:</strong> {_escape(c['causa_raiz'])}</p>")
+            if escopo.get("descricao"):
+                partes.append(f"<p><strong>Escopo:</strong> {_escape(escopo['descricao'])}</p>")
+            if c.get("recomendacao_md"):
+                partes.append(_md_to_html(c["recomendacao_md"]))
+
+    # 7. Plano faseado (LLM)
+    if tem_narrativa and rel.get("plano_fases"):
+        partes.append("<h2>Plano faseado</h2>")
+        for fase in rel["plano_fases"]:
+            partes.append(f"<h3>{_escape(fase.get('titulo', ''))}</h3>")
+            if fase.get("justificativa"):
+                partes.append(f"<p>{_escape(fase['justificativa'])}</p>")
+            itens_fase = [i for i in checklist if i.get("item_codigo") in (fase.get("itens_codigos") or [])]
+            if itens_fase:
+                rows = [[i.get("titulo", "")[:50], i.get("esforco") or "—", i.get("status_implementacao", "—")] for i in itens_fase]
+                partes.append(_html_table(["Item", "Esforço", "Status impl."], rows))
+
+    # 8. Diagnóstico técnico + Apêndices
+    if tem_narrativa and rel.get("diagnostico_tecnico_md"):
+        partes.append("<h2>Diagnóstico técnico</h2>")
+        partes.append(_md_to_html(rel["diagnostico_tecnico_md"]))
+
+    return "\n".join(partes)
+
+
 def slugify_titulo(titulo: str, max_len: int = 60) -> str:
     s = titulo.lower()
     s = re.sub(r"[^a-z0-9\s-]", "", s)
