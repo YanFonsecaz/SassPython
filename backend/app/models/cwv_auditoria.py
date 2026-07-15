@@ -52,7 +52,7 @@ class CwvAuditoria(Base, UUIDPrimaryKeyMixin):
     consolidacao_status: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default="nao_executada",
     )
-    relatorio_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="'{}'::jsonb")
+    relatorio_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False,
     )

@@ -401,3 +401,14 @@ async def aplicar_resultado_after(session, auditoria_id: str, execucao_after_id:
         "aplicar_resultado_after auditoria=%s: %d resolvidos, %d persistentes",
         auditoria_id, n_pass, n_fail,
     )
+
+    # Evento SSE final (best-effort: falha de publish não pode impedir o commit).
+    try:
+        from app.core.workflow_events import publish_event
+
+        await publish_event(
+            execucao_after_id, "node_complete", "aplicar_after",
+            f"Checklist atualizado: {n_pass} resolvidos, {n_fail} persistentes",
+        )
+    except Exception:
+        logger.warning("aplicar_resultado_after: publish_event falhou", exc_info=True)

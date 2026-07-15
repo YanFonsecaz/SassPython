@@ -508,6 +508,10 @@ def relatorio_auditoria_para_html(
                 partes.append(f"<p><strong>Escopo:</strong> {_escape(escopo['descricao'])}</p>")
             if c.get("recomendacao_md"):
                 partes.append(_md_to_html(c["recomendacao_md"]))
+            # documentacao_md de um problema representativo do grupo (spec S9 §3.2-6).
+            if c.get("documentacao_md"):
+                partes.append("<h4>Como corrigir</h4>")
+                partes.append(_md_to_html(c["documentacao_md"]))
 
     # 7. Plano faseado (LLM)
     if tem_narrativa and rel.get("plano_fases"):
@@ -525,6 +529,16 @@ def relatorio_auditoria_para_html(
     if tem_narrativa and rel.get("diagnostico_tecnico_md"):
         partes.append("<h2>Diagnóstico técnico</h2>")
         partes.append(_md_to_html(rel["diagnostico_tecnico_md"]))
+
+    # Apêndice por URL (spec S9 §3.2-8): top 15 problemas, reusando _capitulo_problemas.
+    sucessos = [a for a in analises if a.get("status") == "sucesso" and a.get("problemas")]
+    if sucessos:
+        partes.append("<h2>Apêndice — problemas por URL</h2>")
+        for a in sucessos:
+            partes.append(f"<h3>{_escape(a.get('url_canonica', ''))} ({_escape(a.get('estrategia', ''))})</h3>")
+            partes.append(_capitulo_problemas(
+                a.get("problemas", []), max_problemas=15, max_recursos=10, heading_tag="h4",
+            ))
 
     return "\n".join(partes)
 

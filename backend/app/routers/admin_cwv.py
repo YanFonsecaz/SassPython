@@ -65,20 +65,28 @@ async def cwv_health(
             func.sum(case((CwvAnalise.status == "falhou_psi", 1), else_=0)), 0,
         ),
     ).where(CwvAnalise.criado_em >= janela)
-    total, n_ok, n_falhas = (await db.execute(stmt)).one()
-    total = int(total)
-    n_ok = int(n_ok)
-    n_falhas = int(n_falhas)
-    taxa_sucesso = round(n_ok / total, 3) if total else None
+    # Health check não pode estourar 500 quando o banco cai — reporta "down".
+    db_disponivel = True
+    total = n_ok = n_falhas = 0
+    try:
+        total, n_ok, n_falhas = (await db.execute(stmt)).one()
+        total = int(total)
+        n_ok = int(n_ok)
+        n_falhas = int(n_falhas)
+    except Exception:
+        db_disponivel = False
+        logger.warning("cwv_health: banco indisponivel", exc_info=True)
+    taxa_sucesso = round(n_ok / total, 3) if (db_disponivel and total) else None
 
     overall = "ok"
-    if not psi_status["key1_available"] and not psi_status["key2_available"]:
+    if not db_disponivel or (not psi_status["key1_available"] and not psi_status["key2_available"]):
         overall = "down"
     elif (total > 0 and taxa_sucesso is not None and taxa_sucesso < 0.8) or not llm_status["openai_configured"]:
         overall = "degraded"
 
     return {
         "status": overall,
+        "db_disponivel": db_disponivel,
         "psi": psi_status,
         "llm": llm_status,
         "kb": {

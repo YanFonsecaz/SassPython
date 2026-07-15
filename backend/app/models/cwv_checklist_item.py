@@ -52,7 +52,7 @@ class CwvChecklistItem(Base, UUIDPrimaryKeyMixin):
     nota_seo: Mapped[str | None] = mapped_column(Text, nullable=True)
     prioridade: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     esforco: Mapped[str | None] = mapped_column(String(10), nullable=True)
-    escopo_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="'{}'::jsonb")
+    escopo_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     # Sem FK aqui — a FK chega na migração da S8 (Consolidador_Cross_URL).
     problema_consolidado_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     criado_em: Mapped[datetime] = mapped_column(

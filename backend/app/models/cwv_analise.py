@@ -35,7 +35,7 @@ class CwvAnalise(Base, UUIDPrimaryKeyMixin):
     raw_psi_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
     # SPEC_CWV_Field_Data_Retencao_Payload: resumo compacto do payload PSI
     # (≤64KB, sem screenshots/details.items) + field data CrUX materializado.
-    raw_resumo_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="'{}'::jsonb")
+    raw_resumo_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     crux_lcp_p75_ms: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     crux_inp_p75_ms: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     crux_cls_p75: Mapped[float | None] = mapped_column(Numeric(6, 4), nullable=True)

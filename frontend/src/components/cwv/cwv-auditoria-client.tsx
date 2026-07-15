@@ -381,13 +381,20 @@ export function CwvAuditoriaClient() {
             Avançar para "Aguardando implementação"
           </button>
         )}
-        {auditoria.fase === "aguardando_implementacao" && (
+        {(auditoria.fase === "aguardando_implementacao" ||
+          // Fase after sem health_score_after = execução after não concluiu
+          // (ex.: falhou) — o backend permite re-tentar; em andamento retorna 409.
+          (auditoria.fase === "after" && auditoria.health_score_after == null)) && (
           <button
             className="w-full rounded-lg border border-purple-400 bg-purple-50 px-4 py-2.5 text-sm font-medium text-purple-800 hover:bg-purple-100 transition-colors disabled:opacity-50"
             disabled={reauditando}
             onClick={handleReauditar}
           >
-            {reauditando ? "Iniciando re-auditoria..." : "Re-auditar (verificar implementações)"}
+            {reauditando
+              ? "Iniciando re-auditoria..."
+              : auditoria.fase === "after"
+                ? "Re-auditar novamente (a anterior não concluiu)"
+                : "Re-auditar (verificar implementações)"}
           </button>
         )}
       </div>

@@ -131,3 +131,4 @@ E2E manual: rodar análise em site com tráfego (ex.: grande e-commerce) → til
 | Data | Mudança | Commit |
 |---|---|---|
 | 2026-07-13 | Spec criada (📋) | — |
+| 2026-07-14 | Revisão: migração 0024 corrigida para JSONB (era sa.JSON); server_default dos models JSONB normalizados para o padrão da casa (`"{}"`) | — |

@@ -188,7 +188,18 @@ async def atualizar_auditoria(
     if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
         raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
 
+    # Transições manuais permitidas; 'after' só é atingida pela re-auditoria
+    # (que vincula a execução after) — nunca por PATCH direto.
+    transicoes_manuais = {("before", "aguardando_implementacao"), ("after", "concluida")}
     if corpo.fase is not None:
+        if (auditoria.fase, corpo.fase) not in transicoes_manuais:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Transição manual '{auditoria.fase}' → '{corpo.fase}' não permitida. "
+                    "Use a re-auditoria para chegar à fase 'after'."
+                ),
+            )
         try:
             avancar_fase(auditoria, corpo.fase)
         except ValueError as e:
@@ -264,8 +275,9 @@ async def reauditar_auditoria(
     if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
         raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
 
-    # Fase deve ser aguardando_implementacao.
-    if auditoria.fase != "aguardando_implementacao":
+    # Fase: primeira re-auditoria parte de aguardando_implementacao; fase 'after'
+    # é aceita apenas para re-tentar após falha (guard abaixo).
+    if auditoria.fase not in ("aguardando_implementacao", "after"):
         raise HTTPException(status_code=409, detail="Auditoria precisa estar em fase 'aguardando_implementacao'")
 
     # Re-tentar só após falha.
@@ -320,6 +332,7 @@ async def reauditar_auditoria(
     db.add(execucao)
     await db.flush()
 
+    enqueue_ok = True
     try:
         from app.core.redis_pool import get_redis_pool
 
@@ -329,18 +342,19 @@ async def reauditar_auditoria(
         execucao.status = "enfileirado"
         await db.flush()
     except Exception as e:
+        enqueue_ok = False
         logger.error("Falha ao enfileirar re-auditoria: %s", e)
         await credito_service.liberar_reserva(db, str(usuario.id), custo)
         execucao.status = "falhou"
         execucao.erro_msg = "Falha ao enfileirar workflow"
         await db.flush()
 
-    # Atualiza auditoria: vincula execução after + avança fase.
-    auditoria.execucao_after_id = execucao.id
-    try:
-        avancar_fase(auditoria, "after")
-    except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e)) from e
+    # Vincula execução after + avança fase SOMENTE com enqueue ok — em falha a
+    # auditoria fica intocada em aguardando_implementacao e o retry é possível.
+    if enqueue_ok:
+        auditoria.execucao_after_id = execucao.id
+        if auditoria.fase == "aguardando_implementacao":
+            avancar_fase(auditoria, "after")
     await db.commit()
 
     return {
@@ -495,15 +509,30 @@ async def exportar_auditoria_docx(
         "prioridade": i.prioridade, "esforco": i.esforco,
     } for i in itens_result.scalars().all()]
 
-    # Consolidados.
+    # Consolidados (+ documentacao_md do problema representativo — o primeiro
+    # de problemas_origem_ids — para a seção "Como corrigir" do DOCX).
+    from app.models.cwv_problema import CwvProblema
+
     consol_result = await db.execute(
         select(CwvProblemaConsolidado).where(CwvProblemaConsolidado.auditoria_id == auditoria_id)
         .order_by(CwvProblemaConsolidado.prioridade_ordem)
     )
+    consolidados_orm = list(consol_result.scalars().all())
+    ids_representativos = [
+        (c.problemas_origem_ids or [None])[0] for c in consolidados_orm
+    ]
+    docs_por_problema: dict[str, str] = {}
+    ids_validos = [i for i in ids_representativos if i]
+    if ids_validos:
+        docs_result = await db.execute(
+            select(CwvProblema.id, CwvProblema.documentacao_md).where(CwvProblema.id.in_(ids_validos))
+        )
+        docs_por_problema = {str(pid): doc or "" for pid, doc in docs_result.all()}
     consolidados = [{
         "titulo": c.titulo, "causa_raiz": c.causa_raiz, "esforco": c.esforco,
         "escopo_json": c.escopo_json or {}, "recomendacao_md": c.recomendacao_md,
-    } for c in consol_result.scalars().all()]
+        "documentacao_md": docs_por_problema.get(str((c.problemas_origem_ids or [None])[0] or ""), ""),
+    } for c in consolidados_orm]
 
     # Page experience.
     pe_result = await db.execute(

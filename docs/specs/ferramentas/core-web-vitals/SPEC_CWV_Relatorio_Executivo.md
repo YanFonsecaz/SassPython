@@ -124,3 +124,4 @@ E2E manual: gerar relatório numa auditoria real e abrir o DOCX no Word/Docs.
 | Data | Mudança | Commit |
 |---|---|---|
 | 2026-07-13 | Spec criada (📋) | — |
+| 2026-07-14 | Revisão: DOCX ganha 'Como corrigir' por consolidado (documentacao_md do problema representativo) e apêndice por URL via `_capitulo_problemas` (§3.2 itens 6 e 8) | — |

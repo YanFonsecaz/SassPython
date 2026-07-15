@@ -62,7 +62,7 @@ class CwvPageExperience(Base, UUIDPrimaryKeyMixin):
     safe_browsing: Mapped[str] = mapped_column(String(10), nullable=False, server_default="na")
     mixed_content: Mapped[str] = mapped_column(String(10), nullable=False, server_default="na")
     mobile_friendly: Mapped[str] = mapped_column(String(10), nullable=False, server_default="na")
-    detalhes_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="'{}'::jsonb")
+    detalhes_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default="now()", nullable=False,
     )

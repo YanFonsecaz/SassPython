@@ -18,6 +18,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects.postgresql import JSONB
 
 revision: str = "0024"
 down_revision: str | None = "0023"
@@ -28,7 +29,7 @@ depends_on: str | Sequence[str] | None = None
 def upgrade() -> None:
     op.add_column(
         "cwv_analise",
-        sa.Column("raw_resumo_json", sa.JSON(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+        sa.Column("raw_resumo_json", JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
     )
     op.add_column("cwv_analise", sa.Column("crux_lcp_p75_ms", sa.Numeric(10, 2), nullable=True))
     op.add_column("cwv_analise", sa.Column("crux_inp_p75_ms", sa.Numeric(10, 2), nullable=True))

@@ -153,3 +153,4 @@ E2E manual: criar auditoria de uma execução real, marcar 2 itens como implemen
 | Data | Mudança | Commit |
 |---|---|---|
 | 2026-07-13 | Spec criada (📋) | — |
+| 2026-07-14 | Revisão: PATCH de fase restrito às transições manuais legítimas (before→aguardando_implementacao, after→concluida); 'after' só via re-auditoria | — |

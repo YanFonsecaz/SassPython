@@ -115,3 +115,4 @@ E2E manual: criar auditoria → avançar fase → re-auditar → conferir before
 | Data | Mudança | Commit |
 |---|---|---|
 | 2026-07-13 | Spec criada (📋) | — |
+| 2026-07-14 | Revisão: corrigido deadlock de retry (falha de enqueue não avança fase; fase 'after' aceita re-tentativa após falha); evento SSE `aplicar_after` publicado; CTA de retry na UI | — |

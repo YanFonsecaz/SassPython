@@ -91,6 +91,54 @@ def test_export_tabelas_via_data_causas():
     assert "| Item" not in html  # sem markdown
 
 
+def test_export_consolidado_com_documentacao_rende_como_corrigir():
+    consolidado = {**_consolidado(), "documentacao_md": "## Passo a passo\nUse `defer`."}
+    html = relatorio_auditoria_para_html(
+        auditoria=_auditoria(),
+        checklist=[],
+        consolidados=[consolidado],
+        page_experience=[],
+        analises=[],
+    )
+    assert "Como corrigir" in html
+    assert "defer" in html
+
+
+def test_export_apendice_por_url_com_problemas():
+    analise = {
+        "url_canonica": "https://a.com/produto",
+        "estrategia": "mobile",
+        "status": "sucesso",
+        "problemas": [{
+            "titulo": "JS não usado",
+            "severidade": 4,
+            "metricas_afetadas": ["LCP"],
+            "contexto_especifico": {"display_value": "300 KB"},
+        }],
+    }
+    html = relatorio_auditoria_para_html(
+        auditoria=_auditoria(),
+        checklist=[],
+        consolidados=[],
+        page_experience=[],
+        analises=[analise],
+    )
+    assert "Apêndice — problemas por URL" in html
+    assert "https://a.com/produto" in html
+    assert "JS não usado" in html
+
+
+def test_export_apendice_ausente_sem_problemas():
+    html = relatorio_auditoria_para_html(
+        auditoria=_auditoria(),
+        checklist=[_checklist_item("kb-1", "X")],
+        consolidados=[],
+        page_experience=[],
+        analises=[{"url_canonica": "https://a.com/", "estrategia": "mobile", "status": "falhou"}],
+    )
+    assert "Apêndice — problemas por URL" not in html
+
+
 def test_export_sem_checklist_sem_consolidados_minimo():
     html = relatorio_auditoria_para_html(
         auditoria=_auditoria(),
