@@ -243,7 +243,7 @@ async def test_alterar_senha_historico(client: AsyncClient, usuario_teste: dict)
 
 
 @pytest.mark.asyncio
-async def test_alterar_senha_necessita_totp_com_mfa(client: AsyncClient) -> None:
+async def test_alterar_senha_necessita_totp_com_mfa(client: AsyncClient, monkeypatch) -> None:
     import pyotp
 
     cadastro = await client.post(
@@ -292,6 +292,18 @@ async def test_alterar_senha_necessita_totp_com_mfa(client: AsyncClient) -> None
     )
     assert alterar.status_code == 401
 
+    # Anti-replay: o código usado na ativação não pode ser reutilizado
+    # (ultimo_codigo) e valid_window=0 só aceita a janela atual. Desloca o
+    # relógio do pyotp em +30s (cliente e servidor — mesmo processo) para obter
+    # um código novo e válido sem esperar a próxima janela real.
+    import datetime as _dt
+
+    orig_timecode = pyotp.TOTP.timecode
+
+    def timecode_adiantado(self, for_time):
+        return orig_timecode(self, for_time + _dt.timedelta(seconds=30))
+
+    monkeypatch.setattr(pyotp.TOTP, "timecode", timecode_adiantado)
     codigo2 = totp.now()
     alterar2 = await client.put(
         "/api/auth/alterar-senha",

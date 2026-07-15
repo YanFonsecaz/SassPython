@@ -74,9 +74,7 @@ def test_pesquisador_agent_documentar_handles_exception(monkeypatch):
     }
 
     import asyncio
-    result = asyncio.get_event_loop().run_until_complete(
-        agent.documentar(audit=audit, plataforma="wordpress")
-    )
+    result = asyncio.run(agent.documentar(audit=audit, plataforma="wordpress"))
     assert result is None
 
 

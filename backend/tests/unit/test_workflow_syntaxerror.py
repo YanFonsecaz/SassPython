@@ -29,7 +29,18 @@ def test_worker_imports():
 
     assert hasattr(app.worker, "WorkerSettings")
     ws = app.worker.WorkerSettings()
-    assert len(ws.functions) == 7
+    nomes = {f.__name__ for f in ws.functions}
+    assert nomes == {
+        "executar_workflow",
+        "retomar_workflow_job",
+        "executar_inlinks",
+        "executar_distribuir_inlinks",
+        "executar_workflow_cwv",
+        "executar_workflow_parecer",
+        "executar_indexar_site",
+        "executar_consolidador_cwv",
+        "executar_relatorio_cwv",
+    }
     assert ws.max_tries == 3
     assert ws.job_timeout > 0
 
