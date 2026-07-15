@@ -85,9 +85,9 @@ storage) · **OAuth GSC/GA4** (roadmap V3).
 | [SPEC_Robustez_Limpeza_CWV](SPEC_Robustez_Limpeza_CWV.md) | Checkpointer, cache de LLM, cancelamento, export async | `e50a3e6` |
 | [SPEC_CWV_Testes_Automatizados](SPEC_CWV_Testes_Automatizados.md) · [SPEC_CWV_Hardening_Pre_Producao](SPEC_CWV_Hardening_Pre_Producao.md) · [SPEC_CWV_Correcoes_Pos_Validacao](SPEC_CWV_Correcoes_Pos_Validacao.md) | Testes + hardening + correções pós-validação | aplicado |
 
-### Paridade NPBR (programa 2026-07 — ✅ Ondas 1–2 implementadas)
+### Paridade NPBR (programa 2026-07 — ✅ todas as ondas implementadas)
 
-**Implementado (Ondas 1–2 — 2026-07):** S1, S2, S3, S4, S5, S6, S7. **Pendentes:** S8, S9, S10 (Ondas 3–4).
+**Implementado (S1–S10 — 2026-07):** todas as 10 specs do programa de paridade com a planilha NPBR estão implementadas.
 
 Objetivo: substituir a planilha `[OFFICIAL ENTERPRISE TEMPLATE - 2026] CWV and Loading Speed Audit`.
 Análise-base: [AUDITORIA_Planilha_NPBR_vs_Ferramenta_2026-07](AUDITORIA_Planilha_NPBR_vs_Ferramenta_2026-07.md)

@@ -1,6 +1,6 @@
 # SPEC — Re-auditoria AFTER: fechar o ciclo da campanha
 
-**Status:** 📋 planejado
+**Status:** ✅ implementado
 **Capacidade:** `core-web-vitals`
 **Escopo:** ambos — backend (endpoint, hook no workflow, service) e frontend (CTA + colunas before/after)
 **Código:** `backend/app/routers/ferramentas_cwv_auditoria.py`, `backend/app/services/cwv_auditoria_service.py`, `backend/app/agents/cwv/workflow.py::_run_workflow_cwv`, `frontend/src/components/cwv/cwv-auditoria-client.tsx`, `frontend/src/lib/api/cwv.ts`  ·  **Rota:** `core-web-vitals/auditoria/[auditoriaId]`

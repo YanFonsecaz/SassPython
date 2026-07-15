@@ -1,6 +1,6 @@
 # SPEC — Relatório Executivo da auditoria (redator LLM + DOCX espelhando a planilha)
 
-**Status:** 📋 planejado
+**Status:** ✅ implementado
 **Capacidade:** `core-web-vitals`
 **Escopo:** ambos — backend (agente redator, export, endpoints) e frontend (botões na auditoria)
 **Código:** `backend/app/agents/cwv/redator.py` (novo), `backend/app/services/cwv_export.py`, `backend/app/routers/ferramentas_cwv_auditoria.py`, `backend/app/schemas/cwv_auditoria.py`, `backend/app/config.py`, `frontend/src/components/cwv/cwv-auditoria-client.tsx`, `frontend/src/lib/api/cwv.ts`  ·  **Rota:** `core-web-vitals/auditoria/[auditoriaId]`

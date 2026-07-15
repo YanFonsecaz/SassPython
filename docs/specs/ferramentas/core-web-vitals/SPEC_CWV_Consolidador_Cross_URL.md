@@ -1,6 +1,6 @@
 # SPEC — Consolidador Cross-URL (dedup, causa raiz e escopo via LLM juiz)
 
-**Status:** 📋 planejado
+**Status:** ✅ implementado
 **Capacidade:** `core-web-vitals`
 **Escopo:** backend (agente novo, job arq, tabela, endpoint) + frontend (aba de consolidados na auditoria)
 **Código:** `backend/app/agents/cwv/consolidador.py` (novo), `backend/app/models/cwv_problema_consolidado.py` (novo), `backend/app/routers/ferramentas_cwv_auditoria.py`, `backend/app/schemas/cwv_auditoria.py`, `backend/app/config.py`, `backend/app/worker.py`, `backend/migrations/versions/0028_cwv_problema_consolidado.py`, `frontend/src/components/cwv/cwv-auditoria-client.tsx`  ·  **Rota:** `core-web-vitals/auditoria/[auditoriaId]`
