@@ -1,5 +1,6 @@
 import html
 import re
+import unicodedata
 
 import markdown
 
@@ -78,6 +79,77 @@ def _fmt_ms(n) -> str:
     if n is None:
         return ""
     return f"{float(n):.0f} ms"
+
+
+def _normalizar_texto(texto: str) -> str:
+    """Normaliza para comparacao: casefold + remove acentos."""
+    return unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode().casefold().strip()
+
+
+def _rebaixar_headings_md(md_text: str, base: int) -> str:
+    """Desloca headings ATX para que o menor nivel do texto vire `base` (cap h6).
+
+    Ignora linhas dentro de blocos cercados (``` ... ```).
+    """
+    linhas = md_text.split("\n")
+    dentro_fence = False
+    # Primeira passagem: coletar niveis minimos fora de fences.
+    niveis = []
+    for linha in linhas:
+        stripped = linha.strip()
+        if stripped.startswith("```"):
+            dentro_fence = not dentro_fence
+            continue
+        if dentro_fence:
+            continue
+        m = re.match(r"^(#{1,6})\s", linha)
+        if m:
+            niveis.append(len(m.group(1)))
+    if not niveis:
+        return md_text  # sem headings, intacto
+
+    min_nivel = min(niveis)
+    delta = base - min_nivel
+    if delta <= 0:
+        return md_text  # ja esta no nivel ou abaixo
+
+    # Segunda passagem: reescrever headings.
+    dentro_fence = False
+    resultado = []
+    for linha in linhas:
+        stripped = linha.strip()
+        if stripped.startswith("```"):
+            dentro_fence = not dentro_fence
+            resultado.append(linha)
+            continue
+        if dentro_fence:
+            resultado.append(linha)
+            continue
+        m = re.match(r"^(#{1,6})(\s.*)", linha)
+        if m:
+            nivel_atual = len(m.group(1))
+            novo_nivel = min(nivel_atual + delta, 6)
+            resultado.append("#" * novo_nivel + m.group(2))
+        else:
+            resultado.append(linha)
+    return "\n".join(resultado)
+
+
+def _remover_heading_titulo(md_text: str, titulo: str) -> str:
+    """Remove o primeiro heading se seu texto normalizado == titulo normalizado."""
+    titulo_norm = _normalizar_texto(titulo)
+    linhas = md_text.split("\n")
+    for i, linha in enumerate(linhas):
+        m = re.match(r"^#{1,6}\s+(.*)", linha)
+        if m:
+            if _normalizar_texto(m.group(1)) == titulo_norm:
+                # Remove o heading e linhas vazias seguintes.
+                resto = linhas[i + 1:]
+                while resto and resto[0].strip() == "":
+                    resto = resto[1:]
+                return "\n".join(linhas[:i] + resto) if i > 0 else "\n".join(resto)
+            break  # primeiro heading nao bate, nao procurar mais
+    return md_text
 
 
 def _md_to_html(md_text: str) -> str:
@@ -166,7 +238,7 @@ def problema_para_html(problema: dict) -> str:
     doc_md = problema.get("documentacao_md", "")
     if doc_md:
         parts.append("<h2>Como corrigir</h2>")
-        parts.append(_md_to_html(doc_md))
+        parts.append(_md_to_html(_rebaixar_headings_md(doc_md, 3)))
 
     return "\n".join(parts)
 
@@ -245,7 +317,7 @@ def relatorio_para_html(analise: dict, problemas: list[dict]) -> str:
         doc_md = p.get("documentacao_md", "")
         if doc_md:
             parts.append("<h3>Como corrigir</h3>")
-            parts.append(_md_to_html(doc_md))
+            parts.append(_md_to_html(_rebaixar_headings_md(doc_md, 4)))
 
     return "\n".join(parts)
 
@@ -314,7 +386,7 @@ def _capitulo_problemas(
         doc_md = p.get("documentacao_md", "")
         if doc_md:
             partes.append(f"<{'h3' if heading_tag == 'h2' else 'h4'}>Como corrigir</{'h3' if heading_tag == 'h2' else 'h4'}>")
-            partes.append(_md_to_html(doc_md))
+            partes.append(_md_to_html(_rebaixar_headings_md(doc_md, int(heading_tag[1]) + 2)))
 
     if max_problemas is not None and len(problemas) > max_problemas:
         restante = len(problemas) - max_problemas
@@ -444,7 +516,7 @@ def relatorio_auditoria_para_html(
     # 2. Sumário executivo (LLM)
     if tem_narrativa:
         partes.append("<h2>Sumário executivo</h2>")
-        partes.append(_md_to_html(rel["sumario_executivo_md"]))
+        partes.append(_md_to_html(_rebaixar_headings_md(_remover_heading_titulo(rel["sumario_executivo_md"], "Sumário executivo"), 3)))
 
     # 3. Health Score + Checklist
     if checklist:
@@ -507,11 +579,11 @@ def relatorio_auditoria_para_html(
             if escopo.get("descricao"):
                 partes.append(f"<p><strong>Escopo:</strong> {_escape(escopo['descricao'])}</p>")
             if c.get("recomendacao_md"):
-                partes.append(_md_to_html(c["recomendacao_md"]))
+                partes.append(_md_to_html(_rebaixar_headings_md(c["recomendacao_md"], 4)))
             # documentacao_md de um problema representativo do grupo (spec S9 §3.2-6).
             if c.get("documentacao_md"):
                 partes.append("<h4>Como corrigir</h4>")
-                partes.append(_md_to_html(c["documentacao_md"]))
+                partes.append(_md_to_html(_rebaixar_headings_md(c["documentacao_md"], 5)))
 
     # 7. Plano faseado (LLM)
     if tem_narrativa and rel.get("plano_fases"):
@@ -528,7 +600,7 @@ def relatorio_auditoria_para_html(
     # 8. Diagnóstico técnico + Apêndices
     if tem_narrativa and rel.get("diagnostico_tecnico_md"):
         partes.append("<h2>Diagnóstico técnico</h2>")
-        partes.append(_md_to_html(rel["diagnostico_tecnico_md"]))
+        partes.append(_md_to_html(_rebaixar_headings_md(_remover_heading_titulo(rel["diagnostico_tecnico_md"], "Diagnóstico técnico"), 3)))
 
     # Apêndice por URL (spec S9 §3.2-8): top 15 problemas, reusando _capitulo_problemas.
     sucessos = [a for a in analises if a.get("status") == "sucesso" and a.get("problemas")]

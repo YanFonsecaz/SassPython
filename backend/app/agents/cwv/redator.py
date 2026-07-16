@@ -153,6 +153,7 @@ def _montar_prompt(
         linhas.append(f"  {item['item_codigo']} | {item.get('titulo', '')[:50]} | esforço {item.get('esforco', '?')}")
 
     linhas.append("\nForneça: sumario_executivo_md (3-5 parágrafos), diagnostico_tecnico_md, plano_fases (2-4 fases com itens_codigos válidos).")
+    linhas.append("Não use títulos markdown (linhas começando com #) — escreva apenas parágrafos e listas; os títulos das seções já existem no documento.")
     return "\n".join(linhas)
 
 
