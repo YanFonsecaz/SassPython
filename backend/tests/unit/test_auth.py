@@ -382,3 +382,52 @@ async def test_cache_control_header(client: AsyncClient, usuario_teste: dict) ->
     cache_control = response.headers.get("cache-control", "")
     assert "no-store" in cache_control
     assert "no-cache" in cache_control
+
+
+@pytest.mark.asyncio
+async def test_cadastro_atribui_plano_free_e_creditos(client: AsyncClient) -> None:
+    """SPEC_Onboarding_Plano_Free: cadastro atribui plano free e 50 creditos mensais."""
+    response = await client.post(
+        "/api/auth/cadastro",
+        json={
+            "nome": "Plano Free User",
+            "email": "planofree@example.com",
+            "senha": "SenhaForte123!@#",
+            "senha_confirmacao": "SenhaForte123!@#",
+        },
+    )
+    assert response.status_code == 201
+    headers = {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+    # /me retorna plano "free".
+    me = await client.get("/api/auth/me", headers=headers)
+    assert me.status_code == 200
+    assert me.json()["plano"] == "free"
+
+    # /creditos/saldo retorna saldo_plano=50.
+    saldo = await client.get("/api/creditos/saldo", headers=headers)
+    assert saldo.status_code == 200
+    assert saldo.json()["saldo_plano"] == 50
+
+
+@pytest.mark.asyncio
+async def test_cadastro_pode_criar_cliente(client: AsyncClient) -> None:
+    """SPEC_Onboarding_Plano_Free: apos cadastro, POST /clientes retorna 201 (nao 403)."""
+    response = await client.post(
+        "/api/auth/cadastro",
+        json={
+            "nome": "Cliente Creator",
+            "email": "clientecreator@example.com",
+            "senha": "SenhaForte123!@#",
+            "senha_confirmacao": "SenhaForte123!@#",
+        },
+    )
+    assert response.status_code == 201
+    headers = {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+    cliente_resp = await client.post(
+        "/api/clientes",
+        headers=headers,
+        json={"nome": "Meu Cliente", "site_url": "https://meusite.example.com"},
+    )
+    assert cliente_resp.status_code == 201

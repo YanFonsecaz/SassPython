@@ -37,6 +37,12 @@ isso é violado, créditos ficam "presos" em `saldo_reservado` — classe de bug
 ferramentas (ver specs de billing). Débito consome `saldo_plano` antes de `saldo_extras`; ação que falha
 não cobra.
 
+## Specs desta capacidade
+
+| Spec | Conteúdo | Status |
+|---|---|---|
+| [SPEC_Onboarding_Plano_Free](SPEC_Onboarding_Plano_Free.md) | Cadastro atribui plano `free` + créditos iniciais (bug: conta nova nascia sem plano e não criava cliente) | 📋 planejado |
+
 ## Specs de billing por ferramenta (correções aplicadas)
 
 | Ferramenta | Spec | Commit |

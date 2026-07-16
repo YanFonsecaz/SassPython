@@ -21,11 +21,14 @@ from app.core.seguranca import (
     verificar_hash_legado,
     verificar_senha,
 )
+from app.models.plano import Plano
 from app.models.reset_senha_token import ResetSenhaToken
 from app.models.sessao import Sessao
 from app.models.usuario import Usuario
 
 logger = logging.getLogger(__name__)
+
+from app.services import credito_service  # noqa: E402
 
 
 async def login(
@@ -206,6 +209,22 @@ async def cadastro(
     )
     db.add(usuario)
     await db.flush()
+
+    # SPEC_Onboarding_Plano_Free: atribui plano free automático + créditos mensais.
+    # Sem plano, verificar_limite_clientes retorna False (403 em POST /clientes) e
+    # renovar_ciclos_vencidos ignora a conta. Fail-open: seed ausente não quebra cadastro.
+    try:
+        plano_result = await db.execute(
+            select(Plano).where(Plano.nome == "free", Plano.ativo.is_(True))
+        )
+        plano_free = plano_result.scalar_one_or_none()
+        if plano_free:
+            usuario.plano_id = plano_free.id
+            await credito_service.renovar_ciclo(db, str(usuario.id), plano_free.creditos_por_mes)
+        else:
+            logger.error("cadastro: plano 'free' ausente — usuário %s criado sem plano", usuario.id)
+    except Exception:
+        logger.error("cadastro: falha ao atribuir plano free a %s", usuario.id, exc_info=True)
 
     access_token = gerar_jwt_access_token(
         str(usuario.id), usuario.email, usuario.mfa_ativo

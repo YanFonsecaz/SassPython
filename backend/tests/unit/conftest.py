@@ -28,6 +28,15 @@ async def client(monkeypatch):
 
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             await conn.run_sync(Base.metadata.create_all)
+            # Seed plano free para testes de onboarding.
+            await conn.execute(
+                text(
+                    "INSERT INTO planos (id, nome, creditos_por_mes, preco_mensal, "
+                    "cliente_limite, permite_extras, ativo) VALUES "
+                    "(gen_random_uuid(), 'free', 50, 0.00, 3, false, true) "
+                    "ON CONFLICT (nome) DO NOTHING"
+                )
+            )
     except Exception:
         await engine.dispose()
         pytest.skip(

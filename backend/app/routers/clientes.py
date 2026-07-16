@@ -48,6 +48,8 @@ async def criar_cliente(
     if not limite_ok:
         from fastapi import HTTPException
 
+        if usuario.plano_id is None:
+            raise HTTPException(status_code=403, detail="Conta sem plano ativo — contate o suporte")
         raise HTTPException(status_code=403, detail="Limite de clientes atingido para seu plano")
 
     cliente = await cliente_service.criar_cliente(
