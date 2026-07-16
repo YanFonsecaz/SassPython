@@ -32,6 +32,10 @@ _BROWSER_UA = (
 _TIMEOUT_POR_CHECK = 10  # segundos; cada check envolto em wait_for
 _MAX_SALTOS_REDIRECT = 5
 
+# Status que indicam bloqueio anti-bot/WAF, não reprovação do item auditado.
+# 401/403/429 = inconclusivo, não fail. 5xx continua fail (indisponibilidade real).
+_STATUS_BLOQUEIO = (401, 403, 429)
+
 _CLIENT: httpx.AsyncClient | None = None
 
 
@@ -61,6 +65,8 @@ async def check_https(origem: str) -> tuple[str, dict]:
     """GET https://host — 2xx/3xx → pass; erro TLS/conexão → fail."""
     try:
         resp = await _get_client().get(origem)
+        if resp.status_code in _STATUS_BLOQUEIO:
+            return "na", {"status_code": resp.status_code, "motivo": "bloqueio WAF/anti-bot — inconclusivo"}
         if 200 <= resp.status_code < 400:
             return "pass", {"status_code": resp.status_code}
         return "fail", {"status_code": resp.status_code}
@@ -133,6 +139,9 @@ async def check_redirect_301(origem: str) -> tuple[str, dict]:
                     return "fail", {"cadeia": cadeia, "motivo": f"location invalido: {location}"}
                 continue
             # Não-redirect: chegamos ao fim da cadeia.
+            if resp.status_code in _STATUS_BLOQUEIO:
+                cadeia.append({"status": resp.status_code, "location_final": url})
+                return "na", {"cadeia": cadeia, "motivo": f"bloqueio WAF (status {resp.status_code}) — inconclusivo"}
             cadeia.append({"status": resp.status_code, "location_final": url})
             terminou_https = url.startswith("https://")
             if terminou_https and 200 <= resp.status_code < 400:
@@ -148,6 +157,8 @@ async def check_security_headers(origem: str) -> tuple[str, dict]:
     """HSTS presente E (CSP OU X-Frame-Options) E X-Content-Type-Options: nosniff."""
     try:
         resp = await _get_client().get(origem)
+        if resp.status_code in _STATUS_BLOQUEIO:
+            return "na", {"status_code": resp.status_code, "motivo": "bloqueio WAF/anti-bot — headers não representam a aplicação real"}
         h = {k.lower(): v for k, v in resp.headers.items()}
         presentes = []
         ausentes = []

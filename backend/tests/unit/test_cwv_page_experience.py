@@ -181,3 +181,98 @@ def test_redirect_301_primeiro_salto_302_fail(monkeypatch):
     v, detalhes = asyncio.run(check_redirect_301("https://exemplo.com/"))
     assert v == "fail"
     assert "302" in detalhes["motivo"]
+
+
+def test_check_https_403_retorna_na(monkeypatch):
+    from app.services import cwv_page_experience as pe
+
+    class FakeResp:
+        status_code = 403
+    class FakeClient:
+        is_closed = False
+        async def get(self, url):
+            return FakeResp()
+    monkeypatch.setattr(pe, "_CLIENT", FakeClient())
+    v, detalhes = asyncio.run(pe.check_https("https://exemplo.com/"))
+    assert v == "na"
+    assert detalhes["status_code"] == 403
+    assert "bloqueio" in detalhes["motivo"]
+
+
+def test_check_https_500_retorna_fail(monkeypatch):
+    from app.services import cwv_page_experience as pe
+
+    class FakeResp:
+        status_code = 500
+    class FakeClient:
+        is_closed = False
+        async def get(self, url):
+            return FakeResp()
+    monkeypatch.setattr(pe, "_CLIENT", FakeClient())
+    v, _ = asyncio.run(pe.check_https("https://exemplo.com/"))
+    assert v == "fail"
+
+
+def test_check_https_200_retorna_pass(monkeypatch):
+    from app.services import cwv_page_experience as pe
+
+    class FakeResp:
+        status_code = 200
+    class FakeClient:
+        is_closed = False
+        async def get(self, url):
+            return FakeResp()
+    monkeypatch.setattr(pe, "_CLIENT", FakeClient())
+    v, _ = asyncio.run(pe.check_https("https://exemplo.com/"))
+    assert v == "pass"
+
+
+def test_check_security_headers_403_retorna_na(monkeypatch):
+    from app.services import cwv_page_experience as pe
+
+    class FakeResp:
+        status_code = 403
+        headers = {}
+    class FakeClient:
+        is_closed = False
+        async def get(self, url):
+            return FakeResp()
+    monkeypatch.setattr(pe, "_CLIENT", FakeClient())
+    v, detalhes = asyncio.run(pe.check_security_headers("https://exemplo.com/"))
+    assert v == "na"
+    assert detalhes["status_code"] == 403
+
+
+def test_check_redirect_301_cadeia_termina_403_retorna_na(monkeypatch):
+    from app.services import cwv_page_experience as pe
+
+    class FakeResp:
+        def __init__(self, status, location=None):
+            self.status_code = status
+            self.headers = {"location": location} if location else {}
+    class FakeClient:
+        is_closed = False
+        async def get(self, url):
+            if url.startswith("http://"):
+                return FakeResp(301, location="https://exemplo.com/")
+            return FakeResp(403)  # WAF block at https endpoint
+    monkeypatch.setattr(pe, "_CLIENT", FakeClient())
+    v, detalhes = asyncio.run(pe.check_redirect_301("https://exemplo.com/"))
+    assert v == "na"
+    assert "bloqueio" in detalhes["motivo"]
+
+
+def test_check_redirect_301_primeira_resposta_403_retorna_na(monkeypatch):
+    from app.services import cwv_page_experience as pe
+
+    class FakeResp:
+        def __init__(self, status):
+            self.status_code = status
+            self.headers = {}
+    class FakeClient:
+        is_closed = False
+        async def get(self, url):
+            return FakeResp(403)  # WAF blocks immediately, no redirect
+    monkeypatch.setattr(pe, "_CLIENT", FakeClient())
+    v, _detalhes = asyncio.run(pe.check_redirect_301("https://exemplo.com/"))
+    assert v == "na"
