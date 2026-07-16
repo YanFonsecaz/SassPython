@@ -89,7 +89,7 @@ def _normalizar_texto(texto: str) -> str:
 def _rebaixar_headings_md(md_text: str, base: int) -> str:
     """Desloca headings ATX para que o menor nivel do texto vire `base` (cap h6).
 
-    Ignora linhas dentro de blocos cercados (``` ... ```).
+    Ignora linhas dentro de blocos cercados (``` ou ~~~).
     """
     linhas = md_text.split("\n")
     dentro_fence = False
@@ -97,7 +97,7 @@ def _rebaixar_headings_md(md_text: str, base: int) -> str:
     niveis = []
     for linha in linhas:
         stripped = linha.strip()
-        if stripped.startswith("```"):
+        if stripped.startswith("```") or stripped.startswith("~~~"):
             dentro_fence = not dentro_fence
             continue
         if dentro_fence:
@@ -118,7 +118,7 @@ def _rebaixar_headings_md(md_text: str, base: int) -> str:
     resultado = []
     for linha in linhas:
         stripped = linha.strip()
-        if stripped.startswith("```"):
+        if stripped.startswith("```") or stripped.startswith("~~~"):
             dentro_fence = not dentro_fence
             resultado.append(linha)
             continue
@@ -142,7 +142,9 @@ def _remover_heading_titulo(md_text: str, titulo: str) -> str:
     for i, linha in enumerate(linhas):
         m = re.match(r"^#{1,6}\s+(.*)", linha)
         if m:
-            if _normalizar_texto(m.group(1)) == titulo_norm:
+            # Strip ATX closing hashes ("# Título #" -> "Título") antes de comparar.
+            texto = re.sub(r"\s+#+\s*$", "", m.group(1))
+            if _normalizar_texto(texto) == titulo_norm:
                 # Remove o heading e linhas vazias seguintes.
                 resto = linhas[i + 1:]
                 while resto and resto[0].strip() == "":

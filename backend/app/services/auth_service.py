@@ -213,16 +213,20 @@ async def cadastro(
     # SPEC_Onboarding_Plano_Free: atribui plano free automático + créditos mensais.
     # Sem plano, verificar_limite_clientes retorna False (403 em POST /clientes) e
     # renovar_ciclos_vencidos ignora a conta. Fail-open: seed ausente não quebra cadastro.
+    # Usa savepoint (nested transaction) para isolar o bloco — se renovar_ciclo
+    # falhar num flush (IntegrityError), a sessão principal não fica envenenada
+    # (PendingRollbackError) e o cadastro do usuário prossegue.
     try:
-        plano_result = await db.execute(
-            select(Plano).where(Plano.nome == "free", Plano.ativo.is_(True))
-        )
-        plano_free = plano_result.scalar_one_or_none()
-        if plano_free:
-            usuario.plano_id = plano_free.id
-            await credito_service.renovar_ciclo(db, str(usuario.id), plano_free.creditos_por_mes)
-        else:
-            logger.error("cadastro: plano 'free' ausente — usuário %s criado sem plano", usuario.id)
+        async with db.begin_nested():
+            plano_result = await db.execute(
+                select(Plano).where(Plano.nome == "free", Plano.ativo.is_(True))
+            )
+            plano_free = plano_result.scalar_one_or_none()
+            if plano_free:
+                usuario.plano_id = plano_free.id
+                await credito_service.renovar_ciclo(db, str(usuario.id), plano_free.creditos_por_mes)
+            else:
+                logger.error("cadastro: plano 'free' ausente — usuário %s criado sem plano", usuario.id)
     except Exception:
         logger.error("cadastro: falha ao atribuir plano free a %s", usuario.id, exc_info=True)
 

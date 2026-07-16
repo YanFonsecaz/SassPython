@@ -42,3 +42,29 @@ def test_remover_heading_titulo_acentos():
     result = _remover_heading_titulo("# Diagnóstico Técnico\n\ntexto", "Diagnóstico técnico")
     assert "Diagnóstico" not in result
     assert "texto" in result
+
+
+def test_rebaixar_headings_tilde_fence():
+    """~~~ é fence válido no python-markdown; headings dentro devem sobreviver."""
+    md = "## Título\n\n~~~\n## código\n~~~\n\nTexto"
+    result = _rebaixar_headings_md(md, 3)
+    assert "### Título" in result
+    assert "## código" in result  # dentro de ~~~, intacto
+
+
+def test_remover_heading_titulo_closing_hash():
+    """ATX closing hashes (# Título #) devem ser stripped antes de comparar."""
+    result = _remover_heading_titulo("# Sumário Executivo #\n\ntexto", "Sumário executivo")
+    assert "Sumário Executivo" not in result
+    assert "texto" in result
+
+
+def test_rebaixar_headings_string_vazia():
+    assert _rebaixar_headings_md("", 3) == ""
+
+
+def test_remover_heading_titulo_sem_heading():
+    """Texto sem nenhum heading deve retornar intacto."""
+    md = "Apenas parágrafos.\n\nSem heading aqui."
+    assert _remover_heading_titulo(md, "Sumário executivo") == md
+
