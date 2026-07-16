@@ -116,6 +116,27 @@ Análise-base: [AUDITORIA_Planilha_NPBR_vs_Ferramenta_2026-07](AUDITORIA_Planilh
 > migração real em `backend/migrations/versions/` e encadear `down_revision` nela (ondas podem ser
 > implementadas fora de ordem).
 
+### Correções do teste E2E de produção (2026-07-15 — auditoria real Kumon)
+
+O primeiro fluxo completo em produção (análise → auditoria → consolidação → relatório DOCX)
+validou o programa S1–S10 de ponta a ponta e revelou 3 defeitos, cada um com spec própria:
+
+| Spec | Conteúdo | Status |
+|---|---|---|
+| [SPEC_Onboarding_Plano_Free](../../plataforma/creditos-e-billing/SPEC_Onboarding_Plano_Free.md) | (plataforma) Cadastro sem plano → conta nova não cria cliente e nenhuma ferramenta é utilizável | ✅ implementado |
+| [SPEC_CWV_Page_Experience_WAF](SPEC_CWV_Page_Experience_WAF.md) | Checks S6 marcam `fail` em 401/403/429 de WAF — devem ser `na` (inconclusivo) | ✅ implementado |
+| [SPEC_CWV_Relatorio_Headings_DOCX](SPEC_CWV_Relatorio_Headings_DOCX.md) | DOCX: "Sumário Executivo" duplicado + hierarquia de headings invertida no markdown embutido | ✅ implementado |
+
+### Auditoria UI V2 (2026-07 — brainstorming)
+
+Reforma da página `auditoria/[auditoriaId]`: donuts de health (padrão da capa da planilha),
+checklist estilo Excel com edição inline (implementação/notas/prioridade) e before/after por URL.
+
+| Spec | Conteúdo | Status |
+|---|---|---|
+| [SPEC_CWV_Auditoria_Comparativo_API](SPEC_CWV_Auditoria_Comparativo_API.md) | Backend: `GET /auditorias/{id}/comparativo` (pares URL×estratégia) + `prioridade` no PATCH de item | 📋 planejado |
+| [SPEC_CWV_Auditoria_UI_V2](SPEC_CWV_Auditoria_UI_V2.md) | Frontend: header com donuts, abas (Visão Geral · Checklist · Before/After), tabela Excel editável | 📋 planejado |
+
 ## Roadmap V2/V3 (sem spec ainda — não implementar sem spec)
 
 - **V2:** CrUX History API (evolução 25 semanas por origem/URL — substitui prints do GSC, sem OAuth) ·
