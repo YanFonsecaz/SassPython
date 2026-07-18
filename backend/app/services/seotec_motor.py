@@ -21,6 +21,24 @@ class ResultadoItem(BaseModel):
     truncada: bool = False
 
 
+def _coagir_numero(valor: object) -> int | float | None:
+    """Converte `valor` para número quando possível (int/float direto, ou str numérica).
+
+    Usado pelos operadores maior/menor/entre para não perder defeitos reais só
+    porque o export trouxe o campo como string (comum em CSVs do SF).
+    """
+    if isinstance(valor, bool):
+        return None
+    if isinstance(valor, (int, float)):
+        return valor
+    if isinstance(valor, str):
+        try:
+            return float(valor)
+        except ValueError:
+            return None
+    return None
+
+
 def _linha_casa(linha: dict, filtro: RegraFiltro) -> bool:
     valor = linha.get(filtro.campo)
     match filtro.op:
@@ -33,12 +51,15 @@ def _linha_casa(linha: dict, filtro: RegraFiltro) -> bool:
         case "regex":
             return valor is not None and re.search(str(filtro.valor), str(valor)) is not None
         case "maior":
-            return isinstance(valor, (int, float)) and valor > filtro.valor
+            numero = _coagir_numero(valor)
+            return numero is not None and numero > filtro.valor
         case "menor":
-            return isinstance(valor, (int, float)) and valor < filtro.valor
+            numero = _coagir_numero(valor)
+            return numero is not None and numero < filtro.valor
         case "entre":
             lo, hi = filtro.valor
-            return isinstance(valor, (int, float)) and lo <= valor <= hi
+            numero = _coagir_numero(valor)
+            return numero is not None and lo <= numero <= hi
         case "len_maior":
             return valor is not None and len(str(valor)) > filtro.valor
         case "duplicado":
@@ -86,6 +107,7 @@ def avaliar_item(item: ItemChecklist, pacote: PacoteIngestao) -> ResultadoItem:
             total_avaliadas=len(linhas),
             total_afetadas=0 if ok else len(linhas),
             amostra=[] if ok else _montar_amostra(linhas, colunas),
+            truncada=False if ok else len(linhas) > MAX_AMOSTRA,
         )
 
     if regra.tipo == "custom":

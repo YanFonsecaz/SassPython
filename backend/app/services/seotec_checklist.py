@@ -27,6 +27,15 @@ class RegraFiltro(BaseModel):
     op: OpFiltro
     valor: int | float | str | list[int | float] | None = None
 
+    @model_validator(mode="after")
+    def _entre_exige_par_de_numeros(self) -> "RegraFiltro":
+        if self.op == "entre":
+            if not isinstance(self.valor, (list, tuple)) or len(self.valor) != 2:
+                raise ValueError("regra op 'entre' exige valor como lista de 2 números")
+            if not all(isinstance(v, (int, float)) for v in self.valor):
+                raise ValueError("regra op 'entre' exige valor como lista de 2 números")
+        return self
+
 
 class RegraItem(BaseModel):
     export: str

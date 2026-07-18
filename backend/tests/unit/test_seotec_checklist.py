@@ -2,6 +2,7 @@ import pytest
 
 from app.services.seotec_checklist import (
     ChecklistSeotec,
+    RegraFiltro,
     carregar_checklist,
     recarregar_checklist,
 )
@@ -36,6 +37,11 @@ def test_item_sf_sem_regra_permitido():
     item = ck.itens_por_slug()["conteudo-duplicado"]
     assert item.fonte == "sf"
     assert item.regra is None
+
+
+def test_regra_filtro_entre_exige_lista_de_dois_numeros():
+    with pytest.raises(Exception):
+        RegraFiltro(campo="status_code", op="entre", valor=[1])
 
 
 def test_yaml_invalido_falha(tmp_path, monkeypatch):

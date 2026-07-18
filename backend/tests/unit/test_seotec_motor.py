@@ -125,3 +125,109 @@ def test_na_se_export_vazio():
                       filtro=RegraFiltro(campo="redirect_type", op="igual", valor=302),
                       na_se_export_vazio=True)
     assert avaliar_item(_item(regra), _pacote(redirects=[])).status == "na"
+
+
+def test_existencia_truncada_quando_mais_de_100_linhas():
+    regra = RegraItem(export="internal", tipo="existencia", campo="inexistente")
+    pacote = _pacote(internal=[{"address": f"https://a/{i}"} for i in range(150)])
+    r = avaliar_item(_item(regra), pacote)
+    assert r.status == "reprovado"
+    assert len(r.amostra) == 100
+    assert r.truncada is True
+
+
+def test_existencia_aprovado_nao_truncada():
+    regra = RegraItem(export="internal", tipo="existencia", campo="existe")
+    pacote = _pacote(internal=[{"existe": True} for _ in range(150)])
+    r = avaliar_item(_item(regra), pacote)
+    assert r.status == "aprovado"
+    assert r.truncada is False
+
+
+def test_maior_coerciona_string_numerica():
+    regra = RegraItem(export="page_titles", tipo="contagem",
+                      filtro=RegraFiltro(campo="title_length", op="maior", valor=63))
+    pacote = _pacote(page_titles=[
+        {"address": "https://a/", "title_length": "90"},
+        {"address": "https://b/", "title_length": "40"},
+    ])
+    r = avaliar_item(_item(regra), pacote)
+    assert r.total_afetadas == 1
+
+
+def test_maior_string_nao_numerica_nao_afeta_sem_crash():
+    regra = RegraItem(export="page_titles", tipo="contagem",
+                      filtro=RegraFiltro(campo="title_length", op="maior", valor=63))
+    pacote = _pacote(page_titles=[{"address": "https://a/", "title_length": "abc"}])
+    r = avaliar_item(_item(regra), pacote)
+    assert r.total_afetadas == 0
+
+
+def test_menor_coerciona_string_numerica():
+    regra = RegraItem(export="page_titles", tipo="contagem",
+                      filtro=RegraFiltro(campo="title_length", op="menor", valor=30))
+    pacote = _pacote(page_titles=[
+        {"address": "https://a/", "title_length": "10"},
+        {"address": "https://b/", "title_length": "40"},
+    ])
+    r = avaliar_item(_item(regra), pacote)
+    assert r.total_afetadas == 1
+
+
+def test_entre_coerciona_string_numerica():
+    regra = RegraItem(export="response_codes", tipo="contagem",
+                      filtro=RegraFiltro(campo="status_code", op="entre", valor=[400, 499]))
+    pacote = _pacote(response_codes=[
+        {"address": "https://a/", "status_code": "404"},
+        {"address": "https://b/", "status_code": "200"},
+    ])
+    r = avaliar_item(_item(regra), pacote)
+    assert r.total_afetadas == 1
+
+
+def test_atencao_max_limite_exato_eh_atencao():
+    regra = RegraItem(export="page_titles", tipo="limiar",
+                      filtro=RegraFiltro(campo="title_length", op="maior", valor=63),
+                      atencao_max=2)
+    pacote = _pacote(page_titles=[
+        {"address": "https://a/", "title_length": 90},
+        {"address": "https://b/", "title_length": 80},
+        {"address": "https://c/", "title_length": 40},
+    ])
+    assert avaliar_item(_item(regra), pacote).status == "atencao"
+
+
+def test_op_menor_matching():
+    regra = RegraItem(export="page_titles", tipo="contagem",
+                      filtro=RegraFiltro(campo="title_length", op="menor", valor=30))
+    pacote = _pacote(page_titles=[
+        {"address": "https://a/", "title_length": 10},
+        {"address": "https://b/", "title_length": 50},
+    ])
+    r = avaliar_item(_item(regra), pacote)
+    assert r.total_afetadas == 1
+    assert r.amostra == [{"address": "https://a/", "title_length": 10}]
+
+
+def test_op_nao_vazio_matching():
+    regra = RegraItem(export="page_titles", tipo="contagem",
+                      filtro=RegraFiltro(campo="title", op="nao_vazio"))
+    pacote = _pacote(page_titles=[
+        {"address": "https://a/", "title": "Ok"},
+        {"address": "https://b/", "title": ""},
+    ])
+    r = avaliar_item(_item(regra), pacote)
+    assert r.total_afetadas == 1
+    assert r.amostra == [{"address": "https://a/", "title": "Ok"}]
+
+
+def test_op_igual_matching_int_vs_str():
+    regra = RegraItem(export="redirects", tipo="contagem",
+                      filtro=RegraFiltro(campo="redirect_type", op="igual", valor=302))
+    pacote = _pacote(redirects=[
+        {"address": "https://a/", "redirect_type": 302},
+        {"address": "https://b/", "redirect_type": "302"},
+        {"address": "https://c/", "redirect_type": 301},
+    ])
+    r = avaliar_item(_item(regra), pacote)
+    assert r.total_afetadas == 2
