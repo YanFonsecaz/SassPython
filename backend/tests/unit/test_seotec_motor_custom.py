@@ -57,6 +57,23 @@ def test_title_igual_h1_sem_export_h1():
     assert title_igual_h1(_item(None), pacote).status == "sem_dados"
 
 
+def test_cadeias_redirecionamento_total_antes_corte():
+    """Verifica que total_avaliadas usa total_antes_corte, não len(linhas)."""
+    export = ExportNormalizado(
+        linhas=[
+            {"address": "https://a/", "destino_final": "https://c/", "num_hops": 3, "loop": False},
+            {"address": "https://b/", "destino_final": "https://d/", "num_hops": 1, "loop": False},
+        ],
+        total_antes_corte=600,  # 600 redirecionamentos, mas só 2 retornadas após corte
+    )
+    pacote = PacoteIngestao(
+        schema_version=1, dominio="https://exemplo.com.br",
+        exports={"redirects": export}
+    )
+    r = cadeias_redirecionamento(_item(None, ["address", "destino_final", "num_hops"]), pacote)
+    assert r.total_avaliadas == 600, f"Esperava 600 (total_antes_corte), mas recebeu {r.total_avaliadas}"
+
+
 def test_avaliar_pacote_com_checklist_real():
     recarregar_checklist()
     ck = carregar_checklist()
