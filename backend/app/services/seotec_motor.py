@@ -136,3 +136,16 @@ def avaliar_item(item: ItemChecklist, pacote: PacoteIngestao) -> ResultadoItem:
         amostra=_montar_amostra(afetadas, colunas),
         truncada=len(afetadas) > MAX_AMOSTRA,
     )
+
+
+def avaliar_pacote(checklist, pacote: PacoteIngestao, faltantes: list[str]) -> dict[str, ResultadoItem]:
+    """Avalia todos os itens fonte=sf. Export faltante -> sem_dados (nunca reprovado)."""
+    resultados: dict[str, ResultadoItem] = {}
+    for item in checklist.itens():
+        if item.fonte != "sf":
+            continue
+        if item.regra is not None and item.regra.export in faltantes:
+            resultados[item.slug] = ResultadoItem(status="sem_dados")
+            continue
+        resultados[item.slug] = avaliar_item(item, pacote)
+    return resultados
