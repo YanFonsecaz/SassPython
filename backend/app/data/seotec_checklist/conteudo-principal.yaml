@@ -1,0 +1,58 @@
+categoria: Conteúdo do Corpo Principal
+itens:
+- slug: presenca-de-lorem-ipsum-no-conteudo
+  nome: Presença de Lorem Ipsum no Conteúdo
+  peso: 7
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: O "Lorem Ipsum" é um texto fictício usado como espaço reservado (placeholder) no conteúdo
+    principal da página. Ele geralmente é utilizado durante o desenvolvimento e design do site para preencher
+    áreas de texto antes da inserção do conteúdo final.
+  importancia: A presença de "Lorem Ipsum" no conteúdo principal pode prejudicar a experiência do usuário
+    e o desempenho de SEO. Conteúdo fictício pode indicar páginas inacabadas, o que pode levar os mecanismos
+    de busca a considerá-las de baixa qualidade, afetando negativamente a indexação e o ranqueamento.
+    Além disso, os usuários podem interpretar a página como pouco profissional ou incompleta, impactando
+    a credibilidade do site. Substituir esses placeholders por conteúdo relevante e otimizado é essencial
+    para melhorar a visibilidade e autoridade da página nos resultados de busca.
+- slug: paginas-com-numero-de-palavras-baixo
+  nome: Páginas com Número de Palavras Baixo?
+  peso: 7
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - marketing
+  impacto:
+    direto: true
+    indireto: true
+  fonte: sf
+  descricao: 'Páginas de um site com muito pouco texto e/ou sem rich media.
+
+
+    Páginas que oferecem pouco ou nenhum valor para o usuário final.'
+  importancia: 'Cria uma experiência de usuário negativa e baixa o índice de qualidade do seu site.
+
+
+    Eles levam mais tempo para serem indexados ou nem são indexados.
+
+
+    Mesmo que eles sejam Iindexados, têm pouco valor e posicionam mal nos rankings.'
+  regra:
+    export: internal
+    tipo: limiar
+    filtro:
+      campo: word_count
+      op: entre
+      valor:
+      - 1
+      - 199
+    atencao_max: 10
+  evidencia:
+    colunas:
+    - address
+    - word_count

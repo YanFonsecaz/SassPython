@@ -1,0 +1,222 @@
+categoria: Tag <title>
+itens:
+- slug: title-tag-ausente-ou-vazia
+  nome: Title tag ausente ou vazia
+  peso: 10
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - marketing
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: 'A title tag das suas páginas.
+
+
+    Ela precisa estar localizada dentro das tags <head> do código da página.
+
+
+    Isso deve estar escrito tanto para benefícios de SEO como para provocar cliques da parte do usuário.'
+  importancia: 'Title tags são ESSENCIAIS em fatores de posicionamento nos rankings.
+
+
+    Elas atraem o máximo de atenção do usuário nos SERPs, com texto maior e destaque em azul.
+
+
+    Todas as suas páginas devem ter title tags, sem duplicatas.'
+  regra:
+    export: page_titles
+    tipo: contagem
+    filtro:
+      campo: title
+      op: vazio
+  evidencia:
+    colunas:
+    - address
+    - title
+- slug: title-duplicado
+  nome: <title> duplicado
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: 'A title tag das suas páginas.
+
+
+    Ela precisa estar localizada dentro das tags <head> do código da página.
+
+
+    Isso deve estar escrito tanto para benefícios de SEO como para provocar cliques da parte do usuário.
+
+
+    Duas páginas não devem ter title tags idênticas, pois isso é ruim para a experiência do usuário.'
+  importancia: 'Title tags são ESSENCIAIS em fatores de posicionamento nos rankings.
+
+
+    Elas atraem o máximo de atenção do usuário nos SERPs, com texto maior e destaque em azul.
+
+
+    Todas as suas páginas devem ter title tags, sem duplicatas.'
+  regra:
+    export: page_titles
+    tipo: contagem
+    filtro:
+      campo: title
+      op: duplicado
+  evidencia:
+    colunas:
+    - address
+    - title
+- slug: titulo-longo-demais-mais-de-63-caracteres
+  nome: Título longo demais - mais de 63 caracteres
+  peso: 5
+  prioridade: medium
+  implementacao: bom-ter
+  responsavel:
+  - marketing
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: 'É melhor estruturar o título da sua página incluindo suas palavras-chave principais.
+
+
+    Você precisa usar um título de página com até 65 caracteres. Mais do que isso e ele será truncado
+    pelo Google.'
+  importancia: 'Title tags são ESSENCIAIS em fatores de posicionamento nos rankings.
+
+
+    Elas atraem o máximo de atenção do usuário nos SERPs, com texto maior e destaque em azul.
+
+
+    Todas as suas páginas devem ter title tags, sem duplicatas.'
+  regra:
+    export: page_titles
+    tipo: limiar
+    filtro:
+      campo: title_length
+      op: maior
+      valor: 63
+    atencao_max: 5
+  evidencia:
+    colunas:
+    - address
+    - title
+    - title_length
+- slug: titulo-curto-demais-menos-de-30-caracteres
+  nome: Título curto demais - menos de 30 caracteres
+  peso: 4
+  prioridade: low
+  implementacao: nao-essencial
+  responsavel:
+  - marketing
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: 'É melhor estruturar o título da sua página incluindo suas palavras-chave principais.
+
+
+    Você deve ter um título de página com mais de 30 caracteres, porque menos do que isso não vai transmitir
+    a mensagem completa do assunto da sua página ao usuário.'
+  importancia: 'Title tags são ESSENCIAIS em fatores de posicionamento nos rankings.
+
+
+    Elas atraem o máximo de atenção do usuário nos SERPs, com texto maior e destaque em azul.
+
+
+    Todas as suas páginas devem ter title tags, sem duplicatas.'
+  regra:
+    export: page_titles
+    tipo: limiar
+    filtro:
+      campo: title_length
+      op: entre
+      valor:
+      - 1
+      - 29
+    atencao_max: 5
+  evidencia:
+    colunas:
+    - address
+    - title
+    - title_length
+- slug: o-mesmo-que-h1
+  nome: O mesmo que H1
+  peso: 4
+  prioridade: low
+  implementacao: nao-essencial
+  responsavel:
+  - marketing
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: 'Sempre deve haver um nível de sinergia entre a title tag de uma certa página e a tag h1.
+
+
+    Os usuários gostam de ver a mesma coisa em que clicaram no nível dos SERps como tema principal da
+    página a que chegam.'
+  importancia: 'Title tags são ESSENCIAIS em fatores de posicionamento nos rankings.
+
+
+    Elas atraem o máximo de atenção do usuário nos SERPs, com texto maior e destaque em azul.
+
+
+    Todas as suas páginas devem ter title tags, sem duplicatas.'
+  regra:
+    export: page_titles
+    tipo: custom
+    funcao: title_igual_h1
+  evidencia:
+    colunas:
+    - address
+    - title
+    - h1
+- slug: multiplas-title-tags
+  nome: Múltiplas title tags
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - marketing
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: 'A title tag das suas páginas.
+
+
+    Ela precisa estar localizada dentro das tags <head> do código da página.
+
+
+    Isso deve estar escrito tanto para benefícios de SEO como para provocar cliques da parte do usuário.
+
+
+    Só pode haver uma title tag por página dentro do código-fonte.'
+  importancia: 'Title tags são ESSENCIAIS em fatores de posicionamento nos rankings.
+
+
+    Elas atraem o máximo de atenção do usuário nos SERPs, com texto maior e destaque em azul.
+
+
+    Todas as suas páginas devem ter title tags, sem duplicatas.'
+  regra:
+    export: page_titles
+    tipo: limiar
+    filtro:
+      campo: ocorrencias
+      op: maior
+      valor: 1
+  evidencia:
+    colunas:
+    - address
+    - ocorrencias

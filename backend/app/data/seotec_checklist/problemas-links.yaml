@@ -1,0 +1,31 @@
+categoria: Problemas com Links
+itens:
+- slug: links-quebrados-codigos-de-resposta-4xx-ou-5xx
+  nome: Links Quebrados (códigos de resposta 4xx ou 5xx)
+  peso: 8
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - marketing
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Se uma página retorna um código de erro 404, isso significa que ela não existe, e assim o
+    Google e outros motores de busca não vão indexá-la.
+  importancia: Não são bem as páginas 404 que prejudicam o SEO, mas sim os links que contêm URLs apontando
+    para os 404. Esses links criam uma experiência ruim.
+  regra:
+    export: response_codes
+    tipo: contagem
+    filtro:
+      campo: status_code
+      op: entre
+      valor:
+      - 400
+      - 599
+  evidencia:
+    colunas:
+    - address
+    - status_code

@@ -1,0 +1,255 @@
+categoria: Problemas de Accessibilidade/Encontrabilidade
+itens:
+- slug: o-site-esta-sendo-indexado-de-forma-eficiente
+  nome: O site está sendo indexado de forma eficiente
+  peso: 6
+  prioridade: medium
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: manual
+  descricao: Quantas páginas no seu site são indexadas por motores de busca.
+  importancia: Existem páginas no seu site que não puderam ser rastreadas? Quais foram os erros?
+- slug: ha-um-robots-txt-configurado-corretamente-no-site
+  nome: Há um robots.txt configurado corretamente no site
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Esse arquivo instrui os motores de busca sobre como acessar seu site.
+  importancia: É recomendado estabelecer orientações de rastreamento (para motores de busca), bots bloqueados
+  regra:
+    export: robots
+    tipo: existencia
+    campo: existe
+  evidencia:
+    colunas:
+    - status_code
+- slug: sitemap-xml-encontrado-em-robots-txt
+  nome: Sitemap XML encontrado em robots.txt
+  peso: 9
+  prioridade: very-high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Ligar o arquivo robots.txt ao arquivo de sitemap ajuda os bots de mecanismos de busca a localizarem
+    seu sitemap mais rapidamente.
+  importancia: É uma das melhores práticas do Google conectar seu arquivo robots.txt ao seu arquivo Sitemap.xml.
+  regra:
+    export: robots
+    tipo: existencia
+    campo: sitemaps_declarados
+  evidencia:
+    colunas:
+    - sitemaps_declarados
+- slug: sitemap-xml-otimizado
+  nome: Sitemap XML Otimizado
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: O arquivo sitemap.xml, além de oferecer todas as urls do site para os mecanismos de busca
+    de forma rápida e clara, também pode ser otimizado para que oriente os bots em relação a prioridade
+    de uma página para o negócio, necessidade de retorno a página por conta de atualizações constantes,
+    indexação de imagens e principalmente rapidez em encontrar páginas que não são facilmente acessadas
+    pela navegação normal do usuário.
+  importancia: É importante otimizar o arquivo sitemap.xml para que os bots trabalhem de maneira performática
+    em seu site. Ideal entender se além das urls estarem corretas, pontos como priority, changefreq, lastmod
+    e principalmente o tamanho do arquivo estão bem estruturados. Arquivos sitemaps grandes demais não
+    são performáticos e podem ser divididos em mais de um arquivo de acordo com a estruturado do site.
+    Ideal sempre entender se todas as urls que constam dentro de um sitemap são realmente relevantes,
+    evitar urls que por exemplo são canonical pages de outras ou não indexadas ajudará a diminui o tamanho
+    do arquivo.
+- slug: uso-de-tags-de-meta-robots-follow-nofollow-index-noindex
+  nome: Uso de tags de meta robots (follow/nofollow, index/noindex)
+  peso: 3
+  prioridade: low
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: 'Essa tag HTML e colocada entre o código <head> em uma página e dá aos motores de busca instruções
+    sobre como interpretar o conteúdo específico daquela página (NÃO do site todo).
+
+
+    Por exemplo, <meta name=”robots” content=”noindex”> diz aos motores de bucs que não indexem aquela
+    página. Você também pode usar essa tag para indexar ou não indexar imagens, páginas e links follow
+    / nofollow links em uma página.
+
+
+    OBS: Não confunda esse NOFOLLOW com o atributo de link rel=”nofollow”. Um “nofollow” na seção <head>
+    vai fazer no follow em todos os links naquela página, enquanto o rel=”nofollow” é específico a cada
+    link.'
+  importancia: 'Desesenvolvimento web ruim pode ter acidentalmente colocado orientações "noindex" em páginas
+    importantes, o que faria seu site ter um índice de indexamento baixo.
+
+
+    Se você tem conteúdo similar ou duplicado em seu site, pode colocar tags “noindex” em uma daquelas
+    páginas para evitar penalidades por conteúdo duplicado.
+
+
+    Talvez você queira usar “nofollow” em links externos para certas páginas. Os motores de busca rastream
+    de um site a outro através de links, e você não quer que as spiders saiam de páginas poderosas para
+    irem a outros sites.'
+- slug: configuracao-adequada-para-pagina-de-erro-404
+  nome: Configuração adequada para página de Erro 404
+  peso: 10
+  prioridade: very-high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: 'A página de erro 404 (Not Found) é exibida quando um usuário ou motor de busca tenta acessar
+    uma URL que não existe mais ou nunca existiu no site. Uma configuração adequada dessa página melhora
+    a experiência do usuário e evita impactos negativos no SEO.
+
+
+    Uma página 404 bem configurada deve:
+
+    • Retornar corretamente o código de status 404 (e não 200 ou 302, que podem causar problemas de indexação).
+
+    • Oferecer navegação clara para o usuário, como links úteis para categorias ou para a home.
+
+    • Ter um design amigável e uma mensagem explicativa para evitar frustração.
+
+
+    Se não for configurada corretamente, uma página 404 pode gerar problemas como indexação desnecessária
+    pelo Google (se retornar código 200) ou desperdício de rastreamento com URLs inválidas.'
+  importancia: 'Erros 404 são naturais em qualquer site, mas um número excessivo pode indicar problemas
+    estruturais, como links quebrados ou migrações mal feitas. Além disso:
+
+
+    • Experiência do Usuário: Uma página 404 bem projetada reduz a taxa de rejeição e mantém os visitantes
+    engajados.
+
+    • SEO Técnico: O Google precisa identificar corretamente páginas inexistentes para removê-las do índice
+    e evitar desperdício de rastreamento.
+
+    • Indexação: Se páginas 404 retornarem código 200, elas podem acabar sendo indexadas indevidamente,
+    prejudicando o site.
+
+
+    Configurar corretamente as páginas 404 ajuda a manter um site saudável, com melhor navegação e rastreamento
+    eficiente pelos motores de busca.'
+- slug: erros-no-lado-do-cliente-40x
+  nome: Erros no Lado do Cliente (40x)
+  peso: 10
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: '40x são erros “Bad Request”, que acontecem quando a solicitação enviada ao servidor web
+    falha.
+
+
+    Existem vários erros que podem occorrer do lado do cliente (401, 403) mas o mais comum é o erro 404,
+    que geralmente acontece quando tráfego é direcionado a uma página que já não existe.'
+  importancia: 'Regra geral, sempre que seu site não renderizar corretamente para visitantes, isso é um
+    mau sinal.
+
+
+    Erros 404, particularmente , vão contra as melhores práticas de SEO. Ao apagar ou mover páginas, devemos
+    garantir que os passos necessários foram tomados para proporcionar uma boa experiência de usuário
+    UX) e perda mínima da propriedade de link inbound.
+
+
+    Páginas 404 com links inbound ou tráfego inbound significativo devem ser 301 (redirecionadas permanentemente)
+    a um conteúdo similar em seu site.'
+  regra:
+    export: response_codes
+    tipo: contagem
+    filtro:
+      campo: status_code
+      op: entre
+      valor:
+      - 400
+      - 499
+  evidencia:
+    colunas:
+    - address
+    - status_code
+- slug: erros-no-lado-do-servidor-50x
+  nome: Erros no Lado do Servidor (50x)
+  peso: 3
+  prioridade: low
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Quando a falha em renderizar uma página acontece no servidor.
+  importancia: Um grande pico desses erros pode apontar para uma inabilidade da sua hospedagem web e do
+    seu servidor de gerir os requisitos do seu site, resultando em tempo fora do ar para os seus visitantes.
+  regra:
+    export: response_codes
+    tipo: contagem
+    filtro:
+      campo: status_code
+      op: entre
+      valor:
+      - 500
+      - 599
+  evidencia:
+    colunas:
+    - address
+    - status_code
+- slug: pagina-orfa-sem-links-internos-recebidos
+  nome: Página órfã (sem links internos recebidos)
+  peso: 7
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: As páginas órfãs de um site não têm links recebidos internos.
+  importancia: Rastreadores de motores de busca só podem descobrir essas páginas a partir do arquivo de
+    sitemap ou de backlinks externos. Visitantes do site não poderão acessar essa página de qualquer outra
+    página em seu site.
+- slug: analise-de-logfile
+  nome: Análise de LogFile
+  peso: 7
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: manual
+  descricao: Estudo para entender o comportamento do googlebot no site.
+  importancia: Garantir que a rastreabilidade do site seja melhor vista pelo buscador, desta forma otimizando
+    o processo, podendo tornar melhor posicionado ou melhor atribuído em questão de relevância dada ao
+    comportamento do buscador dentro do site.

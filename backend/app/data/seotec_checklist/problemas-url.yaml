@@ -1,0 +1,72 @@
+categoria: Problemas da URL
+itens:
+- slug: hifens-usados-como-delimitador-default-em-urls
+  nome: Hífens usados como delimitador default em URLs
+  peso: 10
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: "A estrutura de URL default deve usar hífens (” – “). \n\nPor exemplo:\nBom: http://seusite.com/miami-seo-profissionais/\n\
+    \nRuim: http://seusite.com/miami_seo_profissionais/\n\nPior: http://seusite.com/miami,seo,profissionais/"
+  importancia: 'Usar _ ou , em sua estrurua de URL causa os motores de busca a ler as strings de URL incorretamente.
+
+
+    Motores de busca leem - como espaços. Usar hífens garante que seu conteúdo será lido da forma correta.'
+  regra:
+    export: internal
+    tipo: contagem
+    filtro:
+      campo: address
+      op: regex
+      valor: _|%20
+  evidencia:
+    colunas:
+    - address
+- slug: usabilidade-geral-da-url-curta-e-facil-de-compartilhar
+  nome: Usabilidade geral da URL (curta e fácil de compartilhar)
+  peso: 7
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: URLs devem ser estruturadas (quando possível) para serem limpas, curtas, fáceis de lembrar
+    e de compartilhar.
+  importancia: Sinais de experiência do usuário (particularmente a taxa de cliques nos SERPs) são fatores
+    de posicionamento cada vez mais importantes. URLs curtas, limpas e fáceis de ler geram mais cliques
+    nos SERPs do que URLs pouco amigáveis.
+  regra:
+    export: internal
+    tipo: contagem
+    filtro:
+      campo: address
+      op: len_maior
+      valor: 115
+    atencao_max: 5
+  evidencia:
+    colunas:
+    - address
+- slug: otimizacao-geral-da-url-usa-de-palavras-chave-segmentadas
+  nome: Otimização geral da URL (usa de palavras-chave segmentadas)
+  peso: 7
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: manual
+  descricao: URLs devem ser estruturadas (quando possível) para incluir as palavras-chave segmentadas,
+    além dos serviços/produtos oferecidos.
+  importancia: Sinais de experiência do usuário (particularmente a taxa de cliques nos SERPs) são fatores
+    de posicionamento cada vez mais importantes. URLs cheias de palavras-chave geram mais cliques nos
+    SERPs do que URLs aleatórias.

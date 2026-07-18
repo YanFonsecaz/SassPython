@@ -1,0 +1,363 @@
+categoria: Dados Estruturados
+itens:
+- slug: uso-de-markup-de-dados-estruturados
+  nome: Uso de markup de Dados Estruturados
+  peso: 9
+  prioridade: very-high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: 'Um snippet de código (HTML) localizado na tag  <header> que informa aos motores de busca
+    sobre o que é a sua página.
+
+
+    Esses markups vêm em formatos diferentes (negócio local, vídeo etc) e devem ser usados segundo o seu
+    site e o seu tipo de conteúdo.'
+  importancia: 'Em 2019, o Google fez disso um Fator de Posicionamento.
+
+
+    Ele facilita para o Googlebot chegar à essência do tema da sua página sem ter que ler códigos complexos.
+
+
+    Para avaliações de produtos, ter um bom snipper aparecendo nos SERPs com estrelas de avaliação, o
+    que aumenta muito a taxa de cliques.'
+- slug: uso-do-tipo-de-esquema-article
+  nome: 'Uso do tipo de esquema: Article'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Um artigo, como uma notícia ou uma reportagem investigativa. Jornais e revistas têm artigos
+    de muitos tipos diferentes e a intenção é cobri-los todos.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-blogposting
+  nome: 'Uso do tipo de esquema: BlogPosting'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Uma postagem no blog.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-breadcrumb
+  nome: 'Uso do tipo de esquema: Breadcrumb'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: Um BreadcrumbList é um ItemList que consiste em uma cadeia de páginas da Web vinculadas,
+    geralmente descritas usando pelo menos sua URL e seu nome, e normalmente terminando com a página atual.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-broadcastevent
+  nome: 'Uso do tipo de esquema: BroadcastEvent'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: O BroadcastEvent é um tipo de dado estruturado usado para descrever eventos de transmissão,
+    seja online ou ao vivo. Esse esquema ajuda os motores de busca a compreenderem melhor o conteúdo e
+    a destacarem eventos em resultados de busca relevantes, como horários de transmissão, plataforma de
+    streaming e programação.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-course
+  nome: 'Uso do tipo de esquema: Course'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: Um curso educacional é uma sequência de um ou mais eventos educacionais e / ou trabalhos
+    criativos que visam construir conhecimento, competência ou habilidade dos alunos.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-event
+  nome: 'Uso do tipo de esquema: Event'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: Um evento que acontece em um determinado horário e local, como um show, palestra ou festival.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-howto
+  nome: 'Uso do tipo de esquema: HowTo'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Instruções que explicam como alcançar um resultado executando uma sequência de etapas.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-localbusiness
+  nome: 'Uso do tipo de esquema: LocalBusiness'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Um determinado negócio físico ou ramo de uma organização. Exemplos de LocalBusiness incluem
+    um restaurante, uma filial específica de uma rede de restaurantes, uma filial de um banco, um consultório
+    médico, um clube, uma pista de boliche, etc.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-logo
+  nome: 'Uso do tipo de esquema: Logo'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: Um logotipo associado.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-newsarticle
+  nome: 'Uso do tipo de esquema: NewsArticle'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Um NewsArticle é um artigo cujo conteúdo relata notícias ou fornece contexto de fundo e materiais
+    de apoio para a compreensão das notícias.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-organization
+  nome: 'Uso do tipo de esquema: Organization'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Uma organização como uma escola, ONG, corporação, clube, etc.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-product
+  nome: 'Uso do tipo de esquema: Product'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: 'Qualquer produto ou serviço oferecido. Por exemplo: um par de sapatos; um ingresso para
+    um show; o aluguel de um carro; um corte de cabelo; ou um episódio de um programa de TV transmitido
+    online.'
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-realestate
+  nome: 'Uso do tipo de esquema: RealEstate'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: 'Qualquer tipo de imóvel disponível para venda, aluguel ou outro tipo de transação imobiliária.
+    Por exemplo: um apartamento residencial, uma casa, um terreno, um imóvel comercial, ou uma sala para
+    coworking.'
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-recipe
+  nome: 'Uso do tipo de esquema: Recipe'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: Uma receita.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-review
+  nome: 'Uso do tipo de esquema: Review'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Uma avaliação de um item - por exemplo, de um restaurante, filme ou loja.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-softwareapplication
+  nome: 'Uso do tipo de esquema: SoftwareApplication'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Um aplicativo de software.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-videoobject
+  nome: 'Uso do tipo de esquema: VideoObject'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Um arquivo de vídeo.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: uso-do-tipo-de-esquema-website
+  nome: 'Uso do tipo de esquema: WebSite'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Um WebSite é um conjunto de páginas da Web relacionadas e outros itens normalmente servidos
+    a partir de um único domínio da Web e acessíveis por meio de URLs.
+  importancia: O Google usa dados estruturados que encontra na web para entender o conteúdo da página,
+    bem como para coletar informações sobre a web e o mundo em geral. A Pesquisa Google também usa dados
+    estruturados para permitir recursos e aprimoramentos de resultados de pesquisa especiais.
+- slug: nao-ha-erros-no-esquema-de-marcacao
+  nome: Não há erros no esquema de marcação
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Erros de esquema ocorrem onde faltam propriedades obrigatórias ou problemas com a implementação
+    de propriedades obrigatórias e recomendadas.
+  importancia: Se não forem fornecidas as marcações de dados estruturados necessárias, acionarão erros
+    do Google Search Console. Ter erros em sua marcação porque faltam informações obrigatórias torna suas
+    postagens inelegíveis para pesquisa aprimorada.
+- slug: nao-ha-avisos-no-esquema-de-marcacao
+  nome: Não há avisos no esquema de marcação
+  peso: 6
+  prioridade: medium
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Os avisos de esquema ocorrem quando faltam propriedades recomendadas.
+  importancia: O Google incentiva os editores a corrigirem os avisos, se possível. Não é uma má ideia
+    estar 100% complacente, mesmo que seja apenas um aviso. Pode ser que as informações adicionadas sejam
+    úteis para obter mais tráfego.

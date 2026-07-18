@@ -1,0 +1,110 @@
+categoria: Velocidade da Página
+itens:
+- slug: paginas-lentas
+  nome: Páginas lentas
+  peso: 7
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: Páginas em seu site em que o código HTML levou muito tempo para carregar.
+  importancia: 'A velocidade de carregamento de uma página é um dos fatores de ranqueamento no Google.
+
+    Além disso, a velocidade da página afeta a experiência do usuário em seu site. Visitantes muitas vezes
+    não esperam muito enquanto a página carrega e fazem "bounce."
+
+
+    Verifique se o código HTML está otimizado em todas as suas páginas. Se esse problema persistir, considere
+    mudar seu site para um servidor mais rápido.'
+  regra:
+    export: internal
+    tipo: limiar
+    filtro:
+      campo: response_time
+      op: maior
+      valor: 1.0
+    atencao_max: 10
+  evidencia:
+    colunas:
+    - address
+    - response_time
+- slug: google-page-speed-insights-abaixo-de-70-desktop-home-page-landing-page
+  nome: Google Page Speed Insights abaixo de 70 (desktop) - home page, landing page
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: cwv-link
+  descricao: A velocidade em que a versão de desktop da sua página carrega.
+  importancia: 'A velocidade de carregamento de uma página é um dos fatores de ranqueamento no Google.
+
+
+    Além disso, a velocidade da página afeta a experiência do usuário em seu site. Visitantes muitas vezes
+    não esperam muito enquanto a página carrega e fazem "bounce."'
+- slug: google-page-speed-insights-abaixo-de-50-mobile-home-page-landing-page
+  nome: Google Page Speed Insights abaixo de 50 (mobile) - home page, landing page
+  peso: 10
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: cwv-link
+  descricao: A velocidade em que a versão mobile da sua página carrega.
+  importancia: 'A velocidade de carregamento de uma página é um dos fatores de ranqueamento no Google.
+
+
+    Além disso, a velocidade da página afeta a experiência do usuário em seu site. Visitantes muitas vezes
+    não esperam muito enquanto a página carrega e fazem "bounce."'
+- slug: teste-de-velocidade-abaixo-de-80-usando-gtmetrix-home-page-landing-page
+  nome: Teste de velocidade abaixo de 80% usando GTMetrix - home page, landing page
+  peso: 7
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: manual
+  descricao: A velocidade em que a sua página carrega.
+  importancia: 'A velocidade de carregamento de uma página é um dos fatores de ranqueamento no Google.
+
+
+    Além disso, a velocidade da página afeta a experiência do usuário em seu site. Visitantes muitas vezes
+    não esperam muito enquanto a página carrega e fazem "bounce."'
+- slug: experiencia-na-pagina
+  nome: Experiência na Página
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: manual
+  descricao: Esse relatório apresenta um resumo da experiência do usuário que visita seu site. O Google
+    avalia as métricas de experiência na página de URLs individuais no site e as usa como indicador de
+    classificação para o URL nos resultados da Pesquisa Google.
+  importancia: 'A experiência na página é avaliada por URL. A avaliação e o relatório foram desenvolvidos
+    para ajudar os sites a criar páginas que proporcionem uma melhor experiência do usuário aos visitantes.
+
+
+    A experiência na página na Pesquisa Google é avaliada com base nos seguintes critérios:
+
+    1) Principais métricas da Web (Core WebVitals: LCP, FID e CLS)
+
+    2) Usabilidade em dispositivos móveis
+
+    3) Uso de HTTPS'

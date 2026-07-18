@@ -1,0 +1,121 @@
+categoria: Propriedade de SEO
+itens:
+- slug: redirecionamentos-302
+  nome: Redirecionamentos 302
+  peso: 6
+  prioridade: medium
+  implementacao: nao-essencial
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: 'URLs internas que redirecionam para outra URL com código de status HTTP 302 (redirecionamento
+    temporário).
+
+
+    Tanto o redirecionamento 302 quanto o 301 transmitem PageRank, conforme anunciado pelo Google.'
+  importancia: Um redirecionamento 302 é temporário por definição e não deve ser utilizado quando o redirecionamento
+    for permanente.
+  regra:
+    export: redirects
+    tipo: contagem
+    filtro:
+      campo: redirect_type
+      op: igual
+      valor: 302
+    atencao_max: 5
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - destino_final
+    - redirect_type
+- slug: cadeias-de-redirecionamento
+  nome: Cadeias de Redirecionamento
+  peso: 6
+  prioridade: medium
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: O encadeamento de redirecionamentos pode danificar a experiência do usuário, desacelerando
+    as velocidades de carregamento de página. Além disso, cadeias de redirecionamento complicam os links
+    internos do seu site para os rastreadores dos motores de busca.
+  importancia: 'O encadeamento de redirecionamentos pode danificar a experiência do usuário, desacelerando
+    as velocidades de carregamento de página. Além disso, cadeias de redirecionamento complicam os links
+    internos do seu site para os rastreadores dos motores de busca.
+
+
+    Sempre que possível e prático, substitua links para URLs redirecionadas nessas páginas com links diretos
+    para a URL do destino final na cadeia de redirecionamento.'
+  regra:
+    export: redirects
+    tipo: custom
+    funcao: cadeias_redirecionamento
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - destino_final
+    - num_hops
+- slug: loops-de-redirecionamento
+  nome: Loops de Redirecionamento
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: O loop de redirecionamento ocorre quando uma URL redireciona para ela mesma, ou quando uma
+    cadeia de redirecionamento redireciona para uma das URLs dentro dela mesma. Isso cria um loop infinito
+    de redirecionamentos.
+  importancia: O loop de redirecionamentos geralmente resulta no erro "Too Many Redirects" no navegador
+    do usuário, e é uma "armadilha" para os rastreadores dos motores de busca.
+  regra:
+    export: redirects
+    tipo: custom
+    funcao: loops_redirecionamento
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - destino_final
+- slug: redirecionamentos-quebrados
+  nome: Redirecionamentos Quebrados
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Redireciona aquele ponto para uma página retornando um dos códigos de resposta HTTP 4xx ou
+    5xx.
+  importancia: Essas URLs não podem ser acessadas nem pelos visitantes do seu site, nem pelos rastreadores
+    dos motores de busca. Os rastreadores serão forçados a abandonar a solicitação, enquanto as pessoas
+    provavelmente vão deixar o seu site.
+  regra:
+    export: redirects
+    tipo: contagem
+    filtro:
+      campo: status_final
+      op: entre
+      valor:
+      - 400
+      - 599
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - destino_final
+    - status_final

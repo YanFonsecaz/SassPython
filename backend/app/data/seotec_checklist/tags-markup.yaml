@@ -1,0 +1,66 @@
+categoria: Problemas com Tags na Página/Markup
+itens:
+- slug: html-doctype-declarada
+  nome: HTML Doctype declarada
+  peso: 6
+  prioridade: medium
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: 'A declaração <!DOCTYPE> deve ser a primeira coisa em seu documento HTML, antes da tag <html>
+    tag.
+
+
+    A declaração <!DOCTYPE> não é uma tag HTML, é uma instrução para o navegador sobre a versão de HTML
+    em que a página é escrita.'
+  importancia: É importante dar ao navegador instruções sobre a versão da página HTML.
+- slug: nao-uso-de-meta-refresh
+  nome: Não uso de meta-refresh
+  peso: 6
+  prioridade: medium
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: Em geral, recomendamos não usar redirecionamentos do tipo meta-refresh type, já que isso
+    pode causar confusão nos usuários (e nos rastreadores dos mecanismos de busca, que podem confundí-los
+    com tentativas de redirecionamento).
+  importancia: 'Temos posts de blog comprovando que o Google disse pra não usar o redirecionamento tipo
+    meta refresh. Que você deve usar um redirecionamento 301 ou 302 ao invés da versão meta refresh.
+
+
+    Aqui está uma citação do Gooogle: "Não recomendamos por 2 razões: UX (ele mantém a página no histórico
+    do navegador) e tempo de processamento (precisamos analisar a página para vê-la)."'
+- slug: fonte-da-pagina-contem-tags-meta-tags-ex-title-meta-description-no-cabecalho
+  nome: 'Fonte da página contém tags META tags (ex.: <title>, meta description no cabeçalho)'
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: true
+  fonte: sf
+  descricao: 'As informações exibidas pelos motores de busca nos SERPs sobre uma página ou site específico.
+
+
+    Todas as suas páginas devem ter meta tags, sem faltas.
+
+
+    Todas as suas páginas devem ter meta tags únicas, sem duplicatas.'
+  importancia: 'Eles são importantes porque agem como descrições do seu site
+
+
+    Eles dizem ao usuário que conteúdo podem esperar ver ao clicar no resultado.
+
+
+    Apesar de não terem efeito direto no posiconamento, eles aumentam a taxa de cliques nos SERPs, que
+    é um fator de posicionamento.'

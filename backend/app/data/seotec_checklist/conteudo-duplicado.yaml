@@ -1,0 +1,149 @@
+categoria: Potenciais Gatilhos de Conteúdo Duplicado
+itens:
+- slug: www-vs-non-www
+  nome: www vs. non-www
+  peso: 8
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Queremos garantir que o site tenha selecionado uma versão para exibir ao vivo em um navegador.
+  importancia: Quando existe mais de uma versão, isso cria conteúdo duplicado, além de uma experiência
+    de usuário fraca.
+- slug: http-vs-https
+  nome: http vs. https
+  peso: 10
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Queremos verificar se o site tem uma versão segura, além de verificar que não existem páginas
+    http na versão do site que está no ar.
+  importancia: Quando existe mais de uma versão, isso cria conteúdo duplicado, além de uma experiência
+    de usuário fraca. Além disso, quando se trata de segurança, isso pode afetar o quão seguro seu site
+    realmente é.
+- slug: nao-uso-de-trailing-slash
+  nome: Não uso de Trailing slash
+  peso: 7
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Ocorre duplicação da URL, sendo considerado conteúdo duplicado quando o mesmo é visto em
+    URLs diferentes. Páginas com "/" no final que operam de forma independente da versão sem "/" no final,
+    retornando status http 200 é considerada duplicação.
+  importancia: Quando existe mais de uma versão, isso cria conteúdo duplicado, além de uma experiência
+    de usuário fraca.
+- slug: case-sensitive-habilitado
+  nome: Case sensitive habilitado
+  peso: 8
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: URLs com ao menos uma letra maiúscula podem duplicar com a versão padrão, toda minúscula,
+    desta forma é necessário instruções no servidor para redirecionar automaticamente.
+  importancia: Quando existe mais de uma versão, isso cria conteúdo duplicado, além de uma experiência
+    de usuário fraca.
+- slug: conteudo-duplicado
+  nome: Conteúdo duplicado
+  peso: 10
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: 'Páginas da Web são consideradas repetições se o conteúdo delas for 85% idêntico.
+
+    A presença de conteúdo duplicado pode comprometer seu desempenho no SEO de maneira considerável.
+
+    Em primeiro lugar, o Google costuma mostrar apenas uma página duplicada, filtrando os demais casos
+    e deixando-os de fora de seu índice e resultados de pesquisa, e esta página talvez não seja a que
+    você deseja que consiga classificação.
+
+    Em alguns casos, os mecanismos de pesquisa podem considerar páginas duplicadas uma tentativa de manipular
+    as classificações dos mecanismos de pesquisa e, consequentemente, seu site pode ser rebaixado ou até
+    banido dos resultados de pesquisa.
+
+    Além do mais, páginas duplicadas podem diluir o seu perfil de links.'
+  importancia: Quando existe mais de uma versão, isso cria conteúdo duplicado, além de uma experiência
+    de usuário fraca. Além disso, quando se trata de segurança, isso pode afetar o quão seguro seu site
+    realmente é.
+- slug: uso-de-self-canonical
+  nome: Uso de Self Canonical
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Utilizar tag canonical é uma boa prática de SEO para evitar duplicação de conteúdo em um
+    site, seja por páginas parecidas como por mudanças na url por conta de tagueamento de mídia, por exemplo.
+    Se uma tag canonical não tem a url correta ou existe algum erro na aplicação, ela será ignorada.
+  importancia: Ao configurar um elemento rel="canonical" em sua página, é possível informar aos mecanismos
+    de pesquisa qual versão de uma página você deseja mostrar nos resultados de pesquisa. Ao usar tags
+    canônicas, é importante conferir se a URL que você incluiu no elemento rel="canonical" leva a uma
+    página que realmente exista. Os links canônicos que levam a páginas inexistentes complicam o processo
+    de rastreamento e indexação do seu conteúdo e, como resultado, diminuem a eficiência do rastreamento
+    e geram desperdício do crawl budget.
+- slug: link-canonical-quebrado
+  nome: Link Canonical Quebrado
+  peso: 8
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Utilizar tag canonical é uma boa prática de SEO para evitar duplicação de conteúdo em um
+    site, seja por páginas parecidas como por mudanças na url por conta de tagueamento de mídia, por exemplo.
+    Se uma tag canonical não tem a url correta ou existe algum erro na aplicação, ela será ignorada.
+  importancia: Ao configurar um elemento rel="canonical" em sua página, é possível informar aos mecanismos
+    de pesquisa qual versão de uma página você deseja mostrar nos resultados de pesquisa. Ao usar tags
+    canônicas, é importante conferir se a URL que você incluiu no elemento rel="canonical" leva a uma
+    página que realmente exista. Os links canônicos que levam a páginas inexistentes complicam o processo
+    de rastreamento e indexação do seu conteúdo e, como resultado, diminuem a eficiência do rastreamento
+    e geram desperdício do crawl budget.
+- slug: varias-urls-canonical
+  nome: Várias URLs Canonical
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Tag canonical é utilizada para direcionar os mecanismos de busca que uma página é identica
+    a outra. Utilizar mais de uma tag canonical por página não é recomendado, pois a lógica da tag é apontar
+    apenas uma url por página.
+  importancia: Várias tags rel="canonical" com diferentes URLs especificadas para a mesma página confundem
+    os mecanismos de pesquisa, tornando quase impossível identificar qual URL se refere à verdadeira página
+    canônica. Como resultado, os mecanismos de pesquisa provavelmente vão ignorar todos os elementos canônicos
+    ou selecionar o errado. Por isso, é recomendável que você especifique no máximo uma rel="canonical"
+    para uma página.

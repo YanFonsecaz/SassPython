@@ -1,0 +1,152 @@
+categoria: Tag <meta description>
+itens:
+- slug: tag-meta-description-ausente-ou-vazia
+  nome: Tag meta description ausente ou vazia
+  peso: 7
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - marketing
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: Quanto você não insere sua própria meta description, o Google pega o que ele considera a
+    parte mais descritiva do seu conteúdo e a usa no snippet, para mostrar aos usuários nos SERPs.
+  importancia: 'Apesar de preencher a meta description ter se tornado menos importante para dizer aos
+    motores de busca sobre o que fala o seu site, ela ainda é um bom lugar para colocar frases de palavras-chave
+    e linguagem que vai estimular o usuário a clicar.
+
+
+    Ao não preencher a meta description, você perde a oportunidade de enquadrar seu snippet da forma que
+    preferir.'
+  regra:
+    export: meta_description
+    tipo: contagem
+    filtro:
+      campo: meta_description
+      op: vazio
+    atencao_max: 5
+  evidencia:
+    colunas:
+    - address
+    - meta_description
+- slug: tags-meta-description-duplicadas
+  nome: Tags meta description duplicadas
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - marketing
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: Quando duas ou mais páginas têm o mesmo conteúdo na meta description
+  importancia: 'É melhor não ter uma meta description do que usar uma meta description duplicada.
+
+
+    Cada página do seu site deve ter uma mensagem clara.'
+  regra:
+    export: meta_description
+    tipo: contagem
+    filtro:
+      campo: meta_description
+      op: duplicado
+  evidencia:
+    colunas:
+    - address
+    - meta_description
+- slug: meta-description-longa-demais-mais-de-155-caracteres
+  nome: Meta description longa demais - mais de 155 caracteres
+  peso: 6
+  prioridade: medium
+  implementacao: bom-ter
+  responsavel:
+  - marketing
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: Meta descriptions podem ter qualquer extensão, mas o Google geralmente edita snippets para
+    ter cerca de 155–160 caracteres. É melhor ter meta descriptions longas o suficiente para ser descritivas,
+    e assim, nós recomendas descrições com 50–160 caracteres. Lembre-se que a extensão "perfeita" vai
+    variar dependendo da situação, e seu objetivo principal deve ser oferecer valor e gerar cliques.
+  importancia: Meta descriptions podem ter qualquer extensão, mas o Google geralmente edita snippets para
+    ter cerca de 155–160 caracteres. É melhor ter meta descriptions longas o suficiente para ser descritivas,
+    e assim, nós recomendas descrições com 50–160 caracteres. Lembre-se que a extensão "perfeita" vai
+    variar dependendo da situação, e seu objetivo principal deve ser oferecer valor e gerar cliques.
+  regra:
+    export: meta_description
+    tipo: limiar
+    filtro:
+      campo: meta_description_length
+      op: maior
+      valor: 155
+    atencao_max: 5
+  evidencia:
+    colunas:
+    - address
+    - meta_description
+    - meta_description_length
+- slug: meta-description-curta-demais-menos-de-70-caracteres
+  nome: Meta description curta demais - menos de 70 caracteres
+  peso: 3
+  prioridade: low
+  implementacao: bom-ter
+  responsavel:
+  - marketing
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: Meta descriptions podem ter qualquer extensão, mas o Google geralmente edita snippets para
+    ter cerca de 155–160 caracteres. É melhor ter meta descriptions longas o suficiente para ser descritivas,
+    e assim, nós recomendas descrições com 50–160 caracteres. Lembre-se que a extensão "perfeita" vai
+    variar dependendo da situação, e seu objetivo principal deve ser oferecer valor e gerar cliques.
+  importancia: Meta descriptions podem ter qualquer extensão, mas o Google geralmente edita snippets para
+    ter cerca de 155–160 caracteres. É melhor ter meta descriptions longas o suficiente para ser descritivas,
+    e assim, nós recomendas descrições com 50–160 caracteres. Lembre-se que a extensão "perfeita" vai
+    variar dependendo da situação, e seu objetivo principal deve ser oferecer valor e gerar cliques.
+  regra:
+    export: meta_description
+    tipo: limiar
+    filtro:
+      campo: meta_description_length
+      op: entre
+      valor:
+      - 1
+      - 69
+    atencao_max: 5
+  evidencia:
+    colunas:
+    - address
+    - meta_description
+    - meta_description_length
+- slug: multiplas-meta-descriptions
+  nome: Múltiplas meta descriptions
+  peso: 3
+  prioridade: low
+  implementacao: bom-ter
+  responsavel:
+  - marketing
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: Qualquer página que tenha várias meta descrições.
+  importancia: Deve haver apenas uma única meta descrição para uma página. Múltiplas meta descrições são
+    freqüentemente causadas por vários plug-ins ou módulos conflitantes no CMS e podem confundir mecanismos
+    de pesquisa como o Google.
+  regra:
+    export: meta_description
+    tipo: limiar
+    filtro:
+      campo: ocorrencias
+      op: maior
+      valor: 1
+  evidencia:
+    colunas:
+    - address
+    - ocorrencias

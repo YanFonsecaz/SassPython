@@ -1,0 +1,83 @@
+categoria: 'Conteúdo não indexável (ex: uso de JS)'
+itens:
+- slug: conteudo-injetado-por-html-nao-js
+  nome: Conteúdo injetado por HTML, não JS
+  peso: 7
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: manual
+  descricao: Quando o seu site tem conteúdo que não é renderizado através do HTML, mas ao invés disso,
+    é injetado na página através de Javascript.
+  importancia: 'Há duas razões principais para se preocupar com o JavaScript em seu site:
+
+
+    1. Rastreabilidade: A habilidade dos bots de rastrear seu site.
+
+
+    2. Obtenibilidade: A habilidade dos bots de acessar informações e analisar seu conteúdo.'
+- slug: nao-uso-de-flash
+  nome: Não uso de Flash
+  peso: 10
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: Utilizar Flash em sites, além de não ser performatico para a velocidade e usabilidade (principalmente
+    páginas mobile), dificulta o entedimento dos mecanismos de busca em relação ao conteúdo da url. Conteúdos
+    via html, css e javascript são sempre melhores opções.
+  importancia: 'Apesar de páginas em Flash ficarem bonitas, não é recomendável que você utilize conteúdo
+    em Flash por diversas razões.
+
+    Acima de tudo, conteúdo em Flash afeta negativamente a visibilidade do site porque ele não pode ser
+    indexado de forma adequada nem rastreado por mecanismos de pesquisa.
+
+    Além disso, ele afeta negativamente o desempenho do site. Os mecanismos de pesquisa podem considerar
+    um sinal de que não vale a pena classificar o seu site.
+
+    E, por último, conteúdo em Flash não funciona bem em dispositivos móveis.'
+- slug: cuidado-no-uso-de-iframe
+  nome: Cuidado no uso de Iframe
+  peso: 3
+  prioridade: low
+  implementacao: bom-ter
+  responsavel:
+  - marketing
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: Iframes geralmente são utilizados quando um site deseja injetar conteúdo de outro site dentro
+    do seu, como se fosse uma página dentro de outra via uma sintaxe html. Uma forma muito comum de utilizar
+    iframe é embedar vídeos do youtube dentro de um site e isso é positivo, porém exagerar no uso de iframes
+    para incorporam conteúdo que é rico para SEO não é recomendado, já que ele não se encontra dentro
+    do código da página.
+  importancia: Conteúdo relevante dentro de iframes não são recomendados. Como um iframe sempre vai apontar
+    para um outro site que é o dono daquele conteúdo, aquilo que é injetado no seu próprio site será irrelevante
+    e não pode ser considerado dentro da estratégia de SEO.
+- slug: nao-ha-conteudo-escondido
+  nome: Não há conteúdo escondido
+  peso: 7
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: manual
+  descricao: Uma prática comum dentro de SEO e na WEB é que todo conteúdo de uma página seja visível para
+    os usuários. Conteúdo que são escondidos dentro do código e não visíveis para o usuário podem gerar
+    grandes problemas para a estratégia de SEO.
+  importancia: Esconder conteúdo dentro de tags não sendo visível para o usuário pode ser considerado
+    pelos mecanismos de busca como uma técnica de black hat, passível de punição pelos buscadores, podendo
+    acabar com toda a estratégia de SEO de uma site.

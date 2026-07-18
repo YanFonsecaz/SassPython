@@ -1,0 +1,166 @@
+categoria: Arquitetura
+itens:
+- slug: breadcrumbs-encontrados-e-disponiveis-em-todas-as-paginas
+  nome: Breadcrumbs Encontrados e Disponíveis em Todas As Páginas
+  peso: 6
+  prioridade: medium
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  - marketing
+  impacto:
+    direto: false
+    indireto: true
+  fonte: manual
+  descricao: Uma trilha, ou navegação secundária, claramente visível a usuários do site, para ajudá-los
+    a navegar nele.
+  importancia: 'Motores de busca rastream de uma página a outra através de links. Os breadcrumbs reforçam
+    a hierarquia da página e a navegação para os motores de busca.
+
+
+    Breadcrumbs também ajudam a navegar conteúdo, particularmente em sites de ecommerce com um grande
+    número de categorias de produto e alta profundidade de página.
+
+
+    Se você tiver um site muito cheio de conteúdo, os usuários podem se perder nele. Os breadcrumbs ajudam
+    usuários a encontrar facilmente onde estão e continuar navegando, sem precisar da ajuda da navegação
+    no topo da página para retornar.'
+- slug: breadcrumbs-voce-pode-clicar-nas-ultimas-2-3-paginas
+  nome: 'Breadcrumbs: você pode clicar nas últimas 2-3 páginas?'
+  peso: 5
+  prioridade: medium
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: manual
+  descricao: Se breadcrumbs estiverem ativados para o site, todos os links devem levar de volta às suas
+    respectivas páginas.
+  importancia: Às vezes sites criam uma trilha de breadcrumbs mas se esquecem de torná-los clicáveis.
+    Isso leva a uma experiência de usuário ruim quando usuários querem voltar a uma página específica
+    que os trouxe até ali.
+- slug: ha-uma-barra-de-navegacao-otimizada
+  nome: Há uma barra de navegação otimizada?
+  peso: 7
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: manual
+  descricao: O menu principal e a navegação em um site.
+  importancia: "A Navegação Superior e as Barras de Menu têm um impacto tremendo sobre a indexação para\
+    \ busca e a experiência geral do usuário. \n\nOs usuários querem um menu lógico e fácil de usar e\
+    \ encontrar, que os direcione claramente aonde eles querem ir.\n\nOs motores de pesquisa querem o\
+    \ mesmo: suas páginas superiores devem ter links a partir do TLN, seja uma seção dedicada ou um menu\
+    \ suspenso, dependendo da quantidade de conteúdo em seu site."
+- slug: barra-de-navegacao-menu-em-html
+  nome: Barra de navegação/menu em HTML
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: Verificar se o menu principal e a navegação de um site estão programadas em HTML.
+  importancia: Seu TLN deve ser escrito em HTML, NÃO JS!
+- slug: o-site-tem-rodape-otimizado
+  nome: O site tem rodapé otimizado?
+  peso: 6
+  prioridade: medium
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: manual
+  descricao: 'Você não pode criar links para todas as páginas do seu site a partir do seu TLN (a não ser
+    que você tenha um site pequeno.
+
+
+    Rodapés oferecem uma ótima oportunidade para transferir propriedade a várias páginas ou seções do
+    seu site.'
+  importancia: 'Realmente depende dos objetivos, nicho e profundidade de páginas do seu site.
+
+
+    Geralmente, nós gostamos de usar o rodapé para colocar links para páginas importantes não relacionadas
+    a vendas.'
+- slug: paginas-que-exigem-mais-de-tres-cliques-para-alcancar
+  nome: Páginas que exigem mais de três cliques para alcançar
+  peso: 7
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: Isso se refere ao número de "cliques" de distância entre suas páginas e a URL inicial.
+  importancia: 'Nem os motores de busca nem os usuários devem clicar 1.000 vezzes para chegar ao conteúdo
+    importante em seu site.
+
+
+    As melhores práticas de SEO geralmente recomendarm manter conteúdos importantes (ex: páginas que você
+    quer posicionar) a até 4 cliques da URL inicial (ex: sua home page).
+
+
+    Basicamente, isso significa que páginas destino devem ser fáceis de acessar a partir da navegação
+    superior, do rodapé, ou localizadas a poucos cliques dessas páginas.'
+  regra:
+    export: internal
+    tipo: contagem
+    filtro:
+      campo: crawl_depth
+      op: maior
+      valor: 3
+    atencao_max: 10
+  evidencia:
+    colunas:
+    - address
+    - crawl_depth
+- slug: ha-backlink-do-site-dominio-para-o-blog-subdominio-e-vice-versa
+  nome: Há backlink do site (domínio) para o blog (subdomínio) e vice-versa?
+  peso: 6
+  prioridade: medium
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: manual
+  descricao: Apesar de um subdomínio ser uma sub-seção do seu site, ele se encontra fora da estrutura
+    de url do site principal (blog.exemplo.com). Podemos interpretar como um site a parte que se encontra
+    vinculado ao seu domínio. Incluir backlinks que apontam um site (exemplo.com) a um subdomínio (blog.exemplo.com)
+    e vice e versa ajudará no entendimento que ambos pertecem a um mesmo ecossistema digital, além de
+    passagem de relevância entre eles.
+  importancia: É importante que links do site apontem para um blog em subdomínio e vice-verse. Além de
+    ajudar no entendimento dos mecanismos de busca que um pertence ao outro e estão vinculados entre si,
+    passando relevância entre eles, para o usuário é muito mais amigável, oferencendo um entendimento
+    melhor do site como um todo além de uma melhor experiência de navegação
+- slug: hierarquia-de-urls
+  nome: Hierarquia de URLs
+  peso: 6
+  prioridade: medium
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: Uma arquitetura de urls bem construida com uma hierarquia correta sempre irá distribuir o
+    juice (relevância de cada página) de uma forma mais performatica e segura. Além de oferecer uma navegação
+    melhor para os mecanismos de busca e usuários.
+  importancia: O juice de um site sempre é repassado no formato de cascata dentro dos diretórios de um
+    site. Ter uma estrutura de urls utilizando uma hierarquia correta com pensamento de relevância e keywords
+    importantes ajudará no desenvolvimento de páginas que se encontram em níveis mais profundos.
