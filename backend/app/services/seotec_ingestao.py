@@ -75,27 +75,41 @@ def validar_pacote(zip_bytes: bytes, exports_requeridos: set[str]) -> ResultadoV
     )
 
     declarados = manifest.get("exports") or {}
+    if not isinstance(declarados, dict):
+        r.erros.append("manifest.json inválido: campo 'exports' não é um objeto")
+        return r
+
+    def _marcar_faltante(nome: str) -> None:
+        if nome in exports_requeridos:
+            r.faltantes.append(nome)
+
     for nome, meta in declarados.items():
         if nome not in EXPORTS_CONHECIDOS:
+            continue
+        if not isinstance(meta, dict):
+            r.erros.append(f"{nome}: entrada do manifest inválida")
+            _marcar_faltante(nome)
             continue
         caminho = f"exports/{nome}.json"
         try:
             corpo = z.read(caminho)
         except KeyError:
             r.erros.append(f"{nome}: declarado no manifest mas ausente no zip")
-            r.faltantes.append(nome)
+            _marcar_faltante(nome)
             continue
         hash_declarado = str(meta.get("hash", "")).removeprefix("sha256:")
         if hashlib.sha256(corpo).hexdigest() != hash_declarado:
             r.erros.append(f"{nome}: hash não confere")
-            r.faltantes.append(nome)
+            _marcar_faltante(nome)
             continue
         try:
             dados = json.loads(corpo)
+            if not isinstance(dados, dict):
+                raise TypeError("corpo do export não é um objeto JSON")
             exp = ExportNormalizado(**dados)
-        except (json.JSONDecodeError, ValueError) as exc:
+        except (json.JSONDecodeError, ValueError, TypeError) as exc:
             r.erros.append(f"{nome}: JSON inválido ({exc})")
-            r.faltantes.append(nome)
+            _marcar_faltante(nome)
             continue
         exp.linhas = exp.linhas[:MAX_LINHAS_POR_EXPORT]
         pacote.exports[nome] = exp
