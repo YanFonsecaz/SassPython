@@ -172,8 +172,15 @@ async def executar_relatorio_cwv(ctx, auditoria_id: str):
     await executar_relatorio(auditoria_id)
 
 
+async def executar_workflow_seotec(ctx, execucao_id: str, crawl_id: str):
+    """SPEC_Ferramenta_Auditoria_SEO_Tecnico: workflow da auditoria SEO técnico (job direto)."""
+    from app.agents.seotec.workflow import executar_auditoria_seotec
+
+    await executar_auditoria_seotec(execucao_id, crawl_id)
+
+
 class WorkerSettings:
-    functions = [executar_workflow, retomar_workflow_job, executar_inlinks, executar_distribuir_inlinks, executar_workflow_cwv, executar_workflow_parecer, executar_indexar_site, executar_consolidador_cwv, executar_relatorio_cwv]  # noqa: RUF012
+    functions = [executar_workflow, retomar_workflow_job, executar_inlinks, executar_distribuir_inlinks, executar_workflow_cwv, executar_workflow_parecer, executar_indexar_site, executar_consolidador_cwv, executar_relatorio_cwv, executar_workflow_seotec]  # noqa: RUF012
     on_startup = ctx_startup
     on_shutdown = ctx_shutdown
     redis_settings = RedisSettings.from_dsn(settings.redis_url)

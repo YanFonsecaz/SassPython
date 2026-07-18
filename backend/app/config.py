@@ -173,5 +173,7 @@ class Settings(BaseSettings):
 
     uploads_dir: str = str(BASE_DIR / "uploads")
 
+    seotec_upload_dir: str = "/tmp/seotec_uploads"
+
 
 settings = Settings()
