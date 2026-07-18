@@ -51,6 +51,7 @@ SSE de progresso). Custos reais vêm de `backend/app/services/ferramenta_service
 | **Distribuir Inlinks** (reversos) | ✅ implementado | `/ferramentas/distribuir-inlinks` | `15 + 1·N_candidatas` (teto 115) | [ferramentas/inlinks-reversos](ferramentas/inlinks-reversos/README.md) |
 | **Core Web Vitals** | ✅ implementado | `/ferramentas/core-web-vitals` | `15 + 1·N_urls` (teto 100; mede mobile+desktop) | [ferramentas/core-web-vitals](ferramentas/core-web-vitals/README.md) |
 | **Parecer Técnico** | ✅ implementado | `/ferramentas/parecer` | `10 + 3·N_imagens` (teto 90) | [ferramentas/parecer-tecnico](ferramentas/parecer-tecnico/README.md) |
+| **Auditoria de SEO Técnico** | 📋 planejado | `/ferramentas/auditoria-seo-tecnico` | `30` before · `15` after (proposta) | [ferramentas/auditoria-seo-tecnico](ferramentas/auditoria-seo-tecnico/README.md) |
 
 ### Mapa capacidade → código (rastreabilidade)
 
@@ -61,6 +62,7 @@ SSE de progresso). Custos reais vêm de `backend/app/services/ferramenta_service
 | Distribuir Inlinks | `agents/workflow_inlinks_reversos.py` (reusa `agents/inlinks/*`) | `routers/ferramentas_inlinks_reversos.py` | reusa `inlink_sugerido`, `conteudo_vetor` | `distribuir_inlinks` |
 | Core Web Vitals | `agents/cwv/*` (workflow, analisador, pesquisador, priorizador, documentador) | `routers/ferramentas_cwv.py`, `routers/admin_cwv.py` | `cwv_analise`, `cwv_problema` | `core_web_vitals` |
 | Parecer Técnico | `agents/parecer/*` (workflow, analisador, documentador, modelos) | `routers/ferramentas_parecer.py` | `parecer` (migrations `0020`/`0021`) | `parecer_tecnico` |
+| Auditoria de SEO Técnico (📋) | `agents/seotec/*` (previsto) + conector local `sf-connector` (Screaming Frog MCP) | `routers/ferramentas_seo_tecnico.py` (previsto) | `seo_auditoria`, `seo_crawl`, `seo_item_resultado` (previstos) | `auditoria_seo_tecnico` |
 
 Serviços de apoio compartilhados: `services/ferramenta_service.py` (lifecycle de execução + custos),
 `services/credito_service.py` (reserva/confirma/refund), `core/workflow_events.py` (SSE via Redis
