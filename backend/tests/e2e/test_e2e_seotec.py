@@ -22,11 +22,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-async def _usuario_qualquer() -> str:
+async def _usuario_qualquer() -> tuple[str, bool]:
+    """Retorna (usuario_id, foi_criado_por_este_teste)."""
     async with async_session_factory() as s:
         uid = (await s.execute(text("SELECT id FROM usuarios LIMIT 1"))).scalar()
         if uid:
-            return str(uid)
+            return str(uid), False
         uid = str(uuid.uuid4())
         await s.execute(
             text("INSERT INTO usuarios (id, email, nome, senha_hash, email_verificado, mfa_ativo, ativo) "
@@ -34,7 +35,7 @@ async def _usuario_qualquer() -> str:
             {"id": uid, "email": f"e2e-seotec-{uid[:8]}@teste.local"},
         )
         await s.commit()
-        return str(uid)
+        return str(uid), True
 
 
 async def preparar(usuario_id: str) -> tuple[str, str, str, str]:
@@ -106,7 +107,7 @@ def _pacote_fixture() -> bytes:
 async def rodar() -> None:
     from app.agents.seotec.workflow import executar_auditoria_seotec
 
-    usuario_id = await _usuario_qualquer()
+    usuario_id, usuario_criado = await _usuario_qualquer()
     auditoria_id, crawl_id, execucao_id, cliente_id = await preparar(usuario_id)
 
     # garante saldo reservado para o débito do workflow
@@ -122,44 +123,54 @@ async def rodar() -> None:
     Path(settings.seotec_upload_dir).mkdir(parents=True, exist_ok=True)
     (Path(settings.seotec_upload_dir) / f"{crawl_id}.zip").write_bytes(_pacote_fixture())
 
-    await executar_auditoria_seotec(execucao_id, crawl_id)
+    try:
+        await executar_auditoria_seotec(execucao_id, crawl_id)
 
-    from app.models.seo_auditoria import SeoAuditoria
-    from app.models.seo_crawl import SeoCrawl
-    from app.models.seo_item_resultado import SeoItemResultado
+        from app.models.seo_auditoria import SeoAuditoria
+        from app.models.seo_crawl import SeoCrawl
+        from app.models.seo_item_resultado import SeoItemResultado
 
-    async with async_session_factory() as s:
-        auditoria = await s.get(SeoAuditoria, auditoria_id)
-        crawl = await s.get(SeoCrawl, crawl_id)
-        itens = list((await s.execute(
-            select(SeoItemResultado).where(SeoItemResultado.auditoria_id == auditoria_id)
-        )).scalars())
+        async with async_session_factory() as s:
+            auditoria = await s.get(SeoAuditoria, auditoria_id)
+            crawl = await s.get(SeoCrawl, crawl_id)
+            itens = list((await s.execute(
+                select(SeoItemResultado).where(SeoItemResultado.auditoria_id == auditoria_id)
+            )).scalars())
 
-        assert crawl.status == "processado", crawl.erro_msg
-        assert auditoria.score_antes is not None and 0 < float(auditoria.score_antes) < 100
-        assert len(itens) == 124
-        por_slug = {i.item_slug: i for i in itens}
-        assert por_slug["title-tag-ausente-ou-vazia"].status_antes == "reprovado"
-        assert por_slug["ha-um-robots-txt-configurado-corretamente-no-site"].status_antes == "aprovado"
-        assert por_slug["erros-no-lado-do-cliente-40x"].status_antes == "reprovado"
-        assert por_slug["redirecionamentos-302"].status_antes == "na"
-        assert por_slug["conteudo-duplicado"].status_antes == "sem_dados"
-        assert por_slug["analise-de-logfile"].modo == "manual"
-        ev = por_slug["title-tag-ausente-ou-vazia"].evidencias_json
-        assert ev["total_afetadas"] == 1 and ev["amostra"]
+            assert crawl.status == "processado", crawl.erro_msg
+            assert auditoria.score_antes is not None and 0 < float(auditoria.score_antes) < 100
+            assert len(itens) == 124
+            por_slug = {i.item_slug: i for i in itens}
+            assert por_slug["title-tag-ausente-ou-vazia"].status_antes == "reprovado"
+            assert por_slug["ha-um-robots-txt-configurado-corretamente-no-site"].status_antes == "aprovado"
+            assert por_slug["erros-no-lado-do-cliente-40x"].status_antes == "reprovado"
+            assert por_slug["redirecionamentos-302"].status_antes == "na"
+            assert por_slug["conteudo-duplicado"].status_antes == "sem_dados"
+            assert por_slug["analise-de-logfile"].modo == "manual"
+            ev = por_slug["title-tag-ausente-ou-vazia"].evidencias_json
+            assert ev["total_afetadas"] == 1 and ev["amostra"]
 
-    # cleanup
-    # `confirmar_debito` grava uma linha em transacoes_creditos com FK para
-    # execucoes_ferramentas.id (sem ondelete) — precisa ser removida antes,
-    # senão o DELETE de execucoes_ferramentas viola a FK
-    # (transacoes_creditos_execucao_id_fkey).
-    async with async_session_factory() as s:
-        await s.execute(text("DELETE FROM transacoes_creditos WHERE execucao_id = :id"), {"id": execucao_id})
-        await s.execute(text("DELETE FROM seo_auditoria WHERE id = :id"), {"id": auditoria_id})
-        await s.execute(text("DELETE FROM execucoes_ferramentas WHERE id = :id"), {"id": execucao_id})
-        await s.execute(text("DELETE FROM clientes WHERE id = :id"), {"id": cliente_id})
-        await s.commit()
-    logger.info("[OK] E2E SEOTEC completo — score_antes=%s", auditoria.score_antes)
+        logger.info("[OK] E2E SEOTEC completo — score_antes=%s", auditoria.score_antes)
+    finally:
+        # cleanup: garante que transacoes, conta de crédito e usuario (se criado) sejam removidos
+        # `confirmar_debito` grava uma linha em transacoes_creditos com FK para
+        # execucoes_ferramentas.id (sem ondelete) — precisa ser removida antes,
+        # senão o DELETE de execucoes_ferramentas viola a FK.
+        async with async_session_factory() as s:
+            await s.execute(text("DELETE FROM transacoes_creditos WHERE execucao_id = :id"), {"id": execucao_id})
+            await s.execute(text("DELETE FROM seo_auditoria WHERE id = :id"), {"id": auditoria_id})
+            await s.execute(text("DELETE FROM execucoes_ferramentas WHERE id = :id"), {"id": execucao_id})
+            await s.execute(text("DELETE FROM clientes WHERE id = :id"), {"id": cliente_id})
+
+            if usuario_criado:
+                # teste criou o usuario: remover conta de crédito e usuario
+                await s.execute(text("DELETE FROM contas_creditos WHERE usuario_id = :uid"), {"uid": usuario_id})
+                await s.execute(text("DELETE FROM usuarios WHERE id = :uid"), {"uid": usuario_id})
+            else:
+                # usuario pre-existente: log de aviso, nao remover conta (deixar residual)
+                logger.warning("conta de crédito de usuário pré-existente não restaurada (saldo residual do e2e)")
+
+            await s.commit()
 
 
 def test_e2e_seotec():
