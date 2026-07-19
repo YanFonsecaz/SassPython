@@ -64,3 +64,52 @@ def title_igual_h1(item: ItemChecklist, pacote: PacoteIngestao) -> ResultadoItem
         if title and h1 and title == h1:
             afetadas.append({**li, "h1": h1_por_url[li.get("address")]})
     return _resultado_lista(item, titles.linhas, afetadas, titles)
+
+
+def sitemap_otimizado(item: ItemChecklist, pacote: PacoteIngestao) -> ResultadoItem:
+    export = pacote.exports.get("sitemaps")
+    if export is None:
+        return ResultadoItem(status="sem_dados")
+    afetadas = [
+        li for li in export.linhas
+        if li.get("status_code") != 200 or (li.get("total_urls") or 0) > 50000 or (li.get("total_urls") or 0) == 0
+    ]
+    return _resultado_lista(item, export.linhas, afetadas, export)
+
+
+def pagina_404_adequada(item: ItemChecklist, pacote: PacoteIngestao) -> ResultadoItem:
+    export = pacote.exports.get("pagina_404")
+    if export is None:
+        return ResultadoItem(status="sem_dados")
+    linha = export.linhas[0] if export.linhas else {}
+    aprovado = linha.get("status_code") == 404 and not linha.get("soft_404")
+    afetadas = [] if aprovado else [linha]
+    return _resultado_lista(item, export.linhas, afetadas, export)
+
+
+def metas_no_head(item: ItemChecklist, pacote: PacoteIngestao) -> ResultadoItem:
+    titles = pacote.exports.get("page_titles")
+    metas = pacote.exports.get("meta_description")
+    if titles is None or metas is None:
+        return ResultadoItem(status="sem_dados")
+    meta_por_url = {li.get("address"): (li.get("meta_description") or "") for li in metas.linhas}
+    afetadas = []
+    for li in titles.linhas:
+        title = (li.get("title") or "").strip()
+        meta = meta_por_url.get(li.get("address"), "").strip()
+        if not title and not meta:
+            afetadas.append(li)
+    return _resultado_lista(item, titles.linhas, afetadas, titles)
+
+
+def hierarquia_headings(item: ItemChecklist, pacote: PacoteIngestao) -> ResultadoItem:
+    export = pacote.exports.get("h1")
+    if export is None:
+        return ResultadoItem(status="sem_dados")
+    if not any(li.get("h2_ocorrencias") is not None for li in export.linhas):
+        return ResultadoItem(status="sem_dados")
+    afetadas = [
+        li for li in export.linhas
+        if not (li.get("h1") or "") and (li.get("h2_ocorrencias") or 0) > 0
+    ]
+    return _resultado_lista(item, export.linhas, afetadas, export)
