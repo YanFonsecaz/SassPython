@@ -50,6 +50,8 @@ def _linha_casa(linha: dict, filtro: RegraFiltro) -> bool:
             return valor == filtro.valor or str(valor) == str(filtro.valor)
         case "regex":
             return valor is not None and re.search(str(filtro.valor), str(valor)) is not None
+        case "nao_regex":
+            return valor is None or re.search(str(filtro.valor), str(valor)) is None
         case "maior":
             numero = _coagir_numero(valor)
             return numero is not None and numero > filtro.valor
@@ -128,6 +130,9 @@ def avaliar_item(item: ItemChecklist, pacote: PacoteIngestao) -> ResultadoItem:
         status = "atencao"
     else:
         status = "reprovado"
+
+    if status == "reprovado" and regra.severidade_max == "atencao":
+        status = "atencao"
 
     return ResultadoItem(
         status=status,

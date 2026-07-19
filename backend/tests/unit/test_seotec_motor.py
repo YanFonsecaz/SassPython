@@ -231,3 +231,33 @@ def test_op_igual_matching_int_vs_str():
     ])
     r = avaliar_item(_item(regra), pacote)
     assert r.total_afetadas == 2
+
+
+def test_op_nao_regex():
+    regra = RegraItem(export="extracoes", tipo="contagem",
+                      filtro=RegraFiltro(campo="viewport", op="nao_regex", valor="width=device-width"))
+    pacote = _pacote(extracoes=[
+        {"address": "https://a/", "viewport": "width=device-width, initial-scale=1"},
+        {"address": "https://b/", "viewport": "width=1024"},
+        {"address": "https://c/", "viewport": None},
+    ])
+    r = avaliar_item(_item(regra, ["address", "viewport"]), pacote)
+    assert r.total_afetadas == 2  # b (não casa) e c (vazio)
+
+
+def test_severidade_max_atencao():
+    regra = RegraItem(export="directives", tipo="contagem",
+                      filtro=RegraFiltro(campo="meta_robots", op="regex", valor="noindex"),
+                      severidade_max="atencao")
+    pacote = _pacote(directives=[
+        {"address": f"https://a/{i}", "meta_robots": "noindex,follow"} for i in range(50)
+    ])
+    assert avaliar_item(_item(regra), pacote).status == "atencao"  # nunca reprovado
+
+
+def test_severidade_max_nao_afeta_aprovado():
+    regra = RegraItem(export="directives", tipo="contagem",
+                      filtro=RegraFiltro(campo="meta_robots", op="regex", valor="noindex"),
+                      severidade_max="atencao")
+    pacote = _pacote(directives=[{"address": "https://a/", "meta_robots": "index,follow"}])
+    assert avaliar_item(_item(regra), pacote).status == "aprovado"

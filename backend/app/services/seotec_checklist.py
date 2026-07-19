@@ -17,7 +17,7 @@ TOTAL_PESOS_ESPERADO = 940
 Fonte = Literal["sf", "manual", "gsc", "cwv-link"]
 Prioridade = Literal["low", "medium", "high", "very-high"]
 OpFiltro = Literal[
-    "vazio", "nao_vazio", "igual", "regex", "duplicado",
+    "vazio", "nao_vazio", "igual", "regex", "nao_regex", "duplicado",
     "maior", "menor", "entre", "len_maior",
 ]
 
@@ -27,7 +27,7 @@ class RegraFiltro(BaseModel):
 
     campo: str
     op: OpFiltro
-    valor: int | float | str | list[int | float] | None = None
+    valor: bool | int | float | str | list[int | float] | None = None
 
     @model_validator(mode="after")
     def _entre_exige_par_de_numeros(self) -> "RegraFiltro":
@@ -50,6 +50,8 @@ class RegraItem(BaseModel):
     limite_proporcao: float | None = None
     atencao_max: int = 0
     na_se_export_vazio: bool = False
+    severidade_max: Literal["reprovado", "atencao"] = "reprovado"
+    parametros: dict[str, str] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _consistencia(self) -> "RegraItem":

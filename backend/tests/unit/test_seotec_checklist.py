@@ -70,3 +70,12 @@ def test_yaml_invalido_falha(tmp_path, monkeypatch):
     recarregar_checklist()
     with pytest.raises(Exception):
         carregar_checklist()
+
+
+def test_regra_parametros_e_severidade():
+    r = RegraItem(export="structured_data", tipo="custom", funcao="uso_tipo_schema",
+                  parametros={"tipo": "Article"}, severidade_max="atencao")
+    assert r.parametros["tipo"] == "Article"
+    with pytest.raises(Exception):
+        RegraItem(export="x", tipo="contagem", severidade_max="invalida",
+                  filtro={"campo": "a", "op": "vazio"})
