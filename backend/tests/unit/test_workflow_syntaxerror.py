@@ -40,6 +40,7 @@ def test_worker_imports():
         "executar_indexar_site",
         "executar_consolidador_cwv",
         "executar_relatorio_cwv",
+        "executar_workflow_seotec",
     }
     assert ws.max_tries == 3
     assert ws.job_timeout > 0
