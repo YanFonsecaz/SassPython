@@ -114,6 +114,31 @@ async def executar_auditoria_seotec(execucao_id: str, crawl_id: str) -> None:
     async with async_session_factory() as db:
         crawl = await db.get(SeoCrawl, crawl_id)
         execucao = await db.get(ExecucaoFerramenta, execucao_id)
+        if crawl is None or execucao is None:
+            logger.error(
+                "SEOTEC: crawl ou execução inexistente execucao=%s crawl=%s",
+                execucao_id, crawl_id,
+            )
+            erro_msg = "crawl ou execução inexistente"
+            if execucao is not None:
+                if crawl is not None:
+                    fase_destino_orfa = crawl.fase_destino
+                else:
+                    fase_destino_orfa = (execucao.entrada_json or {}).get(
+                        "fase_destino", "before"
+                    )
+                custo_orfa = calcular_custo_seo_tecnico(fase_destino_orfa)
+                await credito_service.liberar_reserva(
+                    db, str(execucao.usuario_id), custo_orfa
+                )
+                execucao.status = "falhou"
+                execucao.erro_msg = erro_msg
+            if crawl is not None:
+                crawl.status = "erro"
+                crawl.erro_msg = erro_msg
+            await db.commit()
+            caminho.unlink(missing_ok=True)
+            return
         crawl.status = "processando"
         execucao.status = "executando"
         await db.commit()
