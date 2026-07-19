@@ -212,3 +212,24 @@ def test_avaliar_pacote_dados_estruturados():
     assert r["uso-do-tipo-de-esquema-product"].status == "atencao"
     assert r["nao-ha-erros-no-esquema-de-marcacao"].status == "reprovado"
     assert r["nao-ha-avisos-no-esquema-de-marcacao"].status == "atencao"
+
+
+def test_avaliar_pacote_hreflang_e_amp():
+    recarregar_checklist()
+    ck = carregar_checklist()
+    # site SEM hreflang/AMP: exports presentes e vazios -> na
+    vazio = _pacote(hreflang=[], amp=[])
+    r = avaliar_pacote(ck, vazio, faltantes=[])
+    assert r["links-de-retorno-ausentes"].status == "na"
+    assert r["amp-nao-indexavel"].status == "na"
+    # site COM problemas
+    cheio = _pacote(
+        hreflang=[{"address": "https://a/", "problema": "retorno_ausente"},
+                  {"address": "https://b/", "problema": None}],
+        amp=[{"address": "https://a/", "amp_url": "https://a/amp/", "problema": "html_nao_amp"}],
+    )
+    r2 = avaliar_pacote(ck, cheio, faltantes=[])
+    assert r2["links-de-retorno-ausentes"].status == "reprovado"
+    assert r2["diretiva-de-idioma-alternativo-hreflang-no-cabecalho-do-codigo-fonte"].status == "aprovado"
+    assert r2["html-declarada-como-amp-html"].status == "reprovado"
+    assert r2["uso-de-urls-hreflang-com-codigo-de-status-200"].status == "aprovado"

@@ -480,3 +480,121 @@ regras:
     regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: VideoObject}}
   uso-do-tipo-de-esquema-website:
     regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: WebSite}}
+  uso-do-atributo-lang-html-lang-pt-br-html:
+    regra:
+      export: extracoes
+      tipo: contagem
+      filtro: {campo: lang, op: vazio}
+    evidencia: {colunas: [address, lang]}
+  diretiva-de-idioma-alternativo-hreflang-no-cabecalho-do-codigo-fonte:
+    regra: {export: hreflang, tipo: existencia, campo: address, na_se_export_vazio: true}
+    evidencia: {colunas: [address]}
+  uso-de-urls-hreflang-com-codigo-de-status-200:
+    regra:
+      export: hreflang
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: url_nao_200}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, problema]}
+  urls-hreflang-nao-vinculadas:
+    regra:
+      export: hreflang
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: nao_vinculada}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, problema]}
+  links-de-retorno-ausentes:
+    regra:
+      export: hreflang
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: retorno_ausente}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, problema]}
+  links-de-retorno-de-idioma-e-regiao-inconsistentes:
+    regra:
+      export: hreflang
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: retorno_inconsistente}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, problema]}
+  links-de-retorno-nao-canonicos:
+    regra:
+      export: hreflang
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: retorno_nao_canonico}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, problema]}
+  links-de-retorno-noindex:
+    regra:
+      export: hreflang
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: retorno_noindex}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, problema]}
+  codigos-de-idioma-e-regiao-incorretos:
+    regra:
+      export: hreflang
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: codigo_invalido}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, problema]}
+  entradas-multiplas:
+    regra:
+      export: hreflang
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: entradas_multiplas}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, problema]}
+  auto-referencia-ausente:
+    regra:
+      export: hreflang
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: auto_referencia_ausente}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, problema]}
+  nao-usando-canonico:
+    regra:
+      export: hreflang
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: canonical_ausente}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, problema]}
+  x-default-ausente:
+    regra:
+      export: hreflang
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: x_default_ausente}
+      na_se_export_vazio: true
+      severidade_max: atencao
+    evidencia: {colunas: [address, problema]}
+  uso-de-paginas-amp-em-amp-estrutura-de-url:
+    regra: {export: amp, tipo: existencia, campo: amp_url, na_se_export_vazio: true}
+    evidencia: {colunas: [address, amp_url]}
+  uso-de-rel-canonical-em-pagina-amp-para-pagina-regular:
+    regra:
+      export: amp
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: canonical_ausente}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, amp_url, problema]}
+  uso-de-rel-alternate-em-pagina-regular-para-pagina-amp:
+    regra:
+      export: amp
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: alternate_ausente}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, amp_url, problema]}
+  html-declarada-como-amp-html:
+    regra:
+      export: amp
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: html_nao_amp}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, amp_url, problema]}
+  amp-nao-indexavel:
+    regra:
+      export: amp
+      tipo: contagem
+      filtro: {campo: problema, op: igual, valor: nao_indexavel}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, amp_url, problema]}

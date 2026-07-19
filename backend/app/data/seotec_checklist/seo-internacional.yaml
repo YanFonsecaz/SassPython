@@ -25,6 +25,16 @@ itens:
 
     Ex.: páginas em espanhol com tag <html lang="es-ES"> serão servidas a endereços de IP em países que
     falam espanhol.'
+  regra:
+    export: extracoes
+    tipo: contagem
+    filtro:
+      campo: lang
+      op: vazio
+  evidencia:
+    colunas:
+    - address
+    - lang
 - slug: diretiva-de-idioma-alternativo-hreflang-no-cabecalho-do-codigo-fonte
   nome: Diretiva de idioma alternativo HREFLANG no cabeçalho do Código Fonte
   peso: 9
@@ -48,6 +58,14 @@ itens:
 
 
     Ex.: páginas em espanhol com hreflang=es serão servidas a endereços de IP em países que falam espanhol.'
+  regra:
+    export: hreflang
+    tipo: existencia
+    campo: address
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
 - slug: uso-de-urls-hreflang-com-codigo-de-status-200
   nome: Uso de URLs hreflang com código de status 200
   peso: 9
@@ -64,6 +82,18 @@ itens:
     ou 5XX (erros de servidor).
   importancia: As URLs hreflang devem ser rastreáveis ​​e indexáveis ​​e, portanto, as URLs não 200 são
     tratados como erros e ignoradas pelos mecanismos de pesquisa.
+  regra:
+    export: hreflang
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: url_nao_200
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - problema
 - slug: urls-hreflang-nao-vinculadas
   nome: URLs Hreflang não vinculadas
   peso: 9
@@ -81,6 +111,18 @@ itens:
     pode ser um sinal de um problema com links internos ou com os URLs contidos na anotação hreflang.
     Se hreflang estiver configurado em vários domínios e você estiver rastreando apenas um único domínio,
     isso será sinalizado. Considere usar o recurso CDNs para rastrear vários domínios neste cenário.
+  regra:
+    export: hreflang
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: nao_vinculada
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - problema
 - slug: links-de-retorno-ausentes
   nome: Links de retorno ausentes
   peso: 9
@@ -97,6 +139,18 @@ itens:
     a página Y deve ter um link de retorno.
   importancia: Nenhum link de retorno especificado significa que as anotações hreflang podem ser ignoradas
     ou não interpretadas corretamente.
+  regra:
+    export: hreflang
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: retorno_ausente
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - problema
 - slug: links-de-retorno-de-idioma-e-regiao-inconsistentes
   nome: Links de retorno de idioma e região inconsistentes
   peso: 9
@@ -119,6 +173,18 @@ itens:
 
 
     Ex.: páginas em espanhol com hreflang=es serão servidas a endereços de IP em países que falam espanhol.'
+  regra:
+    export: hreflang
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: retorno_inconsistente
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - problema
 - slug: links-de-retorno-nao-canonicos
   nome: Links de retorno não canônicos
   peso: 8
@@ -133,6 +199,18 @@ itens:
   descricao: Links de retorno que vão para URLs que não são as versões canônicas.
   importancia: Hreflang deve incluir apenas versões canônicas/válidas das URLs. Do contrário, enviaremos
     informações conflitantes ao Google.
+  regra:
+    export: hreflang
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: retorno_nao_canonico
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - problema
 - slug: links-de-retorno-noindex
   nome: Links de retorno Noindex
   peso: 9
@@ -147,6 +225,18 @@ itens:
   descricao: Links de retorno que possuem uma metatag 'noindex'.
   importancia: Todas as páginas de um conjunto devem ser indexáveis ​​e, portanto, qualquer URL de retorno
     com 'noindex' pode resultar na ignorância do relacionamento hreflang.
+  regra:
+    export: hreflang
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: retorno_noindex
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - problema
 - slug: codigos-de-idioma-e-regiao-incorretos
   nome: Códigos de idioma e região incorretos
   peso: 9
@@ -168,6 +258,18 @@ itens:
 
 
     Ex.: páginas em espanhol com hreflang=es serão servidas a endereços de IP em países que falam espanhol.'
+  regra:
+    export: hreflang
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: codigo_invalido
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - problema
 - slug: entradas-multiplas
   nome: Entradas múltiplas
   peso: 9
@@ -191,6 +293,18 @@ itens:
 
 
     Ex.: páginas em espanhol com hreflang=es serão servidas a endereços de IP em países que falam espanhol.'
+  regra:
+    export: hreflang
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: entradas_multiplas
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - problema
 - slug: auto-referencia-ausente
   nome: Auto-referência ausente
   peso: 9
@@ -206,6 +320,18 @@ itens:
   importancia: Anteriormente, era um requisito ter uma hreflang de autorreferência, mas o Google atualizou
     suas diretrizes para dizer que isso é opcional. No entanto, é uma boa prática e geralmente mais fácil
     incluir um atributo de autorreferência.
+  regra:
+    export: hreflang
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: auto_referencia_ausente
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - problema
 - slug: nao-usando-canonico
   nome: Não usando canônico
   peso: 9
@@ -220,6 +346,18 @@ itens:
   descricao: URLs que não usam a URL canônica na página, em sua própria anotação hreflang.
   importancia: Hreflang deve incluir apenas versões canônicas/válidas das URLs. Do contrário, enviaremos
     informações conflitantes ao Google.
+  regra:
+    export: hreflang
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: canonical_ausente
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - problema
 - slug: x-default-ausente
   nome: X-Default ausente
   peso: 9
@@ -233,3 +371,16 @@ itens:
   fonte: sf
   descricao: URLs sem um atributo hreflang X-Default.
   importancia: Isso é opcional e não necessariamente um erro ou problema.
+  regra:
+    export: hreflang
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: x_default_ausente
+    na_se_export_vazio: true
+    severidade_max: atencao
+  evidencia:
+    colunas:
+    - address
+    - problema

@@ -32,6 +32,15 @@ itens:
   importancia: 'Apesat de ter três URls diferentes, com origens diferentes, para essencialmente o mesmo
     conteúdo ser confuso, existem duas razões principais porque essas URLs diferentes existem: caching
     e pre-renderização. Ambos são grandes benefícios para a velocidade do AMP, mas exigem novas URLs.'
+  regra:
+    export: amp
+    tipo: existencia
+    campo: amp_url
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - amp_url
 - slug: uso-de-rel-canonical-em-pagina-amp-para-pagina-regular
   nome: Uso de rel=canonical em página AMP para página regular
   peso: 8
@@ -50,6 +59,19 @@ itens:
     \ for somente AMP, a tag canonical deve apontar a si mesma. \n\nSe não existir tag canonical, os motores\
     \ de busca podem não considerar o HTML válido e podem não indexar a página corretamente ou incluí-la\
     \ em resultados de pesquisa."
+  regra:
+    export: amp
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: canonical_ausente
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - amp_url
+    - problema
 - slug: uso-de-rel-alternate-em-pagina-regular-para-pagina-amp
   nome: Uso de rel=alternate em página regular para página AMP
   peso: 8
@@ -69,6 +91,19 @@ itens:
 
 
     Nesse caso, ela refere à página AMP que foi criada a partir da página HTML original.'
+  regra:
+    export: amp
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: alternate_ausente
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - amp_url
+    - problema
 - slug: html-declarada-como-amp-html
   nome: HTML declarada como amp html
   peso: 10
@@ -85,6 +120,19 @@ itens:
     compatíveis com AMP.
   importancia: Você pode pensar no HTML AMP como como o HTML seria caso tivesse sido concebido considerando
     somente a performance mobile.
+  regra:
+    export: amp
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: html_nao_amp
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - amp_url
+    - problema
 - slug: amp-nao-indexavel
   nome: AMP não-indexável
   peso: 10
@@ -103,3 +151,16 @@ itens:
     \ for somente AMP, a tag canonical deve apontar a si mesma. \n\nSe não existir tag canonical, os motores\
     \ de busca podem não considerar o HTML válido e podem não indexar a página corretamente ou incluí-la\
     \ em resultados de pesquisa."
+  regra:
+    export: amp
+    tipo: contagem
+    filtro:
+      campo: problema
+      op: igual
+      valor: nao_indexavel
+    na_se_export_vazio: true
+  evidencia:
+    colunas:
+    - address
+    - amp_url
+    - problema
