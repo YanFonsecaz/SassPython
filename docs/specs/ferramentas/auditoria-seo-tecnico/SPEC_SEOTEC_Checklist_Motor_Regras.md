@@ -1,8 +1,8 @@
 # SPEC — Seed do checklist (125 itens) + motor de regras determinístico
 
-**Status:** 📋 planejado
+**Status:** 🚧 em desenvolvimento
 **Capacidade:** `auditoria-seo-tecnico`
-**Escopo:** backend — `backend/app/kb/seotec_checklist/*.yaml`, `backend/app/services/seotec_checklist.py`, `backend/app/services/seotec_motor.py`
+**Escopo:** backend — `backend/app/data/seotec_checklist/*.yaml`, `backend/app/services/seotec_checklist.py`, `backend/app/services/seotec_motor.py`
 **Créditos:** não cobra (motor é determinístico, zero LLM)
 **Depende de:** [SPEC_SEOTEC_Conector_Local_SF](SPEC_SEOTEC_Conector_Local_SF.md) (contrato de ingestão)
 
@@ -143,4 +143,5 @@ completa (comparação HTML vs DOM renderizado fica no que o SF entrega).
 
 | Data | Mudança | Commit |
 |---|---|---|
+| 2026-07-18 | Onda 1 implementada (fundação de dados: seed, modelos 0029, ingestão, motor 31 regras, score, workflow, rotas, e2e) | b70c771 |
 | 2026-07-17 | Spec inicial; classificação dos 125 itens | — |

@@ -1,6 +1,6 @@
 # SPEC — Ferramenta Auditoria de SEO Técnico (spec-mãe)
 
-**Status:** 📋 planejado
+**Status:** 🚧 em desenvolvimento
 **Capacidade:** `auditoria-seo-tecnico`
 **Escopo:** ambos — backend (workflow, rotas, modelos, worker) + frontend (páginas da ferramenta) + conector local
 **Código:** `backend/app/agents/seotec/*`, `backend/app/routers/ferramentas_seo_tecnico.py`, `backend/app/services/seotec_*`, `backend/app/models/seo_*.py`, `frontend/src/app/(dashboard)/ferramentas/auditoria-seo-tecnico/*`, `frontend/src/components/seotec/*`
@@ -46,7 +46,7 @@ não técnicos (PRD); a UI esconde a mecânica (código de pareamento + 1 comand
 | `seo_item_resultado` | `id`, `auditoria_id`, `item_slug`, `status_antes`, `status_depois`, `modo` (`auto`/`manual`), `diagnostico`, `recomendacao`, `evidencias_json` (JSONB **tipado** — padrão `SPEC_CWV_Contratos_JSONB_Tipados`), `status_cliente`, `validacao_seo`, `observacao_cliente`, `observacao_seo`, `atualizado_em` | 1 linha por item do checklist por auditoria |
 
 Definição dos itens (categoria, peso, prioridade, textos didáticos, regra) **não vai para o DB**:
-vive em YAML versionado (`backend/app/kb/seotec_checklist/*.yaml`), carregado como a KB do CWV
+vive em YAML versionado (`backend/app/data/seotec_checklist/*.yaml`), carregado como a KB do CWV
 (`services/cwv_kb.py` → novo `services/seotec_checklist.py`). Ver
 [SPEC_SEOTEC_Checklist_Motor_Regras](SPEC_SEOTEC_Checklist_Motor_Regras.md).
 
@@ -137,4 +137,5 @@ clientes diferentes · edição da receita de exports pela UI.
 
 | Data | Mudança | Commit |
 |---|---|---|
+| 2026-07-18 | Onda 1 implementada (fundação de dados: seed, modelos 0029, ingestão, motor 31 regras, score, workflow, rotas, e2e); decisão: checklist YAML vive em `backend/app/data/seotec_checklist/`, não `app/kb/` | b70c771 |
 | 2026-07-17 | Spec inicial (design aprovado em brainstorming) | — |
