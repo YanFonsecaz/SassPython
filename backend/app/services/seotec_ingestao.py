@@ -17,6 +17,9 @@ SCHEMA_VERSION = 1
 EXPORTS_CONHECIDOS: set[str] = {
     "robots", "sitemaps", "response_codes", "internal", "page_titles",
     "meta_description", "h1", "images", "redirects",
+    "directives", "pagina_404", "orfas", "sitemap_response_codes",
+    "extracoes", "structured_data", "hreflang", "amp",
+    "canonicals", "content", "security", "seguranca_site",
 }
 
 MAX_LINHAS_POR_EXPORT = 500

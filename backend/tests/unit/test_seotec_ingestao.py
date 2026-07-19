@@ -59,6 +59,9 @@ def test_export_desconhecido_ignorado():
     assert EXPORTS_CONHECIDOS == {
         "robots", "sitemaps", "response_codes", "internal", "page_titles",
         "meta_description", "h1", "images", "redirects",
+        "directives", "pagina_404", "orfas", "sitemap_response_codes",
+        "extracoes", "structured_data", "hreflang", "amp",
+        "canonicals", "content", "security", "seguranca_site",
     }
 
 
@@ -150,3 +153,12 @@ def test_orcamento_total_excedido_marca_restantes_faltantes(monkeypatch):
     assert r.pacote is not None
     assert set(r.faltantes) == {"page_titles", "h1", "images"}
     assert any("orçamento" in e for e in r.erros)
+
+
+def test_exports_novos_aceitos():
+    zip_bytes = montar_pacote_zip({
+        "hreflang": [{"address": "https://a/", "problema": "retorno_ausente"}],
+        "seguranca_site": [{"ssl_valido": True, "hsts": False}],
+    })
+    r = validar_pacote(zip_bytes, exports_requeridos={"hreflang"})
+    assert r.erros == [] and "hreflang" in r.pacote.exports and "seguranca_site" in r.pacote.exports
