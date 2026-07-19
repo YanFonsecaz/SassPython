@@ -219,7 +219,10 @@ async def upload_pacote(
         execucao.status = "falhou"
         crawl.status = "erro"
         crawl.erro_msg = "Falha ao enfileirar workflow"
-        await db.flush()
+        # Deletar zip órfão antes de committar
+        (Path(settings.seotec_upload_dir) / f"{crawl.id}.zip").unlink(missing_ok=True)
+        # commit antes do raise: get_db faz rollback em exceção e descartaria os writes compensatórios
+        await db.commit()
         raise HTTPException(status_code=503, detail="Fila indisponível, tente novamente") from exc
 
     return {"crawl_id": str(crawl.id), "execucao_id": str(execucao.id), "custo": custo,
