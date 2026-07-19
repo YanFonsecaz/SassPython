@@ -127,6 +127,14 @@ def test_na_se_export_vazio():
     assert avaliar_item(_item(regra), _pacote(redirects=[])).status == "na"
 
 
+def test_existencia_na_se_export_vazio():
+    """Item existencia (ex.: certificado-ssl) não pode reprovar quando o export
+    (seguranca_site) veio vazio — sem dados nunca reprova, deve ser `na`."""
+    regra = RegraItem(export="seguranca_site", tipo="existencia", campo="ssl_valido",
+                      na_se_export_vazio=True)
+    assert avaliar_item(_item(regra), _pacote(seguranca_site=[])).status == "na"
+
+
 def test_existencia_truncada_quando_mais_de_100_linhas():
     regra = RegraItem(export="internal", tipo="existencia", campo="inexistente")
     pacote = _pacote(internal=[{"address": f"https://a/{i}"} for i in range(150)])

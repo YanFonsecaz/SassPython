@@ -86,6 +86,10 @@ Exports da receita v1 — 21 canônicos ao todo (`EXPORTS_CONHECIDOS` em `seotec
 | `security` | `address, links_http` (int), `recursos_http` (int) | Security tab |
 | `seguranca_site` | `ssl_valido` (bool), `hsts` (bool) — 1 linha resumo | agregado do conector |
 
+Todos os 21 exports são **sempre emitidos** pelo pacote, mesmo vazios (`[]`); a omissão de um
+export é tratada como ingestão parcial (`sem_dados` no item), enquanto export vazio permite o
+motor derivar `na` onde aplicável. `seguranca_site` sempre traz sua linha única de resumo.
+
 Referência completa da tabela: `docs/superpowers/plans/2026-07-19-seotec-onda1b-regras-completas.md`
 (seção "Contrato: 12 exports novos").
 

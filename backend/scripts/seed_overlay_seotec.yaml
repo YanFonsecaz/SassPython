@@ -379,7 +379,7 @@ regras:
     regra:
       export: internal
       tipo: proporcao
-      filtro: {campo: address, op: regex, valor: "^https?://[^/]+(/[^/]+){5,}"}
+      filtro: {campo: address, op: regex, valor: "^https?://[^/]+(/[^/]+){6,}"}
       limite_proporcao: 0.2
     evidencia: {colunas: [address, crawl_depth]}
   tag-viewport-configurada-corretamente:
@@ -639,10 +639,10 @@ regras:
       filtro: {campo: multiplas, op: igual, valor: true}
     evidencia: {colunas: [address, canonical]}
   certificado-ssl:
-    regra: {export: seguranca_site, tipo: existencia, campo: ssl_valido}
+    regra: {export: seguranca_site, tipo: existencia, campo: ssl_valido, na_se_export_vazio: true}
     evidencia: {colunas: [ssl_valido]}
   sem-suporte-hsts:
-    regra: {export: seguranca_site, tipo: existencia, campo: hsts}
+    regra: {export: seguranca_site, tipo: existencia, campo: hsts, na_se_export_vazio: true}
     evidencia: {colunas: [hsts]}
   paginas-https-levando-a-paginas-http:
     regra:

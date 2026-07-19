@@ -28,6 +28,7 @@ itens:
     export: seguranca_site
     tipo: existencia
     campo: ssl_valido
+    na_se_export_vazio: true
   evidencia:
     colunas:
     - ssl_valido
@@ -68,6 +69,7 @@ itens:
     export: seguranca_site
     tipo: existencia
     campo: hsts
+    na_se_export_vazio: true
   evidencia:
     colunas:
     - hsts

@@ -180,7 +180,7 @@ itens:
     filtro:
       campo: address
       op: regex
-      valor: ^https?://[^/]+(/[^/]+){5,}
+      valor: ^https?://[^/]+(/[^/]+){6,}
     limite_proporcao: 0.2
   evidencia:
     colunas:
