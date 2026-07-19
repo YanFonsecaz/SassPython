@@ -143,5 +143,6 @@ completa (comparação HTML vs DOM renderizado fica no que o SF entrega).
 
 | Data | Mudança | Commit |
 |---|---|---|
+| 2026-07-19 | Onda 1b: motor completo 98/98 regras; contrato ganha 12 exports (21 canônicos); decisões: tipo-schema ausente→atencao, hreflang/AMP sem uso→na | — |
 | 2026-07-18 | Onda 1 implementada (fundação de dados: seed, modelos 0030, ingestão, motor 31 regras, score, workflow, rotas, e2e) | b70c771 |
 | 2026-07-17 | Spec inicial; classificação dos 125 itens | — |

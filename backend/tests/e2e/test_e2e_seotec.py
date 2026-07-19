@@ -88,7 +88,7 @@ def _pacote_fixture() -> bytes:
              "meta_description_length": 200, "ocorrencias": 1},
         ],
         "h1": [
-            {"address": "https://exemplo.com.br/", "h1": "Home", "ocorrencias": 1},
+            {"address": "https://exemplo.com.br/", "h1": "Home", "ocorrencias": 1, "h2_ocorrencias": 2},
         ],
         "internal": [
             {"address": "https://exemplo.com.br/", "status_code": 200, "crawl_depth": 0,
@@ -101,6 +101,18 @@ def _pacote_fixture() -> bytes:
         "sitemaps": [{"sitemap_url": "https://exemplo.com.br/sitemap.xml", "status_code": 200, "total_urls": 10}],
         "images": [],
         "redirects": [],
+        "directives": [{"address": "https://exemplo.com.br/", "meta_robots": "index,follow"}],
+        "pagina_404": [{"url_testada": "https://exemplo.com.br/nao-existe-xyz", "status_code": 404, "soft_404": False}],
+        "orfas": [],
+        "sitemap_response_codes": [{"address": "https://exemplo.com.br/", "status_code": 200, "sitemap_url": "https://exemplo.com.br/sitemap.xml"}],
+        "extracoes": [{"address": "https://exemplo.com.br/", "nav_html": "<nav>", "viewport": "width=device-width, initial-scale=1", "doctype": "html", "meta_refresh": None, "lang": "pt-BR", "iframe_count": 0, "flash_count": 0, "lorem_ipsum_count": 0}],
+        "structured_data": [{"address": "https://exemplo.com.br/", "tipos": ["Organization", "WebSite"], "erros": 0, "avisos": 0}],
+        "hreflang": [],
+        "amp": [],
+        "canonicals": [{"address": "https://exemplo.com.br/", "canonical": "https://exemplo.com.br/", "quebrado": False, "multiplas": False}],
+        "content": [],
+        "security": [{"address": "https://exemplo.com.br/", "links_http": 0, "recursos_http": 0}],
+        "seguranca_site": [{"ssl_valido": True, "hsts": True}],
     })
 
 
@@ -145,10 +157,16 @@ async def rodar() -> None:
             assert por_slug["ha-um-robots-txt-configurado-corretamente-no-site"].status_antes == "aprovado"
             assert por_slug["erros-no-lado-do-cliente-40x"].status_antes == "reprovado"
             assert por_slug["redirecionamentos-302"].status_antes == "na"
-            assert por_slug["conteudo-duplicado"].status_antes == "sem_dados"
+            assert por_slug["conteudo-duplicado"].status_antes == "aprovado"
             assert por_slug["analise-de-logfile"].modo == "manual"
             ev = por_slug["title-tag-ausente-ou-vazia"].evidencias_json
             assert ev["total_afetadas"] == 1 and ev["amostra"]
+            assert por_slug["certificado-ssl"].status_antes == "aprovado"
+            assert por_slug["links-de-retorno-ausentes"].status_antes == "na"
+            assert por_slug["uso-do-tipo-de-esquema-website"].status_antes == "aprovado"
+            assert por_slug["uso-do-tipo-de-esquema-product"].status_antes == "atencao"
+            auto_sem_dados = [i.item_slug for i in itens if i.modo == "auto" and i.status_antes == "sem_dados"]
+            assert auto_sem_dados == [], f"itens auto sem dados com pacote completo: {auto_sem_dados}"
 
         logger.info("[OK] E2E SEOTEC completo — score_antes=%s", auditoria.score_antes)
     finally:

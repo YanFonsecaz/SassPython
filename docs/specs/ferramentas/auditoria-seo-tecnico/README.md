@@ -1,6 +1,6 @@
 # Auditoria de SEO Técnico
 
-**Estado:** 🚧 parcial (Onda 1 implementada — upload manual + motor parcial: 31 regras de 98 itens SF; restantes na Onda 1b) · **Rota:** `/ferramentas/auditoria-seo-tecnico` · **Slug:** `auditoria_seo_tecnico`
+**Estado:** 🚧 parcial (Onda 1 implementada — upload manual; Onda 1b: motor de regras completo, 98/98 itens `fonte: sf` cobertos) · **Rota:** `/ferramentas/auditoria-seo-tecnico` · **Slug:** `auditoria_seo_tecnico`
 **Créditos (proposta):** `30` por auditoria (fase before) · `15` por re-crawl (fase after) — a definir em `calcular_custo_seo_tecnico()`
 **Código (previsto):** `backend/app/agents/seotec/*` · `routers/ferramentas_seo_tecnico.py` · `services/seotec_*` · `models/seo_auditoria.py`, `seo_crawl.py`, `seo_item_resultado.py` · conector: repositório/pacote `sf-connector`
 

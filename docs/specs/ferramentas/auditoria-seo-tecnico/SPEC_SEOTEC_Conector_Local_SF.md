@@ -66,13 +66,28 @@ custom extraction** exigidos pelos itens do checklist (ex.: presença de tag GA,
 doctype, meta-refresh, lorem ipsum, atributo `lang`) — ver
 [SPEC_SEOTEC_Checklist_Motor_Regras](SPEC_SEOTEC_Checklist_Motor_Regras.md) §3.3.
 
-Exports mínimos da receita v1 (tabs/bulk do SF):
+Exports da receita v1 — 21 canônicos ao todo (`EXPORTS_CONHECIDOS` em `seotec_ingestao.py`), sendo
+9 da fundação Onda 1 (`robots`, `sitemaps`, `response_codes`, `internal`, `page_titles`,
+`meta_description`, `h1` — ganha a coluna opcional `h2_ocorrencias`, `images`, `redirects`) +
+12 novos da Onda 1b, tabela canônica (formato por linha: `{"linhas": [...], "total_antes_corte": N}`):
 
-`Internal:All` · `Page Titles:*` · `Meta Description:*` · `H1:*`/`H2:*` · `Response Codes:*` ·
-`Redirects (chains report)` · `Canonicals:*` · `Directives:*` · `Hreflang:*` ·
-`Structured Data:*` (validation errors/warnings + types) · `Images:*` · `Links:All Inlinks (órfãs)` ·
-`Sitemaps:*` · `Security:*` · `Content:*` (word count, duplicates) · `Custom Search/Extraction:*` ·
-`Crawl Overview report`
+| Export | Colunas por linha | Fonte SF |
+|---|---|---|
+| `directives` | `address, meta_robots` (string, ex. "noindex,follow") | Directives tab |
+| `pagina_404` | `url_testada, status_code, soft_404` (bool) — 1 linha | teste de URL inexistente |
+| `orfas` | `address, origem` ("sitemap"/"gsc") | Sitemaps × crawl |
+| `sitemap_response_codes` | `address, status_code, sitemap_url` | URLs do sitemap re-checadas |
+| `extracoes` | `address, nav_html, viewport, doctype, meta_refresh, lang, iframe_count, flash_count, lorem_ipsum_count` | Custom Search/Extraction |
+| `structured_data` | `address, tipos` (lista de strings), `erros` (int), `avisos` (int) | Structured Data tab |
+| `hreflang` | `address, problema` — 1 linha por (página, problema); tokens: `url_nao_200, nao_vinculada, retorno_ausente, retorno_inconsistente, retorno_nao_canonico, retorno_noindex, codigo_invalido, entradas_multiplas, auto_referencia_ausente, canonical_ausente, x_default_ausente`; linha `{address, problema: null}` = página com hreflang OK | Hreflang reports |
+| `amp` | `address, amp_url, problema` — tokens: `canonical_ausente, alternate_ausente, html_nao_amp, nao_indexavel`; `problema: null` = AMP ok | AMP tab |
+| `canonicals` | `address, canonical, quebrado` (bool), `multiplas` (bool) | Canonicals tab |
+| `content` | `address, near_duplicate_de` (url ou null), `similaridade` (float) | Content/Duplicates |
+| `security` | `address, links_http` (int), `recursos_http` (int) | Security tab |
+| `seguranca_site` | `ssl_valido` (bool), `hsts` (bool) — 1 linha resumo | agregado do conector |
+
+Referência completa da tabela: `docs/superpowers/plans/2026-07-19-seotec-onda1b-regras-completas.md`
+(seção "Contrato: 12 exports novos").
 
 ### 3.2 Rotas de dispositivo (backend)
 
@@ -130,4 +145,5 @@ corporativos exóticos · rodar crawl de URLs autenticadas.
 
 | Data | Mudança | Commit |
 |---|---|---|
+| 2026-07-19 | Onda 1b: motor completo 98/98 regras; contrato ganha 12 exports (21 canônicos); decisões: tipo-schema ausente→atencao, hreflang/AMP sem uso→na | — |
 | 2026-07-17 | Spec inicial | — |

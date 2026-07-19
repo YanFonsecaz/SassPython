@@ -253,3 +253,21 @@ def test_avaliar_pacote_duplicado_e_seguranca():
     assert r["sem-suporte-hsts"].status == "reprovado"
     assert r["paginas-https-levando-a-paginas-http"].status == "reprovado"
     assert r["paginas-https-levando-a-recursos-http"].status == "aprovado"
+
+
+def test_avaliar_pacote_canonicals_quebrado_e_multiplas_reprovado():
+    """Match positivo dos filtros bool `igual: true` (Task 8): uma linha com
+    quebrado=True e outra com multiplas=True devem reprovar os itens
+    correspondentes — o teste de integração da Task 8 só cobria o caminho
+    False/aprovado."""
+    recarregar_checklist()
+    ck = carregar_checklist()
+    pacote = _pacote(
+        canonicals=[
+            {"address": "https://ex.com/a", "canonical": "https://ex.com/quebrado", "quebrado": True, "multiplas": False},
+            {"address": "https://ex.com/b", "canonical": "https://ex.com/b", "quebrado": False, "multiplas": True},
+        ],
+    )
+    r = avaliar_pacote(ck, pacote, faltantes=[])
+    assert r["link-canonical-quebrado"].status == "reprovado"
+    assert r["varias-urls-canonical"].status == "reprovado"
