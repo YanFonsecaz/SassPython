@@ -1,0 +1,235 @@
+categoria: SEO Internacional
+itens:
+- slug: uso-do-atributo-lang-html-lang-pt-br-html
+  nome: Uso do atributo lang (<html lang="pt-BR">...</html>)
+  peso: 10
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Sinaliza ao Google que idioma está sendo usado em uma página.
+  importancia: 'Independente de você ter conteúdo em diferentes idiomas em seu site, você deve sinalizar
+    ao Google qual o idioma original da páina.
+
+
+    Mas caso haja tradução, deve também garantir que a página apropriada seja servida ao usuário de pesquisa,
+    de acordo com a língua que ele está usando.
+
+
+    Os resultados serão servidos segundo a localização.
+
+
+    Ex.: páginas em espanhol com tag <html lang="es-ES"> serão servidas a endereços de IP em países que
+    falam espanhol.'
+- slug: diretiva-de-idioma-alternativo-hreflang-no-cabecalho-do-codigo-fonte
+  nome: Diretiva de idioma alternativo HREFLANG no cabeçalho do Código Fonte
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: 'Sinaliza ao Google que idioma está sendo usado em uma página.
+
+
+    Precisamos sempre garantir que essa tag seja colocada dentro da <head> do código-fonte de um site.'
+  importancia: 'Se você tem conteúdo em diferentes idiomas em seu site, você deve garantir que a página
+    apropriada seja servida ao usuário de pesquisa, de acordo com a língua que ele está usando.
+
+
+    Os resultados serão servidos segundo a localização.
+
+
+    Ex.: páginas em espanhol com hreflang=es serão servidas a endereços de IP em países que falam espanhol.'
+- slug: uso-de-urls-hreflang-com-codigo-de-status-200
+  nome: Uso de URLs hreflang com código de status 200
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: URLs contidas nas anotações hreflang rel=”alternate” que não têm um código de resposta 200,
+    como URLs bloqueados por robots.txt, sem respostas, 3XX (redirecionamentos), 4XX (erros do cliente)
+    ou 5XX (erros de servidor).
+  importancia: As URLs hreflang devem ser rastreáveis ​​e indexáveis ​​e, portanto, as URLs não 200 são
+    tratados como erros e ignoradas pelos mecanismos de pesquisa.
+- slug: urls-hreflang-nao-vinculadas
+  nome: URLs Hreflang não vinculadas
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Páginas que contêm uma ou mais URLs hreflang que só podem ser descobertas por meio de suas
+    anotações de link hreflang rel=”alternate”.
+  importancia: As anotações hreflang não passam no PageRank como uma tag âncora tradicional, então isso
+    pode ser um sinal de um problema com links internos ou com os URLs contidos na anotação hreflang.
+    Se hreflang estiver configurado em vários domínios e você estiver rastreando apenas um único domínio,
+    isso será sinalizado. Considere usar o recurso CDNs para rastrear vários domínios neste cenário.
+- slug: links-de-retorno-ausentes
+  nome: Links de retorno ausentes
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Hreflang é recíproco, portanto, todas as versões alternativas devem confirmar o relacionamento.
+    Quando a página X se vincula à página Y usando hreflang para especificá-la como página alternativa,
+    a página Y deve ter um link de retorno.
+  importancia: Nenhum link de retorno especificado significa que as anotações hreflang podem ser ignoradas
+    ou não interpretadas corretamente.
+- slug: links-de-retorno-de-idioma-e-regiao-inconsistentes
+  nome: Links de retorno de idioma e região inconsistentes
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Esse filtro inclui URLs com idioma inconsistente e links de retorno regionais para eles.
+    É aqui que um link de retorno tem um idioma ou valor regional diferente do que o próprio URL está
+    referenciando.
+  importancia: 'Se você tem conteúdo em diferentes idiomas em seu site, você deve garantir que a página
+    apropriada seja servida ao usuário de pesquisa, de acordo com a língua que ele está usando.
+
+
+    Os resultados serão servidos segundo a localização.
+
+
+    Ex.: páginas em espanhol com hreflang=es serão servidas a endereços de IP em países que falam espanhol.'
+- slug: links-de-retorno-nao-canonicos
+  nome: Links de retorno não canônicos
+  peso: 8
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Links de retorno que vão para URLs que não são as versões canônicas.
+  importancia: Hreflang deve incluir apenas versões canônicas/válidas das URLs. Do contrário, enviaremos
+    informações conflitantes ao Google.
+- slug: links-de-retorno-noindex
+  nome: Links de retorno Noindex
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Links de retorno que possuem uma metatag 'noindex'.
+  importancia: Todas as páginas de um conjunto devem ser indexáveis ​​e, portanto, qualquer URL de retorno
+    com 'noindex' pode resultar na ignorância do relacionamento hreflang.
+- slug: codigos-de-idioma-e-regiao-incorretos
+  nome: Códigos de idioma e região incorretos
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Isso simplesmente verifica se os valores de código de idioma (no formato ISO 639-1) e regional
+    opcional (no formato ISO 3166-1 Alpha 2) são válidos.
+  importancia: 'Se você tem conteúdo em diferentes idiomas em seu site, você deve garantir que a página
+    apropriada seja servida ao usuário de pesquisa, de acordo com a língua que ele está usando.
+
+
+    Os resultados serão servidos segundo a localização.
+
+
+    Ex.: páginas em espanhol com hreflang=es serão servidas a endereços de IP em países que falam espanhol.'
+- slug: entradas-multiplas
+  nome: Entradas múltiplas
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: URLs com várias entradas para um idioma ou código regional. Por exemplo, se a página X for
+    vinculada à página Y e Z usando a mesma anotação de valor 'en' hreflang. Esse filtro também selecionará
+    várias implementações, por exemplo, se as anotações hreflang forem descobertas como elementos de link
+    e por meio do cabeçalho HTTP.
+  importancia: 'Se você tem conteúdo em diferentes idiomas em seu site, você deve garantir que a página
+    apropriada seja servida ao usuário de pesquisa, de acordo com a língua que ele está usando.
+
+
+    Os resultados serão servidos segundo a localização.
+
+
+    Ex.: páginas em espanhol com hreflang=es serão servidas a endereços de IP em países que falam espanhol.'
+- slug: auto-referencia-ausente
+  nome: Auto-referência ausente
+  peso: 9
+  prioridade: medium
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: URLs sem sua própria auto-referência anotação hreflang rel=”alternate”.
+  importancia: Anteriormente, era um requisito ter uma hreflang de autorreferência, mas o Google atualizou
+    suas diretrizes para dizer que isso é opcional. No entanto, é uma boa prática e geralmente mais fácil
+    incluir um atributo de autorreferência.
+- slug: nao-usando-canonico
+  nome: Não usando canônico
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: URLs que não usam a URL canônica na página, em sua própria anotação hreflang.
+  importancia: Hreflang deve incluir apenas versões canônicas/válidas das URLs. Do contrário, enviaremos
+    informações conflitantes ao Google.
+- slug: x-default-ausente
+  nome: X-Default ausente
+  peso: 9
+  prioridade: medium
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: URLs sem um atributo hreflang X-Default.
+  importancia: Isso é opcional e não necessariamente um erro ou problema.

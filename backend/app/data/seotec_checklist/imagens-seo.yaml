@@ -1,0 +1,78 @@
+categoria: Imagens de SEO
+itens:
+- slug: nome-de-arquivo-com-palavras-chave-especificas
+  nome: Nome de Arquivo com Palavras-Chave Específicas
+  peso: 4
+  prioridade: low
+  implementacao: bom-ter
+  responsavel:
+  - marketing
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: Confirme se as palavras-chave principais que a página está tentando posicionar podem ser
+    encontradas dentro do nome do arquivo de imagem.
+  importancia: 'Uma das oportunidades de otimização mais fáceis e muitas vezes ignorada está nos nomes
+    dos arquivos de imagem em si. Eles devem usar algumas palavras-chave cuidadosamente selecionadas -
+    idealmente, palavras-chave que a imagem pode posicionar - e ocultar palavras de ligação (um, o, em,
+    de etc), e separar palavras-chave com hífens (ex: IMG-458752.jpg se tornaria ponte-brooklyn-noite.jpg).'
+- slug: tamanho-do-arquivo-de-imagem-100-kb
+  nome: Tamanho do Arquivo de Imagem (<100 kb)
+  peso: 6
+  prioridade: medium
+  implementacao: obrigatoria
+  responsavel:
+  - marketing
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: 'O mais importante é o tamanho real (em Kb) das imagens em si: sempre faça tudo para salvá-las
+    com menos de 100Kb, ou menos quando possível. Se um arquivo maior tiver que ser usado acima da dobra
+    (para imagens hero ou banners, por exemplo), pode ser útil salvar as imagens como JPGs progressivos,
+    em que as imagens começam a ser exibidas progressivamente na medida em que são carregadas (uma versão
+    borrada da imagem completa aparece e vai melhorando gradualmente na medida em que mais bytes são baixados).'
+  importancia: O tamanho das suas imagens afeta dramaticamente a velocidade de carregamento de um site.
+    Páginas mais rápidas sempre se traduzm em posições melhores, mais tráfego e mais conversões.
+  regra:
+    export: images
+    tipo: limiar
+    filtro:
+      campo: size_bytes
+      op: maior
+      valor: 102400
+    atencao_max: 5
+  evidencia:
+    colunas:
+    - address
+    - size_bytes
+- slug: texto-alt-faltando-revisao-e-otimizado-para-seo
+  nome: Texto ALT (faltando revisão e otimizado para SEO)
+  peso: 5
+  prioridade: medium
+  implementacao: bom-ter
+  responsavel:
+  - marketing
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: 'Ao contrário dos nomes de arquivos, escreva esses atributos de forma gramaticalmente coerente
+    e concisa: atributos alt são falados por softwares de acessibilidade e leitores de tela, e atributos
+    de título aparecem quando um visitante passa sobre uma imagem. Assim, não coloque palavras-chave demais
+    e varie!'
+  importancia: O tamanho das suas imagens afeta dramaticamente a velocidade de carregamento de um site.
+    Páginas mais rápidas sempre se traduzem em posições melhores, mais tráfego e mais conversões.
+  regra:
+    export: images
+    tipo: contagem
+    filtro:
+      campo: alt_text
+      op: vazio
+    atencao_max: 10
+  evidencia:
+    colunas:
+    - address
+    - alt_text

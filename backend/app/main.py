@@ -25,6 +25,7 @@ from app.routers import (
     ferramentas_inlinks,
     ferramentas_inlinks_reversos,
     ferramentas_parecer,
+    ferramentas_seo_tecnico,
     health,
     imagens,
 )
@@ -88,6 +89,7 @@ application.include_router(ferramentas_inlinks_reversos.router, prefix="/api/fer
 application.include_router(ferramentas_cwv.router, prefix="/api/ferramentas", tags=["ferramentas"])
 application.include_router(ferramentas_cwv_auditoria.router, prefix="/api/ferramentas", tags=["ferramentas"])
 application.include_router(ferramentas_parecer.router, prefix="/api/ferramentas", tags=["ferramentas"])
+application.include_router(ferramentas_seo_tecnico.router, prefix="/api/ferramentas", tags=["ferramentas"])
 application.include_router(admin_cwv.router, prefix="/api", tags=["admin"])
 application.include_router(creditos.router, prefix="/api/creditos", tags=["creditos"])
 application.include_router(billing.router, prefix="/api/billing", tags=["billing"])

@@ -1,0 +1,344 @@
+# Overlay do seed SEOTEC: fonte por item + regras determinísticas da Onda 1.
+# Slug ausente em `fontes` = erro no seed (garante cobertura dos 124).
+fontes:
+  # Problemas de Accessibilidade/Encontrabilidade
+  o-site-esta-sendo-indexado-de-forma-eficiente: manual
+  ha-um-robots-txt-configurado-corretamente-no-site: sf
+  sitemap-xml-encontrado-em-robots-txt: sf
+  sitemap-xml-otimizado: sf
+  uso-de-tags-de-meta-robots-follow-nofollow-index-noindex: sf
+  configuracao-adequada-para-pagina-de-erro-404: sf
+  erros-no-lado-do-cliente-40x: sf
+  erros-no-lado-do-servidor-50x: sf
+  pagina-orfa-sem-links-internos-recebidos: sf
+  analise-de-logfile: manual
+  # Sitemaps XML da Página
+  site-tem-sitemap-xml: sf
+  sitemap-s-xml-da-pagina-estao-listados-no-gsc: gsc
+  sitemap-xml-da-pagina-com-links-quebrados: sf
+  # Arquitetura
+  breadcrumbs-encontrados-e-disponiveis-em-todas-as-paginas: manual
+  breadcrumbs-voce-pode-clicar-nas-ultimas-2-3-paginas: manual
+  ha-uma-barra-de-navegacao-otimizada: manual
+  barra-de-navegacao-menu-em-html: sf
+  o-site-tem-rodape-otimizado: manual
+  paginas-que-exigem-mais-de-tres-cliques-para-alcancar: sf
+  ha-backlink-do-site-dominio-para-o-blog-subdominio-e-vice-versa: manual
+  hierarquia-de-urls: sf
+  # Problemas da URL
+  hifens-usados-como-delimitador-default-em-urls: sf
+  usabilidade-geral-da-url-curta-e-facil-de-compartilhar: sf
+  otimizacao-geral-da-url-usa-de-palavras-chave-segmentadas: manual
+  # Otimização para Mobile
+  tag-viewport-configurada-corretamente: sf
+  # Problemas com Tags na Página/Markup
+  html-doctype-declarada: sf
+  nao-uso-de-meta-refresh: sf
+  fonte-da-pagina-contem-tags-meta-tags-ex-title-meta-description-no-cabecalho: sf
+  # Tag <title>
+  title-tag-ausente-ou-vazia: sf
+  title-duplicado: sf
+  titulo-longo-demais-mais-de-63-caracteres: sf
+  titulo-curto-demais-menos-de-30-caracteres: sf
+  o-mesmo-que-h1: sf
+  multiplas-title-tags: sf
+  # Tag <meta description>
+  tag-meta-description-ausente-ou-vazia: sf
+  tags-meta-description-duplicadas: sf
+  meta-description-longa-demais-mais-de-155-caracteres: sf
+  meta-description-curta-demais-menos-de-70-caracteres: sf
+  multiplas-meta-descriptions: sf
+  # Headings da Página (H1-H6)
+  tag-h1-ausente-ou-vazia: sf
+  tags-h1-duplicadas-em-varias-paginas: sf
+  heading-h1-acima-da-dobra: manual
+  multiplas-tags-h1-no-codigo: sf
+  hierarquia-de-heading-tags: sf
+  # Dados Estruturados
+  uso-de-markup-de-dados-estruturados: sf
+  uso-do-tipo-de-esquema-article: sf
+  uso-do-tipo-de-esquema-blogposting: sf
+  uso-do-tipo-de-esquema-breadcrumb: sf
+  uso-do-tipo-de-esquema-broadcastevent: sf
+  uso-do-tipo-de-esquema-course: sf
+  uso-do-tipo-de-esquema-event: sf
+  uso-do-tipo-de-esquema-howto: sf
+  uso-do-tipo-de-esquema-localbusiness: sf
+  uso-do-tipo-de-esquema-logo: sf
+  uso-do-tipo-de-esquema-newsarticle: sf
+  uso-do-tipo-de-esquema-organization: sf
+  uso-do-tipo-de-esquema-product: sf
+  uso-do-tipo-de-esquema-realestate: sf
+  uso-do-tipo-de-esquema-recipe: sf
+  uso-do-tipo-de-esquema-review: sf
+  uso-do-tipo-de-esquema-softwareapplication: sf
+  uso-do-tipo-de-esquema-videoobject: sf
+  uso-do-tipo-de-esquema-website: sf
+  nao-ha-erros-no-esquema-de-marcacao: sf
+  nao-ha-avisos-no-esquema-de-marcacao: sf
+  # Conteúdo do Corpo Principal
+  presenca-de-lorem-ipsum-no-conteudo: sf
+  paginas-com-numero-de-palavras-baixo: sf
+  # Conteúdo não indexável
+  conteudo-injetado-por-html-nao-js: manual
+  nao-uso-de-flash: sf
+  cuidado-no-uso-de-iframe: sf
+  nao-ha-conteudo-escondido: manual
+  # Imagens de SEO
+  nome-de-arquivo-com-palavras-chave-especificas: sf
+  tamanho-do-arquivo-de-imagem-100-kb: sf
+  texto-alt-faltando-revisao-e-otimizado-para-seo: sf
+  # SEO Internacional
+  uso-do-atributo-lang-html-lang-pt-br-html: sf
+  diretiva-de-idioma-alternativo-hreflang-no-cabecalho-do-codigo-fonte: sf
+  uso-de-urls-hreflang-com-codigo-de-status-200: sf
+  urls-hreflang-nao-vinculadas: sf
+  links-de-retorno-ausentes: sf
+  links-de-retorno-de-idioma-e-regiao-inconsistentes: sf
+  links-de-retorno-nao-canonicos: sf
+  links-de-retorno-noindex: sf
+  codigos-de-idioma-e-regiao-incorretos: sf
+  entradas-multiplas: sf
+  auto-referencia-ausente: sf
+  nao-usando-canonico: sf
+  x-default-ausente: sf
+  # Páginas AMP
+  uso-de-paginas-amp-em-amp-estrutura-de-url: sf
+  uso-de-rel-canonical-em-pagina-amp-para-pagina-regular: sf
+  uso-de-rel-alternate-em-pagina-regular-para-pagina-amp: sf
+  html-declarada-como-amp-html: sf
+  amp-nao-indexavel: sf
+  # Potenciais Gatilhos de Conteúdo Duplicado
+  www-vs-non-www: sf
+  http-vs-https: sf
+  nao-uso-de-trailing-slash: sf
+  case-sensitive-habilitado: sf
+  conteudo-duplicado: sf
+  uso-de-self-canonical: sf
+  link-canonical-quebrado: sf
+  varias-urls-canonical: sf
+  # Autoridade
+  pagina-com-biografia-do-autor-blog: manual
+  implementacao-de-rel-author-blog: manual
+  avaliacao-dos-clientes-pagina-de-produto: manual
+  # Problemas com Links
+  links-quebrados-codigos-de-resposta-4xx-ou-5xx: sf
+  # Problemas com Google Search Console
+  google-search-console-acoes-manuais: gsc
+  google-search-console-pagina-nao-encontrada: gsc
+  google-search-console-paginas-bloqueadas-por-robots-txt: gsc
+  google-search-console-paginas-indexadas: gsc
+  google-search-console-indexacao-de-sitemap: gsc
+  google-search-console-estatisticas-de-rastreamento: gsc
+  # Problemas de Segurança
+  certificado-ssl: sf
+  verificacao-de-seguranca-e-scanner-de-malware: manual
+  sem-suporte-hsts: sf
+  paginas-https-levando-a-paginas-http: sf
+  paginas-https-levando-a-recursos-http: sf
+  # Propriedade de SEO
+  redirecionamentos-302: sf
+  cadeias-de-redirecionamento: sf
+  loops-de-redirecionamento: sf
+  redirecionamentos-quebrados: sf
+  # Velocidade da Página
+  paginas-lentas: sf
+  google-page-speed-insights-abaixo-de-70-desktop-home-page-landing-page: cwv-link
+  google-page-speed-insights-abaixo-de-50-mobile-home-page-landing-page: cwv-link
+  teste-de-velocidade-abaixo-de-80-usando-gtmetrix-home-page-landing-page: manual
+  experiencia-na-pagina: manual
+
+# Regras da fatia Onda 1 (31 itens). Itens fonte=sf ausentes aqui ficam com
+# regra null (motor devolve `sem_dados`); cobertura completa é a Onda 1b.
+regras:
+  ha-um-robots-txt-configurado-corretamente-no-site:
+    regra: {export: robots, tipo: existencia, campo: existe}
+    evidencia: {colunas: [status_code]}
+  sitemap-xml-encontrado-em-robots-txt:
+    regra: {export: robots, tipo: existencia, campo: sitemaps_declarados}
+    evidencia: {colunas: [sitemaps_declarados]}
+  erros-no-lado-do-cliente-40x:
+    regra:
+      export: response_codes
+      tipo: contagem
+      filtro: {campo: status_code, op: entre, valor: [400, 499]}
+    evidencia: {colunas: [address, status_code]}
+  erros-no-lado-do-servidor-50x:
+    regra:
+      export: response_codes
+      tipo: contagem
+      filtro: {campo: status_code, op: entre, valor: [500, 599]}
+    evidencia: {colunas: [address, status_code]}
+  site-tem-sitemap-xml:
+    regra: {export: sitemaps, tipo: existencia, campo: total_urls}
+    evidencia: {colunas: [sitemap_url, total_urls, status_code]}
+  paginas-que-exigem-mais-de-tres-cliques-para-alcancar:
+    regra:
+      export: internal
+      tipo: contagem
+      filtro: {campo: crawl_depth, op: maior, valor: 3}
+      atencao_max: 10
+    evidencia: {colunas: [address, crawl_depth]}
+  hifens-usados-como-delimitador-default-em-urls:
+    regra:
+      export: internal
+      tipo: contagem
+      filtro: {campo: address, op: regex, valor: "_|%20"}
+    evidencia: {colunas: [address]}
+  usabilidade-geral-da-url-curta-e-facil-de-compartilhar:
+    regra:
+      export: internal
+      tipo: contagem
+      filtro: {campo: address, op: len_maior, valor: 115}
+      atencao_max: 5
+    evidencia: {colunas: [address]}
+  title-tag-ausente-ou-vazia:
+    regra:
+      export: page_titles
+      tipo: contagem
+      filtro: {campo: title, op: vazio}
+    evidencia: {colunas: [address, title]}
+  title-duplicado:
+    regra:
+      export: page_titles
+      tipo: contagem
+      filtro: {campo: title, op: duplicado}
+    evidencia: {colunas: [address, title]}
+  titulo-longo-demais-mais-de-63-caracteres:
+    regra:
+      export: page_titles
+      tipo: limiar
+      filtro: {campo: title_length, op: maior, valor: 63}
+      atencao_max: 5
+    evidencia: {colunas: [address, title, title_length]}
+  titulo-curto-demais-menos-de-30-caracteres:
+    regra:
+      export: page_titles
+      tipo: limiar
+      filtro: {campo: title_length, op: entre, valor: [1, 29]}
+      atencao_max: 5
+    evidencia: {colunas: [address, title, title_length]}
+  o-mesmo-que-h1:
+    regra: {export: page_titles, tipo: custom, funcao: title_igual_h1}
+    evidencia: {colunas: [address, title, h1]}
+  multiplas-title-tags:
+    regra:
+      export: page_titles
+      tipo: limiar
+      filtro: {campo: ocorrencias, op: maior, valor: 1}
+    evidencia: {colunas: [address, ocorrencias]}
+  tag-meta-description-ausente-ou-vazia:
+    regra:
+      export: meta_description
+      tipo: contagem
+      filtro: {campo: meta_description, op: vazio}
+      atencao_max: 5
+    evidencia: {colunas: [address, meta_description]}
+  tags-meta-description-duplicadas:
+    regra:
+      export: meta_description
+      tipo: contagem
+      filtro: {campo: meta_description, op: duplicado}
+    evidencia: {colunas: [address, meta_description]}
+  meta-description-longa-demais-mais-de-155-caracteres:
+    regra:
+      export: meta_description
+      tipo: limiar
+      filtro: {campo: meta_description_length, op: maior, valor: 155}
+      atencao_max: 5
+    evidencia: {colunas: [address, meta_description, meta_description_length]}
+  meta-description-curta-demais-menos-de-70-caracteres:
+    regra:
+      export: meta_description
+      tipo: limiar
+      filtro: {campo: meta_description_length, op: entre, valor: [1, 69]}
+      atencao_max: 5
+    evidencia: {colunas: [address, meta_description, meta_description_length]}
+  multiplas-meta-descriptions:
+    regra:
+      export: meta_description
+      tipo: limiar
+      filtro: {campo: ocorrencias, op: maior, valor: 1}
+    evidencia: {colunas: [address, ocorrencias]}
+  tag-h1-ausente-ou-vazia:
+    regra:
+      export: h1
+      tipo: contagem
+      filtro: {campo: h1, op: vazio}
+    evidencia: {colunas: [address, h1]}
+  tags-h1-duplicadas-em-varias-paginas:
+    regra:
+      export: h1
+      tipo: contagem
+      filtro: {campo: h1, op: duplicado}
+      atencao_max: 5
+    evidencia: {colunas: [address, h1]}
+  multiplas-tags-h1-no-codigo:
+    regra:
+      export: h1
+      tipo: limiar
+      filtro: {campo: ocorrencias, op: maior, valor: 1}
+    evidencia: {colunas: [address, ocorrencias]}
+  paginas-com-numero-de-palavras-baixo:
+    regra:
+      export: internal
+      tipo: limiar
+      filtro: {campo: word_count, op: entre, valor: [1, 199]}
+      atencao_max: 10
+    evidencia: {colunas: [address, word_count]}
+  tamanho-do-arquivo-de-imagem-100-kb:
+    regra:
+      export: images
+      tipo: limiar
+      filtro: {campo: size_bytes, op: maior, valor: 102400}
+      atencao_max: 5
+    evidencia: {colunas: [address, size_bytes]}
+  texto-alt-faltando-revisao-e-otimizado-para-seo:
+    regra:
+      export: images
+      tipo: contagem
+      filtro: {campo: alt_text, op: vazio}
+      atencao_max: 10
+    evidencia: {colunas: [address, alt_text]}
+  links-quebrados-codigos-de-resposta-4xx-ou-5xx:
+    regra:
+      export: response_codes
+      tipo: contagem
+      filtro: {campo: status_code, op: entre, valor: [400, 599]}
+    evidencia: {colunas: [address, status_code]}
+  redirecionamentos-302:
+    regra:
+      export: redirects
+      tipo: contagem
+      filtro: {campo: redirect_type, op: igual, valor: 302}
+      atencao_max: 5
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, destino_final, redirect_type]}
+  cadeias-de-redirecionamento:
+    regra:
+      export: redirects
+      tipo: custom
+      funcao: cadeias_redirecionamento
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, destino_final, num_hops]}
+  loops-de-redirecionamento:
+    regra:
+      export: redirects
+      tipo: custom
+      funcao: loops_redirecionamento
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, destino_final]}
+  redirecionamentos-quebrados:
+    regra:
+      export: redirects
+      tipo: contagem
+      filtro: {campo: status_final, op: entre, valor: [400, 599]}
+      na_se_export_vazio: true
+    evidencia: {colunas: [address, destino_final, status_final]}
+  paginas-lentas:
+    regra:
+      export: internal
+      tipo: limiar
+      filtro: {campo: response_time, op: maior, valor: 1.0}
+      atencao_max: 10
+    evidencia: {colunas: [address, response_time]}

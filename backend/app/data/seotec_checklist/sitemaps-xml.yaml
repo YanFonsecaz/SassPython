@@ -1,0 +1,62 @@
+categoria: Sitemaps XML da Página
+itens:
+- slug: site-tem-sitemap-xml
+  nome: Site tem Sitemap XML?
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Um arquivo XML que ajuda mecanismos de busca a rastrear e entender melhor o seu site.
+  importancia: 'Eles ajudam a melhorar a indexação do seu site.
+
+
+    Você pode definir um "orçamento de rastreio", ou seja, a importância de cada página/tipo de página
+    em seu site. Isso é especialmente importante para sites muito grandes (mais de 10 mil páginas) que
+    querem dar preferência a certos conjuntos de páginas para o tempo de rastreio.'
+  regra:
+    export: sitemaps
+    tipo: existencia
+    campo: total_urls
+  evidencia:
+    colunas:
+    - sitemap_url
+    - total_urls
+    - status_code
+- slug: sitemap-s-xml-da-pagina-estao-listados-no-gsc
+  nome: Sitemap(s) XML da Página Estão Listados no GSC
+  peso: 9
+  prioridade: very-high
+  implementacao: bom-ter
+  responsavel:
+  - marketing
+  impacto:
+    direto: true
+    indireto: false
+  fonte: gsc
+  descricao: Um arquivo XML que ajuda mecanismos de busca a rastrear e entender melhor o seu site.
+  importancia: 'Eles ajudam a melhorar a indexação do seu site.
+
+
+    Você pode definir um "orçamento de rastreio", ou seja, a importância de cada página/tipo de página
+    em seu site. Isso é especialmente importante para sites muito grandes (mais de 10 mil páginas) que
+    querem dar preferência a certos conjuntos de páginas para o tempo de rastreio.'
+- slug: sitemap-xml-da-pagina-com-links-quebrados
+  nome: Sitemap XML da Página com Links Quebrados
+  peso: 5
+  prioridade: medium
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: Você tem páginas quebradas que estão no seu sitemap.
+  importancia: Motores de busca usam arquivos de sitemap XML como um sinal de que páginas precisam ser
+    rastreadas. Ter arquivos de sitemap bem organizados, limpos e otimizados é essencial para sites grandes,
+    ou que contêm vídeos, imagens e/ou notícias.

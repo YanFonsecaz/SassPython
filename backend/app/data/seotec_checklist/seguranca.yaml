@@ -1,0 +1,113 @@
+categoria: Problemas de Segurança
+itens:
+- slug: certificado-ssl
+  nome: Certificado SSL
+  peso: 10
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: 'URLs usando o protocolo seguro (HTTPS) que redireciona ao inseguro (HTTP).
+
+
+    Você deve lembrar que o HTTPS é um dos sinal para posicionamento nos rankings para o Google.
+
+
+    O protocolo HTTP não oferece integridade e confidencialidade para dados entre seus visitantes e seu
+    site.'
+  importancia: SSL é a tecnologia padrão para manter uma conexão de internet segura e proteger todos os
+    dados sensíveis que são enviados entre sistemas (cliente/servidor). Além de ser fator de ranqueamento
+    no Google, por demonstrar que o site se preocupa com a segurança de quem o visita, também oferece
+    para o usuário maior confiança na navegação. Hoje é muito comum o próprio navegador web do usuário
+    (Chrome, Edge, Firefox) avisar que um site não é seguro por não ter um certificado ssl.
+- slug: verificacao-de-seguranca-e-scanner-de-malware
+  nome: Verificação de segurança e scanner de malware
+  peso: 10
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: manual
+  descricao: Verificação do site em busca de malware conhecido, vírus, status da lista negra, erros de
+    site, software desatualizado e código malicioso.
+  importancia: Deixar o sistema e plugins do seu site desatualizados, torna o site suscetível a brechas
+    de segurança que deixam seu site completamente vulnerável e podem também comprometer a sua performance.
+- slug: sem-suporte-hsts
+  nome: Sem suporte HSTS
+  peso: 6
+  prioridade: medium
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: Entregar páginas da web e dados em conexões HTTP expõe os usuários a riscos de segurança.
+    A política HSTS força todas as respostas a passar por conexões HTTPS em vez de HTTP de texto simples.
+    Isso garante que todo o canal seja criptografado antes que qualquer dado seja enviado, tornando impossível
+    para os invasores lerem ou modificarem os dados em trânsito.
+  importancia: O HSTS (HTTP Strict Transport Security) informa aos navegadores que eles podem se comunicar
+    com servidores somente através de conexões HTTPS. Assim, para garantir que você não apresente conteúdo
+    inseguro ao público, recomendamos que implemente o suporte a HSTS.
+- slug: paginas-https-levando-a-paginas-http
+  nome: Páginas HTTPS levando a páginas HTTP
+  peso: 7
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - marketing
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: 'URLs usando o protocolo seguro (HTTPS) que redireciona ao inseguro (HTTP).
+
+
+    Você deve lembrar que o HTTPS é um dos sinal para posicionamento nos rankings para o Google.
+
+
+    O protocolo HTTP não oferece integridade e confidencialidade para dados entre seus visitantes e seu
+    site.'
+  importancia: 'Não é recomendado redirecionar URLS HTTPS (seguro) para URLs HTTP (inseguras).
+
+
+    Verifique se a página de destino em um redirecionamento de URL HTTPS também usa protocolo HTTPS.'
+- slug: paginas-https-levando-a-recursos-http
+  nome: Páginas HTTPS levando a recursos HTTP
+  peso: 6
+  prioridade: medium
+  implementacao: obrigatoria
+  responsavel:
+  - marketing
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: sf
+  descricao: 'Esse problema é uma situação de conteúdo misturado que acontece quando páginas HTML carregam
+    em uma conexão segura HTTPS mas têm links para recursos (imagens, CSS ou JS) em uma conexão insegura
+    HTTP.
+
+
+    Conteúdos misturados reduzem a segurança e a experiência do usuário de seu site HTTPS.
+
+
+    Alguns navegadores bloqueiam solicitações inseguras como padrão. Se sua página depende desses recursos
+    inseguros, ela pode não funcionar corretamente quando eles forem bloqueados.'
+  importancia: 'Para o seu próprio domínio, sirva todo o conteúdo como HTTPS e corrija seus links. Muitas
+    vezes, a versão HTTPS do conteúdo já existe e só é preciso adicionar um "s" aos links - http:// para
+    https://.
+
+
+    Para imagens hospedadas em outros domínios, use a versão HTTPS do site, se disponível. Se o HTTPS
+    não estiver disponível, você pode tentar contatar o domínio e perguntar a eles se podem disponibilizar
+    o conteúdo via HTTPS.'

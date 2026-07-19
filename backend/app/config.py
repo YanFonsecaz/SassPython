@@ -173,5 +173,8 @@ class Settings(BaseSettings):
 
     uploads_dir: str = str(BASE_DIR / "uploads")
 
+    # Web e worker precisam compartilhar este diretório (mesmo volume).
+    seotec_upload_dir: str = str(BASE_DIR / "uploads" / "seotec")
+
 
 settings = Settings()

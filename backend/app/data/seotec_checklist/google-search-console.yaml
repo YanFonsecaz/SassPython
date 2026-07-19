@@ -1,0 +1,108 @@
+categoria: Problemas com Google Search Console
+itens:
+- slug: google-search-console-acoes-manuais
+  nome: 'Google Search Console: Ações Manuais'
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - marketing
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: gsc
+  descricao: O Google publica uma ação manual contra um site quando um revisor humano no Google determina
+    que páginas no site não cumprem as orientações de qualidade para webmasters do Google.
+  importancia: Ações Manuais do Google vão resultar em páginas ou sites em posições mais baixas ou omitidos
+    dos resultados de pesquisa sem qualquer indicação visual ao usuário.
+- slug: google-search-console-pagina-nao-encontrada
+  nome: 'Google Search Console: Página Não Encontrada'
+  peso: 6
+  prioridade: medium
+  implementacao: obrigatoria
+  responsavel:
+  - marketing
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: gsc
+  descricao: A página não está indexada.
+  importancia: 'Simplificando: se uma página não for encotnrada, ela não pode ser indexada. Se uma página
+    não puder ser indexada pelo Google, você nunca terá a chance de posicionar nas páginas de resultados
+    dele.'
+- slug: google-search-console-paginas-bloqueadas-por-robots-txt
+  nome: 'Google Search Console: Páginas Bloqueadas por Robots.txt'
+  peso: 8
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - marketing
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: gsc
+  descricao: A página está bloqueando o Google Bot e impedindo o rastreamento devido a uma configuração
+    em seu arquivo robots.txt.
+  importancia: Similar ao relatório Page Not Found, se uma página está bloqueando um bot de motor de busca,
+    impedindo-de de rastrear paxa indexar, a página nunca será indexada, o que significa que ela nunca
+    terá a chance de posicionar.
+- slug: google-search-console-paginas-indexadas
+  nome: 'Google Search Console: Páginas Indexadas'
+  peso: 10
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - marketing
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: gsc
+  descricao: Saiba quais das suas páginas foram indexadas e que problemas foram encontrados na indexação
+    do seu site.
+  importancia: Esse relatório mostra o estado de indexação de todas as URLs que o Google visitou ou tentou
+    visitar em sua propriedade. A página de resumo mostra os resultados para todas as URLs em sua propriedade,
+    agrupadas por estado (erro, alerta ou válido) e as razões específicas para aquele estado (Como URL
+    Enviada Não Encontrada 404).
+- slug: google-search-console-indexacao-de-sitemap
+  nome: 'Google Search Console: Indexação de Sitemap'
+  peso: 7
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - marketing
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: gsc
+  descricao: Use o relatório Sitemaps para informar ao Google sobre novos sitemaps para a sua propriedade,
+    para ver seu histórico de envio de sitemaps e para ver qualquer erro que o Google tenha encontrado
+    ao analisar os sitemaps enviados.
+  importancia: Esse relatório mostra apenas sitemaps que você enviou usando esse relatório. Ele não mostra
+    sitemaps descobertos através de uma referência do robots.txt ou de outros métodos. No entanto, mesmo
+    se já tivermos encontrado um sitemap atraves de outros meios, você ainda pode envia-lo usando esse
+    relatório para monitorar seu sucesso e suas taxas de erro.
+- slug: google-search-console-estatisticas-de-rastreamento
+  nome: 'Google Search Console: Estatísticas de Rastreamento'
+  peso: 8
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - marketing
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: gsc
+  descricao: A taxa de rastreamento é a frequência em que os robôs dos mecanismos de busca rastreiam seu
+    site. Nesse caso, as estatísticas de rastreamento do Search Console estão mostrando as atividades
+    do Googlebot (o robô de mecanismo de busca do Google).
+  importancia: 'Uma maneira simples e prática de entender como o Googlebot tem se comportado ao visitar
+    seu site é via taxa de rastreamento do Search Console. De acordo com as métricas fica claro se o site
+    possui algum problema de indexação ou não. Exemplo: Se você tem um historico de rastreamento flat
+    e de um dia para o outro ele cai ou sobe demais, é sinal que algo de estranho aconteceu. É uma ótima
+    maneira para entender problemas de crawleamento rapidamente sem ter que analisar log files.'

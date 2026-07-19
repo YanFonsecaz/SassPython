@@ -1,0 +1,105 @@
+categoria: Páginas AMP
+itens:
+- slug: uso-de-paginas-amp-em-amp-estrutura-de-url
+  nome: Uso de Páginas AMP em /amp/ estrutura de URL
+  peso: 9
+  prioridade: very-high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: 'Documentos AMP têm três tipos de URL diferentes:
+
+
+    URL Original: Os documentos do autor escritos no formato AMP
+
+    http://www.example.com/amp/doc.html
+
+
+    URL de Cache AMP: O documento servido através de um Cache AMP (ex: todos os AMPs servidos pelo Google
+    são servidos através do Google AMP Cache). A maioria dos usuários nunca vai ver essa URL.
+
+    https://www-example-com.cdn.ampproject.org/c/www.example.com/amp/doc.html
+
+
+    URL do Visualizador de AMP do Google: O documento exibido em um visualizador de AMP (ex: quando renderizado
+    em uma página de resultados de busca).
+
+    https://www.google.com/amp/www.example.com/amp.doc.html'
+  importancia: 'Apesat de ter três URls diferentes, com origens diferentes, para essencialmente o mesmo
+    conteúdo ser confuso, existem duas razões principais porque essas URLs diferentes existem: caching
+    e pre-renderização. Ambos são grandes benefícios para a velocidade do AMP, mas exigem novas URLs.'
+- slug: uso-de-rel-canonical-em-pagina-amp-para-pagina-regular
+  nome: Uso de rel=canonical em página AMP para página regular
+  peso: 8
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: Sua página AMP deve conter uma tag rel=canonical voltando à página original, para eliminar
+    qualquer situação de conteúdo duplicado.
+  importancia: "A tag canonical é um elemento obrigatório para que páginas AMP sejam consideradas válidas,\
+    \ e a tag canonical deve apontar de volta para a versão original, \"não AMP\" da página. Se a página\
+    \ for somente AMP, a tag canonical deve apontar a si mesma. \n\nSe não existir tag canonical, os motores\
+    \ de busca podem não considerar o HTML válido e podem não indexar a página corretamente ou incluí-la\
+    \ em resultados de pesquisa."
+- slug: uso-de-rel-alternate-em-pagina-regular-para-pagina-amp
+  nome: Uso de rel=alternate em página regular para página AMP
+  peso: 8
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: Sua página AMP deve conter uma tag rel=canonical voltando à página original, para eliminar
+    qualquer situação de conteúdo duplicado.
+  importancia: 'A tag rel alternate é similar à tag canonical, mas ao contrário dela, a tag alternativa
+    pode ser usada para estabelecer uma relação entre páginas que têm uma versão completamente diferente
+    do "mesmo" conteúdo.
+
+
+    Nesse caso, ela refere à página AMP que foi criada a partir da página HTML original.'
+- slug: html-declarada-como-amp-html
+  nome: HTML declarada como amp html
+  peso: 10
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: HTML AMP (Accelerated Mobile Pages HTML) é um projeto liderado pelo Google para deixar a
+    internet mobile mais rápida. É um conjunto de tags HTML, uma biblioteca JavaScript e um cache de páginas
+    compatíveis com AMP.
+  importancia: Você pode pensar no HTML AMP como como o HTML seria caso tivesse sido concebido considerando
+    somente a performance mobile.
+- slug: amp-nao-indexavel
+  nome: AMP não-indexável
+  peso: 10
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: sf
+  descricao: A URL de AMP não é indexável. Geralmente, isso ocorre porque elas são canonizadas corretamente
+    para a equivalente não-AMP.
+  importancia: "A tag canonical é um elemento obrigatório para que páginas AMP sejam consideradas válidas,\
+    \ e a tag canonical deve apontar de volta para a versão original, \"não AMP\" da página. Se a página\
+    \ for somente AMP, a tag canonical deve apontar a si mesma. \n\nSe não existir tag canonical, os motores\
+    \ de busca podem não considerar o HTML válido e podem não indexar a página corretamente ou incluí-la\
+    \ em resultados de pesquisa."

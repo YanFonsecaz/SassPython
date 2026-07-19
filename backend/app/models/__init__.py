@@ -14,6 +14,9 @@ from app.models.parecer import Parecer
 from app.models.pesquisa_cache import PesquisaCache
 from app.models.plano import Plano
 from app.models.reset_senha_token import ResetSenhaToken
+from app.models.seo_auditoria import SeoAuditoria
+from app.models.seo_crawl import SeoCrawl
+from app.models.seo_item_resultado import SeoItemResultado
 from app.models.sessao import Sessao
 from app.models.transacao_credito import TransacaoCredito
 from app.models.usuario import Usuario
@@ -36,6 +39,9 @@ __all__ = [
     "PesquisaCache",
     "Plano",
     "ResetSenhaToken",
+    "SeoAuditoria",
+    "SeoCrawl",
+    "SeoItemResultado",
     "Sessao",
     "TransacaoCredito",
     "Usuario",

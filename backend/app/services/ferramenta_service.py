@@ -102,6 +102,15 @@ def calcular_custo_parecer(n_imagens: int) -> int:
     return min(CUSTO_BASE_PARECER + n_imagens * CUSTO_POR_IMAGEM_PARECER, CUSTO_MAX_PARECER)
 
 
+CUSTO_SEOTEC_BEFORE = 30
+CUSTO_SEOTEC_AFTER = 15
+
+
+def calcular_custo_seo_tecnico(fase: str) -> int:
+    """SPEC_Ferramenta_Auditoria_SEO_Tecnico §3.5: before=30; after e re-crawls=15."""
+    return CUSTO_SEOTEC_BEFORE if fase == "before" else CUSTO_SEOTEC_AFTER
+
+
 async def criar_execucao(
     db,
     usuario_id: str,
@@ -269,6 +278,8 @@ def _obter_reserva_estimada(ferramenta: str, execucao: ExecucaoFerramenta) -> in
         from app.agents.inlinks.constantes import MAX_PAGINAS_SITE
 
         return calcular_custo_indexar_site(MAX_PAGINAS_SITE)
+    if ferramenta == "auditoria_seo_tecnico":
+        return calcular_custo_seo_tecnico(entrada.get("fase_destino", "before"))
     return 0
 
 

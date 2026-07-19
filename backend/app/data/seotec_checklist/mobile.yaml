@@ -1,0 +1,17 @@
+categoria: Otimização para Mobile
+itens:
+- slug: tag-viewport-configurada-corretamente
+  nome: Tag viewport configurada corretamente
+  peso: 9
+  prioridade: very-high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: true
+  fonte: sf
+  descricao: O viewport do navegador é a área da janela em que o conteúdo web pode ser visto.
+  importancia: Isso é extremamente importante pra diferentes renderizações em dispositivos móveis. Isso
+    ajuda a garantir que a sua página vai exibir corretamenta todo o conteúdo, dentro dos parâmetros da
+    tela de um certo dispositivo.

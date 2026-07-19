@@ -1,0 +1,86 @@
+categoria: Autoridade
+itens:
+- slug: pagina-com-biografia-do-autor-blog
+  nome: Página com biografia do autor (blog)
+  peso: 7
+  prioridade: high
+  implementacao: obrigatoria
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: manual
+  descricao: A ausência de uma página dedicada à biografia do autor em um blog pode prejudicar a confiança
+    dos leitores. Isso ocorre porque, sem informações claras sobre quem está por trás do conteúdo, os
+    visitantes podem questionar a credibilidade e a autoridade do autor. A biografia do autor oferece
+    contexto e valida a qualidade do conteúdo produzido, essencial para engajar o público e para melhorar
+    a percepção de autoridade da página.
+  importancia: '- Aumento da Autoridade e Credibilidade: Uma biografia bem estruturada, com informações
+    relevantes sobre o autor, ajuda a construir confiança. No SEO, isso pode se traduzir em melhores rankings,
+    especialmente em nichos onde a autoridade do autor é um fator importante (como saúde, finanças e educação).
+
+    - Engajamento do Usuário: Quando os leitores sabem quem escreveu o conteúdo, eles tendem a se sentir
+    mais conectados e engajados, aumentando o tempo de permanência no site e as interações.
+
+    - Reconhecimento de Autoridade: Para mecanismos de busca como o Google, a atribuição clara de conteúdo
+    ao autor, através da biografia, pode ajudar na construção de sinais de autoridade, contribuindo para
+    um melhor desempenho nas SERPs (páginas de resultados dos motores de busca).'
+- slug: implementacao-de-rel-author-blog
+  nome: Implementação de rel="author" (blog)
+  peso: 3
+  prioridade: low
+  implementacao: nao-essencial
+  responsavel:
+  - dev
+  impacto:
+    direto: false
+    indireto: false
+  fonte: manual
+  descricao: A ausência de implementação da tag rel="author" no código HTML de um blog impede a conexão
+    clara entre o conteúdo e o autor para os motores de busca. Essa tag é crucial para associar o conteúdo
+    a um perfil específico do autor, o que pode impactar diretamente a forma como o Google identifica
+    e classifica a autoria do conteúdo. Sem a marcação correta, o mecanismo de busca pode ter dificuldades
+    para entender quem é o autor do conteúdo, afetando a visibilidade e a autoridade do site.
+  importancia: '- Reconhecimento de Autoridade do Autor: A implementação correta da tag rel="author" é
+    uma forma de Google e outros motores de busca reconhecerem e atribuirem a autoria do conteúdo. Isso
+    pode resultar em melhores rankings para o autor, especialmente em pesquisas relacionadas ao autor
+    ou ao conteúdo de sua especialidade.
+
+    - Rich Snippets e Aparência nos Resultados: Com a tag rel="author", o conteúdo pode ganhar "rich snippets"
+    nos resultados de busca, onde a imagem e o nome do autor aparecem junto ao título da página. Isso
+    melhora a taxa de cliques (CTR) e a visibilidade nos resultados de pesquisa.
+
+    - Melhora na Confiança e Credibilidade: Com a marcação correta, os usuários podem ver que o conteúdo
+    é escrito por um autor reconhecido e confiável, aumentando a autoridade da página e, consequentemente,
+    o engajamento.'
+- slug: avaliacao-dos-clientes-pagina-de-produto
+  nome: Avaliação dos clientes (página de produto)
+  peso: 7
+  prioridade: high
+  implementacao: bom-ter
+  responsavel:
+  - dev
+  impacto:
+    direto: true
+    indireto: false
+  fonte: manual
+  descricao: A falta de avaliações de clientes em páginas de produtos impede que os usuários saibam mais
+    sobre a experiência de outras pessoas com o produto. Em um cenário de e-commerce, as avaliações são
+    um dos fatores mais importantes para a decisão de compra. Sem elas, o produto perde credibilidade
+    e os consumidores podem hesitar em comprar.
+  importancia: '- Influência na Decisão de Compra: Avaliações de clientes são uma das principais fontes
+    de confiança para os consumidores. Elas ajudam a reduzir as incertezas e oferecem prova social, incentivando
+    mais conversões e vendas.
+
+    Melhora no SEO (User-Generated Content): As avaliações de clientes geram conteúdo gerado por usuários
+    (UGC), o que é altamente valorizado pelo Google. Esse conteúdo pode aumentar as palavras-chave associadas
+    ao produto, além de gerar frescor e atualizações constantes na página.
+
+    - Aumento da Taxa de Conversão: Estudos mostram que produtos com avaliações têm uma taxa de conversão
+    significativamente maior do que aqueles sem. A presença de avaliações pode diminuir as taxas de abandono
+    de carrinho e aumentar as compras, além de melhorar a experiência do usuário.
+
+    - Rich Snippets nos Resultados de Pesquisa: O Google pode exibir estrelas de avaliação e resumos de
+    resenhas diretamente nos resultados de pesquisa, atraindo mais tráfego e melhorando a taxa de cliques
+    (CTR) da página de produto.'
