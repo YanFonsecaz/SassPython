@@ -41,6 +41,24 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+TAMANHO_CHUNK_UPLOAD = 1024 * 1024  # 1 MiB
+
+
+async def _ler_upload_limitado(arquivo: UploadFile) -> bytes:
+    """Lê o UploadFile em chunks, abortando com 413 assim que o acumulado
+    ultrapassar MAX_UPLOAD_BYTES — evita materializar um corpo gigante na
+    memória antes de checar o tamanho."""
+    partes: list[bytes] = []
+    total = 0
+    while True:
+        chunk = await arquivo.read(TAMANHO_CHUNK_UPLOAD)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="Pacote acima de 50MB")
+        partes.append(chunk)
+    return b"".join(partes)
 
 
 async def _auditoria_do_usuario(db: AsyncSession, auditoria_id: UUID, usuario: Usuario) -> SeoAuditoria:
@@ -175,9 +193,7 @@ async def upload_pacote(
         raise HTTPException(status_code=409, detail="Auditoria já concluída")
     fase_destino = "before" if auditoria.fase == "before" else "after"
 
-    conteudo = await arquivo.read()
-    if len(conteudo) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="Pacote acima de 50MB")
+    conteudo = await _ler_upload_limitado(arquivo)
 
     custo = calcular_custo_seo_tecnico(fase_destino)
     from app.services import credito_service

@@ -23,6 +23,8 @@ OpFiltro = Literal[
 
 
 class RegraFiltro(BaseModel):
+    model_config = {"extra": "forbid"}
+
     campo: str
     op: OpFiltro
     valor: int | float | str | list[int | float] | None = None
@@ -38,6 +40,8 @@ class RegraFiltro(BaseModel):
 
 
 class RegraItem(BaseModel):
+    model_config = {"extra": "forbid"}
+
     export: str
     tipo: Literal["contagem", "limiar", "existencia", "proporcao", "custom"]
     filtro: RegraFiltro | None = None

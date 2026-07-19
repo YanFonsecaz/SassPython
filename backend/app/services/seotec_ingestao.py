@@ -21,6 +21,11 @@ EXPORTS_CONHECIDOS: set[str] = {
 
 MAX_LINHAS_POR_EXPORT = 500
 
+# Hardening contra zip bomb: limites sobre o tamanho DESCOMPRIMIDO (ZipInfo.file_size),
+# nunca lido de fato acima do limite.
+MAX_BYTES_POR_ENTRADA = 20 * 1024 * 1024
+MAX_BYTES_DESCOMPRIMIDO_TOTAL = 100 * 1024 * 1024
+
 
 class ExportNormalizado(BaseModel):
     linhas: list[dict] = Field(default_factory=list)
@@ -54,10 +59,16 @@ def validar_pacote(zip_bytes: bytes, exports_requeridos: set[str]) -> ResultadoV
         return r
 
     try:
-        manifest = json.loads(z.read("manifest.json"))
+        manifest_info = z.getinfo("manifest.json")
     except KeyError:
         r.erros.append("manifest.json ausente no pacote")
         return r
+    if manifest_info.file_size > MAX_BYTES_POR_ENTRADA:
+        r.erros.append("manifest.json inválido: excede limite de tamanho")
+        return r
+
+    try:
+        manifest = json.loads(z.read(manifest_info))
     except json.JSONDecodeError:
         r.erros.append("manifest.json inválido")
         return r
@@ -83,6 +94,9 @@ def validar_pacote(zip_bytes: bytes, exports_requeridos: set[str]) -> ResultadoV
         if nome in exports_requeridos:
             r.faltantes.append(nome)
 
+    total_bytes_lidos = 0
+    orcamento_estourado = False
+
     for nome, meta in declarados.items():
         if nome not in EXPORTS_CONHECIDOS:
             continue
@@ -91,12 +105,27 @@ def validar_pacote(zip_bytes: bytes, exports_requeridos: set[str]) -> ResultadoV
             _marcar_faltante(nome)
             continue
         caminho = f"exports/{nome}.json"
+        if orcamento_estourado:
+            r.erros.append(f"{nome}: orçamento de descompressão do pacote excedido")
+            _marcar_faltante(nome)
+            continue
         try:
-            corpo = z.read(caminho)
+            info = z.getinfo(caminho)
         except KeyError:
             r.erros.append(f"{nome}: declarado no manifest mas ausente no zip")
             _marcar_faltante(nome)
             continue
+        if info.file_size > MAX_BYTES_POR_ENTRADA:
+            r.erros.append(f"{nome}: export excede limite de tamanho")
+            _marcar_faltante(nome)
+            continue
+        total_bytes_lidos += info.file_size
+        if total_bytes_lidos > MAX_BYTES_DESCOMPRIMIDO_TOTAL:
+            r.erros.append(f"{nome}: orçamento de descompressão do pacote excedido")
+            _marcar_faltante(nome)
+            orcamento_estourado = True
+            continue
+        corpo = z.read(info)
         hash_declarado = str(meta.get("hash", "")).removeprefix("sha256:")
         if hashlib.sha256(corpo).hexdigest() != hash_declarado:
             r.erros.append(f"{nome}: hash não confere")

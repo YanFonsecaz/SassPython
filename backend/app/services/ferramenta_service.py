@@ -278,6 +278,8 @@ def _obter_reserva_estimada(ferramenta: str, execucao: ExecucaoFerramenta) -> in
         from app.agents.inlinks.constantes import MAX_PAGINAS_SITE
 
         return calcular_custo_indexar_site(MAX_PAGINAS_SITE)
+    if ferramenta == "auditoria_seo_tecnico":
+        return calcular_custo_seo_tecnico(entrada.get("fase_destino", "before"))
     return 0
 
 

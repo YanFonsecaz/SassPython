@@ -3,6 +3,7 @@ import pytest
 from app.services.seotec_checklist import (
     ChecklistSeotec,
     RegraFiltro,
+    RegraItem,
     carregar_checklist,
     recarregar_checklist,
 )
@@ -42,6 +43,21 @@ def test_item_sf_sem_regra_permitido():
 def test_regra_filtro_entre_exige_lista_de_dois_numeros():
     with pytest.raises(Exception):
         RegraFiltro(campo="status_code", op="entre", valor=[1])
+
+
+def test_regra_item_extra_forbid_rejeita_chave_desconhecida():
+    with pytest.raises(Exception):
+        RegraItem(
+            export="x",
+            tipo="contagem",
+            filtro=RegraFiltro(campo="c", op="vazio"),
+            chave_errada=1,
+        )
+
+
+def test_regra_filtro_extra_forbid_rejeita_chave_desconhecida():
+    with pytest.raises(Exception):
+        RegraFiltro(campo="c", op="vazio", chave_errada=1)
 
 
 def test_yaml_invalido_falha(tmp_path, monkeypatch):

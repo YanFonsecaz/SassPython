@@ -1,5 +1,6 @@
 import json
 
+import app.services.seotec_ingestao as ingestao_mod
 from app.services.seotec_ingestao import EXPORTS_CONHECIDOS, MAX_LINHAS_POR_EXPORT, validar_pacote
 from tests.unit.helpers_seotec import montar_pacote_zip
 
@@ -112,3 +113,40 @@ def test_truncamento_maximo_linhas():
     r = validar_pacote(zip_bytes, exports_requeridos={"h1"})
     assert len(r.pacote.exports["h1"].linhas) == MAX_LINHAS_POR_EXPORT
     assert r.pacote.exports["h1"].total_antes_corte == 600
+
+
+# --- Hardening contra zip bomb (SPEC final-review) ---
+
+def test_export_acima_do_limite_por_entrada_vira_faltante(monkeypatch):
+    # Baixa o teto por entrada: o manifest.json (só metadados) fica abaixo,
+    # mas o corpo do export "page_titles" (linhas repetidas) passa disso —
+    # deve virar faltante sem crash, e "h1" (pequeno) continua íntegro.
+    monkeypatch.setattr(ingestao_mod, "MAX_BYTES_POR_ENTRADA", 1000)
+    linhas_grandes = TITLES * 50
+    zip_bytes = montar_pacote_zip({"page_titles": linhas_grandes, "h1": []})
+    r = validar_pacote(zip_bytes, exports_requeridos={"page_titles", "h1"})
+    assert r.pacote is not None
+    assert "page_titles" in r.faltantes
+    assert "h1" not in r.faltantes
+    assert any("page_titles" in e and "excede limite de tamanho" in e for e in r.erros), r.erros
+    assert "page_titles" not in r.pacote.exports
+    assert r.pacote.exports["h1"].linhas == []
+
+
+def test_manifest_acima_do_limite_e_fatal(monkeypatch):
+    monkeypatch.setattr(ingestao_mod, "MAX_BYTES_POR_ENTRADA", 10)
+    zip_bytes = montar_pacote_zip({"page_titles": TITLES})
+    r = validar_pacote(zip_bytes, exports_requeridos={"page_titles"})
+    assert r.pacote is None
+    assert any("manifest.json inválido" in e for e in r.erros)
+
+
+def test_orcamento_total_excedido_marca_restantes_faltantes(monkeypatch):
+    # Cada export real cabe no teto por entrada, mas o orçamento total é
+    # estourado já no primeiro: os seguintes viram faltantes sem serem lidos.
+    monkeypatch.setattr(ingestao_mod, "MAX_BYTES_DESCOMPRIMIDO_TOTAL", 1)
+    zip_bytes = montar_pacote_zip({"page_titles": TITLES, "h1": [], "images": []})
+    r = validar_pacote(zip_bytes, exports_requeridos={"page_titles", "h1", "images"})
+    assert r.pacote is not None
+    assert set(r.faltantes) == {"page_titles", "h1", "images"}
+    assert any("orçamento" in e for e in r.erros)
