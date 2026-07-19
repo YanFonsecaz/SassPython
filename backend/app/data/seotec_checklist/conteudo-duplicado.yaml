@@ -14,6 +14,13 @@ itens:
   descricao: Queremos garantir que o site tenha selecionado uma versão para exibir ao vivo em um navegador.
   importancia: Quando existe mais de uma versão, isso cria conteúdo duplicado, além de uma experiência
     de usuário fraca.
+  regra:
+    export: internal
+    tipo: custom
+    funcao: www_vs_non_www
+  evidencia:
+    colunas:
+    - address
 - slug: http-vs-https
   nome: http vs. https
   peso: 10
@@ -30,6 +37,16 @@ itens:
   importancia: Quando existe mais de uma versão, isso cria conteúdo duplicado, além de uma experiência
     de usuário fraca. Além disso, quando se trata de segurança, isso pode afetar o quão seguro seu site
     realmente é.
+  regra:
+    export: internal
+    tipo: contagem
+    filtro:
+      campo: address
+      op: regex
+      valor: ^http://
+  evidencia:
+    colunas:
+    - address
 - slug: nao-uso-de-trailing-slash
   nome: Não uso de Trailing slash
   peso: 7
@@ -46,6 +63,13 @@ itens:
     retornando status http 200 é considerada duplicação.
   importancia: Quando existe mais de uma versão, isso cria conteúdo duplicado, além de uma experiência
     de usuário fraca.
+  regra:
+    export: internal
+    tipo: custom
+    funcao: trailing_slash_misto
+  evidencia:
+    colunas:
+    - address
 - slug: case-sensitive-habilitado
   nome: Case sensitive habilitado
   peso: 8
@@ -61,6 +85,13 @@ itens:
     desta forma é necessário instruções no servidor para redirecionar automaticamente.
   importancia: Quando existe mais de uma versão, isso cria conteúdo duplicado, além de uma experiência
     de usuário fraca.
+  regra:
+    export: internal
+    tipo: custom
+    funcao: case_sensitive_urls
+  evidencia:
+    colunas:
+    - address
 - slug: conteudo-duplicado
   nome: Conteúdo duplicado
   peso: 10
@@ -88,6 +119,17 @@ itens:
   importancia: Quando existe mais de uma versão, isso cria conteúdo duplicado, além de uma experiência
     de usuário fraca. Além disso, quando se trata de segurança, isso pode afetar o quão seguro seu site
     realmente é.
+  regra:
+    export: content
+    tipo: contagem
+    filtro:
+      campo: near_duplicate_de
+      op: nao_vazio
+  evidencia:
+    colunas:
+    - address
+    - near_duplicate_de
+    - similaridade
 - slug: uso-de-self-canonical
   nome: Uso de Self Canonical
   peso: 8
@@ -108,6 +150,17 @@ itens:
     página que realmente exista. Os links canônicos que levam a páginas inexistentes complicam o processo
     de rastreamento e indexação do seu conteúdo e, como resultado, diminuem a eficiência do rastreamento
     e geram desperdício do crawl budget.
+  regra:
+    export: canonicals
+    tipo: contagem
+    filtro:
+      campo: canonical
+      op: vazio
+    atencao_max: 5
+  evidencia:
+    colunas:
+    - address
+    - canonical
 - slug: link-canonical-quebrado
   nome: Link Canonical Quebrado
   peso: 8
@@ -128,6 +181,17 @@ itens:
     página que realmente exista. Os links canônicos que levam a páginas inexistentes complicam o processo
     de rastreamento e indexação do seu conteúdo e, como resultado, diminuem a eficiência do rastreamento
     e geram desperdício do crawl budget.
+  regra:
+    export: canonicals
+    tipo: contagem
+    filtro:
+      campo: quebrado
+      op: igual
+      valor: true
+  evidencia:
+    colunas:
+    - address
+    - canonical
 - slug: varias-urls-canonical
   nome: Várias URLs Canonical
   peso: 9
@@ -147,3 +211,14 @@ itens:
     canônica. Como resultado, os mecanismos de pesquisa provavelmente vão ignorar todos os elementos canônicos
     ou selecionar o errado. Por isso, é recomendável que você especifique no máximo uma rel="canonical"
     para uma página.
+  regra:
+    export: canonicals
+    tipo: contagem
+    filtro:
+      campo: multiplas
+      op: igual
+      valor: true
+  evidencia:
+    colunas:
+    - address
+    - canonical

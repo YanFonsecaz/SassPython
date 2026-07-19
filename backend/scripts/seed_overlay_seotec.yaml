@@ -598,3 +598,61 @@ regras:
       filtro: {campo: problema, op: igual, valor: nao_indexavel}
       na_se_export_vazio: true
     evidencia: {colunas: [address, amp_url, problema]}
+  www-vs-non-www:
+    regra: {export: internal, tipo: custom, funcao: www_vs_non_www}
+    evidencia: {colunas: [address]}
+  http-vs-https:
+    regra:
+      export: internal
+      tipo: contagem
+      filtro: {campo: address, op: regex, valor: "^http://"}
+    evidencia: {colunas: [address]}
+  nao-uso-de-trailing-slash:
+    regra: {export: internal, tipo: custom, funcao: trailing_slash_misto}
+    evidencia: {colunas: [address]}
+  case-sensitive-habilitado:
+    regra: {export: internal, tipo: custom, funcao: case_sensitive_urls}
+    evidencia: {colunas: [address]}
+  conteudo-duplicado:
+    regra:
+      export: content
+      tipo: contagem
+      filtro: {campo: near_duplicate_de, op: nao_vazio}
+    evidencia: {colunas: [address, near_duplicate_de, similaridade]}
+  uso-de-self-canonical:
+    regra:
+      export: canonicals
+      tipo: contagem
+      filtro: {campo: canonical, op: vazio}
+      atencao_max: 5
+    evidencia: {colunas: [address, canonical]}
+  link-canonical-quebrado:
+    regra:
+      export: canonicals
+      tipo: contagem
+      filtro: {campo: quebrado, op: igual, valor: true}
+    evidencia: {colunas: [address, canonical]}
+  varias-urls-canonical:
+    regra:
+      export: canonicals
+      tipo: contagem
+      filtro: {campo: multiplas, op: igual, valor: true}
+    evidencia: {colunas: [address, canonical]}
+  certificado-ssl:
+    regra: {export: seguranca_site, tipo: existencia, campo: ssl_valido}
+    evidencia: {colunas: [ssl_valido]}
+  sem-suporte-hsts:
+    regra: {export: seguranca_site, tipo: existencia, campo: hsts}
+    evidencia: {colunas: [hsts]}
+  paginas-https-levando-a-paginas-http:
+    regra:
+      export: security
+      tipo: contagem
+      filtro: {campo: links_http, op: maior, valor: 0}
+    evidencia: {colunas: [address, links_http]}
+  paginas-https-levando-a-recursos-http:
+    regra:
+      export: security
+      tipo: contagem
+      filtro: {campo: recursos_http, op: maior, valor: 0}
+    evidencia: {colunas: [address, recursos_http]}

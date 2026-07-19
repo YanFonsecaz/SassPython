@@ -33,13 +33,6 @@ def test_item_por_slug_com_regra():
     assert item.regra.filtro.op == "vazio"
 
 
-def test_item_sf_sem_regra_permitido():
-    ck = carregar_checklist()
-    item = ck.itens_por_slug()["conteudo-duplicado"]
-    assert item.fonte == "sf"
-    assert item.regra is None
-
-
 def test_regra_filtro_entre_exige_lista_de_dois_numeros():
     with pytest.raises(Exception):
         RegraFiltro(campo="status_code", op="entre", valor=[1])

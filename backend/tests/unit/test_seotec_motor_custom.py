@@ -233,3 +233,23 @@ def test_avaliar_pacote_hreflang_e_amp():
     assert r2["diretiva-de-idioma-alternativo-hreflang-no-cabecalho-do-codigo-fonte"].status == "aprovado"
     assert r2["html-declarada-como-amp-html"].status == "reprovado"
     assert r2["uso-de-urls-hreflang-com-codigo-de-status-200"].status == "aprovado"
+
+
+def test_avaliar_pacote_duplicado_e_seguranca():
+    recarregar_checklist()
+    ck = carregar_checklist()
+    pacote = _pacote(
+        internal=[{"address": "http://ex.com/a"}, {"address": "https://ex.com/a"}],
+        content=[{"address": "https://ex.com/a", "near_duplicate_de": "https://ex.com/b", "similaridade": 0.97}],
+        canonicals=[{"address": "https://ex.com/a", "canonical": "", "quebrado": False, "multiplas": False}],
+        security=[{"address": "https://ex.com/a", "links_http": 2, "recursos_http": 0}],
+        seguranca_site=[{"ssl_valido": True, "hsts": False}],
+    )
+    r = avaliar_pacote(ck, pacote, faltantes=[])
+    assert r["http-vs-https"].status == "reprovado"
+    assert r["conteudo-duplicado"].status == "reprovado"
+    assert r["uso-de-self-canonical"].status == "atencao"  # 1 <= atencao_max
+    assert r["certificado-ssl"].status == "aprovado"
+    assert r["sem-suporte-hsts"].status == "reprovado"
+    assert r["paginas-https-levando-a-paginas-http"].status == "reprovado"
+    assert r["paginas-https-levando-a-recursos-http"].status == "aprovado"

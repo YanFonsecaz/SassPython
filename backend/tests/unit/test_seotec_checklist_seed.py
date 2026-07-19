@@ -56,7 +56,10 @@ def test_itens_gsc_e_cwv_link():
     assert sum(1 for i in itens if i["fonte"] == "cwv-link") == 2
 
 
-def test_total_regras_onda_1b_parte1():
+def test_todo_item_sf_tem_regra():
     cats = _carregar_tudo()
+    sf_sem_regra = [i["slug"] for c in cats for i in c["itens"]
+                    if i["fonte"] == "sf" and not i.get("regra")]
+    assert sf_sem_regra == [], f"itens sf sem regra: {sf_sem_regra}"
     com_regra = [i for c in cats for i in c["itens"] if i.get("regra")]
-    assert len(com_regra) >= 45
+    assert len(com_regra) == 98

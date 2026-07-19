@@ -24,6 +24,13 @@ itens:
     no Google, por demonstrar que o site se preocupa com a segurança de quem o visita, também oferece
     para o usuário maior confiança na navegação. Hoje é muito comum o próprio navegador web do usuário
     (Chrome, Edge, Firefox) avisar que um site não é seguro por não ter um certificado ssl.
+  regra:
+    export: seguranca_site
+    tipo: existencia
+    campo: ssl_valido
+  evidencia:
+    colunas:
+    - ssl_valido
 - slug: verificacao-de-seguranca-e-scanner-de-malware
   nome: Verificação de segurança e scanner de malware
   peso: 10
@@ -57,6 +64,13 @@ itens:
   importancia: O HSTS (HTTP Strict Transport Security) informa aos navegadores que eles podem se comunicar
     com servidores somente através de conexões HTTPS. Assim, para garantir que você não apresente conteúdo
     inseguro ao público, recomendamos que implemente o suporte a HSTS.
+  regra:
+    export: seguranca_site
+    tipo: existencia
+    campo: hsts
+  evidencia:
+    colunas:
+    - hsts
 - slug: paginas-https-levando-a-paginas-http
   nome: Páginas HTTPS levando a páginas HTTP
   peso: 7
@@ -81,6 +95,17 @@ itens:
 
 
     Verifique se a página de destino em um redirecionamento de URL HTTPS também usa protocolo HTTPS.'
+  regra:
+    export: security
+    tipo: contagem
+    filtro:
+      campo: links_http
+      op: maior
+      valor: 0
+  evidencia:
+    colunas:
+    - address
+    - links_http
 - slug: paginas-https-levando-a-recursos-http
   nome: Páginas HTTPS levando a recursos HTTP
   peso: 6
@@ -111,3 +136,14 @@ itens:
     Para imagens hospedadas em outros domínios, use a versão HTTPS do site, se disponível. Se o HTTPS
     não estiver disponível, você pode tentar contatar o domínio e perguntar a eles se podem disponibilizar
     o conteúdo via HTTPS.'
+  regra:
+    export: security
+    tipo: contagem
+    filtro:
+      campo: recursos_http
+      op: maior
+      valor: 0
+  evidencia:
+    colunas:
+    - address
+    - recursos_http
