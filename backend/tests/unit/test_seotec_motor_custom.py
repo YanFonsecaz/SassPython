@@ -198,3 +198,17 @@ def test_imagens_nome_generico():
     ])
     r = imagens_nome_generico(_item(None, ["address"]), pacote)
     assert (r.status, r.total_afetadas) == ("atencao", 1)
+
+
+def test_avaliar_pacote_dados_estruturados():
+    recarregar_checklist()
+    ck = carregar_checklist()
+    pacote = _pacote(structured_data=[
+        {"address": "https://a/", "tipos": ["Article", "WebSite"], "erros": 2, "avisos": 1},
+    ])
+    r = avaliar_pacote(ck, pacote, faltantes=[])
+    assert r["uso-de-markup-de-dados-estruturados"].status == "aprovado"
+    assert r["uso-do-tipo-de-esquema-article"].status == "aprovado"
+    assert r["uso-do-tipo-de-esquema-product"].status == "atencao"
+    assert r["nao-ha-erros-no-esquema-de-marcacao"].status == "reprovado"
+    assert r["nao-ha-avisos-no-esquema-de-marcacao"].status == "atencao"

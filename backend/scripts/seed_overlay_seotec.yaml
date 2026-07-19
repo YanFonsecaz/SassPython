@@ -428,3 +428,55 @@ regras:
   nome-de-arquivo-com-palavras-chave-especificas:
     regra: {export: images, tipo: custom, funcao: imagens_nome_generico}
     evidencia: {colunas: [address]}
+  uso-de-markup-de-dados-estruturados:
+    regra: {export: structured_data, tipo: existencia, campo: tipos}
+    evidencia: {colunas: [address, tipos]}
+  nao-ha-erros-no-esquema-de-marcacao:
+    regra:
+      export: structured_data
+      tipo: contagem
+      filtro: {campo: erros, op: maior, valor: 0}
+    evidencia: {colunas: [address, erros]}
+  nao-ha-avisos-no-esquema-de-marcacao:
+    regra:
+      export: structured_data
+      tipo: contagem
+      filtro: {campo: avisos, op: maior, valor: 0}
+      severidade_max: atencao
+    evidencia: {colunas: [address, avisos]}
+  uso-do-tipo-de-esquema-article:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: Article}}
+  uso-do-tipo-de-esquema-blogposting:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: BlogPosting}}
+  uso-do-tipo-de-esquema-breadcrumb:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: BreadcrumbList}}
+  uso-do-tipo-de-esquema-broadcastevent:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: BroadcastEvent}}
+  uso-do-tipo-de-esquema-course:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: Course}}
+  uso-do-tipo-de-esquema-event:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: Event}}
+  uso-do-tipo-de-esquema-howto:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: HowTo}}
+  uso-do-tipo-de-esquema-localbusiness:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: LocalBusiness}}
+  uso-do-tipo-de-esquema-logo:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: Organization}}
+  uso-do-tipo-de-esquema-newsarticle:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: NewsArticle}}
+  uso-do-tipo-de-esquema-organization:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: Organization}}
+  uso-do-tipo-de-esquema-product:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: Product}}
+  uso-do-tipo-de-esquema-realestate:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: RealEstateListing}}
+  uso-do-tipo-de-esquema-recipe:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: Recipe}}
+  uso-do-tipo-de-esquema-review:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: Review}}
+  uso-do-tipo-de-esquema-softwareapplication:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: SoftwareApplication}}
+  uso-do-tipo-de-esquema-videoobject:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: VideoObject}}
+  uso-do-tipo-de-esquema-website:
+    regra: {export: structured_data, tipo: custom, funcao: uso_tipo_schema, parametros: {tipo: WebSite}}
