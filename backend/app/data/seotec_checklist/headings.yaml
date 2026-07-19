@@ -134,3 +134,10 @@ itens:
     ou final da página não é recomendado. O mesmo vale em ter uma tag <h6> (menor nível hierarquico das
     heading tag) posicionada no topo da página. É importante entender que não é necessário utilizar todos
     os níveis de heading tags caso não seja necessário, além de sempre utilizar apenas um <h1> por página.
+  regra:
+    export: h1
+    tipo: custom
+    funcao: hierarquia_headings
+  evidencia:
+    colunas:
+    - address

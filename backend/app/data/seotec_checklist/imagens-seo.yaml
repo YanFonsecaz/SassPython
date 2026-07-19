@@ -17,6 +17,13 @@ itens:
     dos arquivos de imagem em si. Eles devem usar algumas palavras-chave cuidadosamente selecionadas -
     idealmente, palavras-chave que a imagem pode posicionar - e ocultar palavras de ligação (um, o, em,
     de etc), e separar palavras-chave com hífens (ex: IMG-458752.jpg se tornaria ponte-brooklyn-noite.jpg).'
+  regra:
+    export: images
+    tipo: custom
+    funcao: imagens_nome_generico
+  evidencia:
+    colunas:
+    - address
 - slug: tamanho-do-arquivo-de-imagem-100-kb
   nome: Tamanho do Arquivo de Imagem (<100 kb)
   peso: 6

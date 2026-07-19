@@ -44,6 +44,17 @@ itens:
     um sinal de que não vale a pena classificar o seu site.
 
     E, por último, conteúdo em Flash não funciona bem em dispositivos móveis.'
+  regra:
+    export: extracoes
+    tipo: contagem
+    filtro:
+      campo: flash_count
+      op: maior
+      valor: 0
+  evidencia:
+    colunas:
+    - address
+    - flash_count
 - slug: cuidado-no-uso-de-iframe
   nome: Cuidado no uso de Iframe
   peso: 3
@@ -64,6 +75,18 @@ itens:
   importancia: Conteúdo relevante dentro de iframes não são recomendados. Como um iframe sempre vai apontar
     para um outro site que é o dono daquele conteúdo, aquilo que é injetado no seu próprio site será irrelevante
     e não pode ser considerado dentro da estratégia de SEO.
+  regra:
+    export: extracoes
+    tipo: contagem
+    filtro:
+      campo: iframe_count
+      op: maior
+      valor: 0
+    severidade_max: atencao
+  evidencia:
+    colunas:
+    - address
+    - iframe_count
 - slug: nao-ha-conteudo-escondido
   nome: Não há conteúdo escondido
   peso: 7

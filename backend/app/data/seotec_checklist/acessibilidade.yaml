@@ -77,6 +77,15 @@ itens:
     Ideal sempre entender se todas as urls que constam dentro de um sitemap são realmente relevantes,
     evitar urls que por exemplo são canonical pages de outras ou não indexadas ajudará a diminui o tamanho
     do arquivo.
+  regra:
+    export: sitemaps
+    tipo: custom
+    funcao: sitemap_otimizado
+  evidencia:
+    colunas:
+    - sitemap_url
+    - status_code
+    - total_urls
 - slug: uso-de-tags-de-meta-robots-follow-nofollow-index-noindex
   nome: Uso de tags de meta robots (follow/nofollow, index/noindex)
   peso: 3
@@ -111,6 +120,18 @@ itens:
     Talvez você queira usar “nofollow” em links externos para certas páginas. Os motores de busca rastream
     de um site a outro através de links, e você não quer que as spiders saiam de páginas poderosas para
     irem a outros sites.'
+  regra:
+    export: directives
+    tipo: contagem
+    filtro:
+      campo: meta_robots
+      op: regex
+      valor: noindex
+    severidade_max: atencao
+  evidencia:
+    colunas:
+    - address
+    - meta_robots
 - slug: configuracao-adequada-para-pagina-de-erro-404
   nome: Configuração adequada para página de Erro 404
   peso: 10
@@ -154,6 +175,15 @@ itens:
 
     Configurar corretamente as páginas 404 ajuda a manter um site saudável, com melhor navegação e rastreamento
     eficiente pelos motores de busca.'
+  regra:
+    export: pagina_404
+    tipo: custom
+    funcao: pagina_404_adequada
+  evidencia:
+    colunas:
+    - url_testada
+    - status_code
+    - soft_404
 - slug: erros-no-lado-do-cliente-40x
   nome: Erros no Lado do Cliente (40x)
   peso: 10
@@ -238,6 +268,17 @@ itens:
   importancia: Rastreadores de motores de busca só podem descobrir essas páginas a partir do arquivo de
     sitemap ou de backlinks externos. Visitantes do site não poderão acessar essa página de qualquer outra
     página em seu site.
+  regra:
+    export: orfas
+    tipo: contagem
+    filtro:
+      campo: address
+      op: nao_vazio
+    atencao_max: 10
+  evidencia:
+    colunas:
+    - address
+    - origem
 - slug: analise-de-logfile
   nome: Análise de LogFile
   peso: 7

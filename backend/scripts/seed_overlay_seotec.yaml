@@ -342,3 +342,89 @@ regras:
       filtro: {campo: response_time, op: maior, valor: 1.0}
       atencao_max: 10
     evidencia: {colunas: [address, response_time]}
+  sitemap-xml-otimizado:
+    regra: {export: sitemaps, tipo: custom, funcao: sitemap_otimizado}
+    evidencia: {colunas: [sitemap_url, status_code, total_urls]}
+  uso-de-tags-de-meta-robots-follow-nofollow-index-noindex:
+    regra:
+      export: directives
+      tipo: contagem
+      filtro: {campo: meta_robots, op: regex, valor: noindex}
+      severidade_max: atencao
+    evidencia: {colunas: [address, meta_robots]}
+  configuracao-adequada-para-pagina-de-erro-404:
+    regra: {export: pagina_404, tipo: custom, funcao: pagina_404_adequada}
+    evidencia: {colunas: [url_testada, status_code, soft_404]}
+  pagina-orfa-sem-links-internos-recebidos:
+    regra:
+      export: orfas
+      tipo: contagem
+      filtro: {campo: address, op: nao_vazio}
+      atencao_max: 10
+    evidencia: {colunas: [address, origem]}
+  sitemap-xml-da-pagina-com-links-quebrados:
+    regra:
+      export: sitemap_response_codes
+      tipo: contagem
+      filtro: {campo: status_code, op: entre, valor: [400, 599]}
+    evidencia: {colunas: [address, status_code, sitemap_url]}
+  barra-de-navegacao-menu-em-html:
+    regra:
+      export: extracoes
+      tipo: proporcao
+      filtro: {campo: nav_html, op: vazio}
+      limite_proporcao: 0.5
+    evidencia: {colunas: [address]}
+  hierarquia-de-urls:
+    regra:
+      export: internal
+      tipo: proporcao
+      filtro: {campo: address, op: regex, valor: "^https?://[^/]+(/[^/]+){5,}"}
+      limite_proporcao: 0.2
+    evidencia: {colunas: [address, crawl_depth]}
+  tag-viewport-configurada-corretamente:
+    regra:
+      export: extracoes
+      tipo: contagem
+      filtro: {campo: viewport, op: nao_regex, valor: "width=device-width"}
+    evidencia: {colunas: [address, viewport]}
+  html-doctype-declarada:
+    regra:
+      export: extracoes
+      tipo: contagem
+      filtro: {campo: doctype, op: vazio}
+    evidencia: {colunas: [address, doctype]}
+  nao-uso-de-meta-refresh:
+    regra:
+      export: extracoes
+      tipo: contagem
+      filtro: {campo: meta_refresh, op: nao_vazio}
+    evidencia: {colunas: [address, meta_refresh]}
+  fonte-da-pagina-contem-tags-meta-tags-ex-title-meta-description-no-cabecalho:
+    regra: {export: page_titles, tipo: custom, funcao: metas_no_head}
+    evidencia: {colunas: [address]}
+  hierarquia-de-heading-tags:
+    regra: {export: h1, tipo: custom, funcao: hierarquia_headings}
+    evidencia: {colunas: [address]}
+  presenca-de-lorem-ipsum-no-conteudo:
+    regra:
+      export: extracoes
+      tipo: contagem
+      filtro: {campo: lorem_ipsum_count, op: maior, valor: 0}
+    evidencia: {colunas: [address, lorem_ipsum_count]}
+  nao-uso-de-flash:
+    regra:
+      export: extracoes
+      tipo: contagem
+      filtro: {campo: flash_count, op: maior, valor: 0}
+    evidencia: {colunas: [address, flash_count]}
+  cuidado-no-uso-de-iframe:
+    regra:
+      export: extracoes
+      tipo: contagem
+      filtro: {campo: iframe_count, op: maior, valor: 0}
+      severidade_max: atencao
+    evidencia: {colunas: [address, iframe_count]}
+  nome-de-arquivo-com-palavras-chave-especificas:
+    regra: {export: images, tipo: custom, funcao: imagens_nome_generico}
+    evidencia: {colunas: [address]}

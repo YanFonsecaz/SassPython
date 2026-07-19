@@ -18,6 +18,16 @@ itens:
     A declaração <!DOCTYPE> não é uma tag HTML, é uma instrução para o navegador sobre a versão de HTML
     em que a página é escrita.'
   importancia: É importante dar ao navegador instruções sobre a versão da página HTML.
+  regra:
+    export: extracoes
+    tipo: contagem
+    filtro:
+      campo: doctype
+      op: vazio
+  evidencia:
+    colunas:
+    - address
+    - doctype
 - slug: nao-uso-de-meta-refresh
   nome: Não uso de meta-refresh
   peso: 6
@@ -38,6 +48,16 @@ itens:
 
     Aqui está uma citação do Gooogle: "Não recomendamos por 2 razões: UX (ele mantém a página no histórico
     do navegador) e tempo de processamento (precisamos analisar a página para vê-la)."'
+  regra:
+    export: extracoes
+    tipo: contagem
+    filtro:
+      campo: meta_refresh
+      op: nao_vazio
+  evidencia:
+    colunas:
+    - address
+    - meta_refresh
 - slug: fonte-da-pagina-contem-tags-meta-tags-ex-title-meta-description-no-cabecalho
   nome: 'Fonte da página contém tags META tags (ex.: <title>, meta description no cabeçalho)'
   peso: 9
@@ -64,3 +84,10 @@ itens:
 
     Apesar de não terem efeito direto no posiconamento, eles aumentam a taxa de cliques nos SERPs, que
     é um fator de posicionamento.'
+  regra:
+    export: page_titles
+    tipo: custom
+    funcao: metas_no_head
+  evidencia:
+    colunas:
+    - address

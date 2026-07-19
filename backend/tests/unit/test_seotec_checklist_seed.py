@@ -54,3 +54,9 @@ def test_itens_gsc_e_cwv_link():
     itens = [i for c in cats for i in c["itens"]]
     assert sum(1 for i in itens if i["fonte"] == "gsc") == 7
     assert sum(1 for i in itens if i["fonte"] == "cwv-link") == 2
+
+
+def test_total_regras_onda_1b_parte1():
+    cats = _carregar_tudo()
+    com_regra = [i for c in cats for i in c["itens"] if i.get("regra")]
+    assert len(com_regra) >= 45

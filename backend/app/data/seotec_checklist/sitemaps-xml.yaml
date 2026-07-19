@@ -60,3 +60,17 @@ itens:
   importancia: Motores de busca usam arquivos de sitemap XML como um sinal de que páginas precisam ser
     rastreadas. Ter arquivos de sitemap bem organizados, limpos e otimizados é essencial para sites grandes,
     ou que contêm vídeos, imagens e/ou notícias.
+  regra:
+    export: sitemap_response_codes
+    tipo: contagem
+    filtro:
+      campo: status_code
+      op: entre
+      valor:
+      - 400
+      - 599
+  evidencia:
+    colunas:
+    - address
+    - status_code
+    - sitemap_url

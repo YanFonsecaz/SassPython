@@ -15,3 +15,14 @@ itens:
   importancia: Isso é extremamente importante pra diferentes renderizações em dispositivos móveis. Isso
     ajuda a garantir que a sua página vai exibir corretamenta todo o conteúdo, dentro dos parâmetros da
     tela de um certo dispositivo.
+  regra:
+    export: extracoes
+    tipo: contagem
+    filtro:
+      campo: viewport
+      op: nao_regex
+      valor: width=device-width
+  evidencia:
+    colunas:
+    - address
+    - viewport

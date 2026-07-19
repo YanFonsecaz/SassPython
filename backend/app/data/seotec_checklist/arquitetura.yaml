@@ -71,6 +71,16 @@ itens:
   fonte: sf
   descricao: Verificar se o menu principal e a navegação de um site estão programadas em HTML.
   importancia: Seu TLN deve ser escrito em HTML, NÃO JS!
+  regra:
+    export: extracoes
+    tipo: proporcao
+    filtro:
+      campo: nav_html
+      op: vazio
+    limite_proporcao: 0.5
+  evidencia:
+    colunas:
+    - address
 - slug: o-site-tem-rodape-otimizado
   nome: O site tem rodapé otimizado?
   peso: 6
@@ -164,3 +174,15 @@ itens:
   importancia: O juice de um site sempre é repassado no formato de cascata dentro dos diretórios de um
     site. Ter uma estrutura de urls utilizando uma hierarquia correta com pensamento de relevância e keywords
     importantes ajudará no desenvolvimento de páginas que se encontram em níveis mais profundos.
+  regra:
+    export: internal
+    tipo: proporcao
+    filtro:
+      campo: address
+      op: regex
+      valor: ^https?://[^/]+(/[^/]+){5,}
+    limite_proporcao: 0.2
+  evidencia:
+    colunas:
+    - address
+    - crawl_depth
