@@ -3,12 +3,17 @@ from app.services.seotec_ingestao import ExportNormalizado, PacoteIngestao
 from app.services.seotec_motor import avaliar_pacote
 from app.services.seotec_motor_custom import (
     cadeias_redirecionamento,
+    case_sensitive_urls,
     hierarquia_headings,
+    imagens_nome_generico,
     loops_redirecionamento,
     metas_no_head,
     pagina_404_adequada,
     sitemap_otimizado,
     title_igual_h1,
+    trailing_slash_misto,
+    uso_tipo_schema,
+    www_vs_non_www,
 )
 from tests.unit.test_seotec_motor import _item, _pacote  # reusa builders
 
@@ -149,3 +154,47 @@ def test_avaliar_pacote_com_checklist_real():
     assert "analise-de-logfile" not in resultados
     assert all(s in {"aprovado", "atencao", "reprovado", "na", "sem_dados"}
                for s in (r.status for r in resultados.values()))
+
+
+def test_uso_tipo_schema_presente_e_ausente():
+    from app.services.seotec_checklist import RegraItem
+
+    pacote = _pacote(structured_data=[
+        {"address": "https://a/", "tipos": ["Article", "WebSite"], "erros": 0, "avisos": 0},
+    ])
+    item = _item(RegraItem(export="structured_data", tipo="custom", funcao="uso_tipo_schema",
+                           parametros={"tipo": "Article"}))
+    assert uso_tipo_schema(item, pacote).status == "aprovado"
+    item2 = _item(RegraItem(export="structured_data", tipo="custom", funcao="uso_tipo_schema",
+                            parametros={"tipo": "Product"}))
+    assert uso_tipo_schema(item2, pacote).status == "atencao"
+
+
+def test_www_vs_non_www():
+    misto = _pacote(internal=[
+        {"address": "https://www.ex.com/a"}, {"address": "https://ex.com/b"},
+    ])
+    ok = _pacote(internal=[{"address": "https://www.ex.com/a"}, {"address": "https://www.ex.com/b"}])
+    assert www_vs_non_www(_item(None, ["address"]), misto).status == "reprovado"
+    assert www_vs_non_www(_item(None), ok).status == "aprovado"
+
+
+def test_trailing_slash_misto():
+    misto = _pacote(internal=[{"address": "https://ex.com/a"}, {"address": "https://ex.com/a/"}])
+    ok = _pacote(internal=[{"address": "https://ex.com/a/"}, {"address": "https://ex.com/b/"}])
+    assert trailing_slash_misto(_item(None, ["address"]), misto).status == "reprovado"
+    assert trailing_slash_misto(_item(None), ok).status == "aprovado"
+
+
+def test_case_sensitive_urls():
+    misto = _pacote(internal=[{"address": "https://ex.com/Pagina"}, {"address": "https://ex.com/pagina"}])
+    assert case_sensitive_urls(_item(None, ["address"]), misto).status == "reprovado"
+
+
+def test_imagens_nome_generico():
+    pacote = _pacote(images=[
+        {"address": "https://ex.com/img/IMG_1234.jpg", "size_bytes": 1000, "alt_text": "x"},
+        {"address": "https://ex.com/img/produto-azul.jpg", "size_bytes": 1000, "alt_text": "x"},
+    ])
+    r = imagens_nome_generico(_item(None, ["address"]), pacote)
+    assert (r.status, r.total_afetadas) == ("atencao", 1)

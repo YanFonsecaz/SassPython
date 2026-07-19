@@ -2,9 +2,16 @@
 
 Assinatura obrigatória: (item: ItemChecklist, pacote: PacoteIngestao) -> ResultadoItem.
 """
+import re
+from urllib.parse import urlsplit
+
 from app.services.seotec_checklist import ItemChecklist
 from app.services.seotec_ingestao import ExportNormalizado, PacoteIngestao
 from app.services.seotec_motor import MAX_AMOSTRA, ResultadoItem, _montar_amostra
+
+_RE_IMAGEM_GENERICA = re.compile(
+    r"(?i)^(img|dsc|image|screenshot|whatsapp[- ]image)[-_ ]?\d|^\d+\.(jpe?g|png|webp|gif)$"
+)
 
 
 def _colunas(item: ItemChecklist) -> list[str]:
@@ -115,3 +122,112 @@ def hierarquia_headings(item: ItemChecklist, pacote: PacoteIngestao) -> Resultad
         if not (li.get("h1") or "") and (li.get("h2_ocorrencias") or 0) > 0
     ]
     return _resultado_lista(item, export.linhas, afetadas, export)
+
+
+def uso_tipo_schema(item: ItemChecklist, pacote: PacoteIngestao) -> ResultadoItem:
+    """Verifica se algum recurso structured_data usa o `tipo` parametrizado.
+
+    Nunca reprova: ausência do tipo é apenas atenção (o usuário rebaixa p/ n/a
+    quando o tipo simplesmente não se aplica ao site).
+    """
+    export = pacote.exports.get("structured_data")
+    if export is None:
+        return ResultadoItem(status="sem_dados")
+    tipo = (item.regra.parametros if item.regra else {}).get("tipo")
+    linhas = export.linhas
+    total_avaliadas = len(linhas)
+    presente = any(tipo in (li.get("tipos") or []) for li in linhas)
+    if presente:
+        return ResultadoItem(status="aprovado", total_avaliadas=total_avaliadas)
+    return ResultadoItem(status="atencao", total_avaliadas=total_avaliadas, total_afetadas=0, amostra=[])
+
+
+def _base_www(host: str) -> tuple[str, bool]:
+    """Retorna (domínio-base, tinha_www) a partir de um host."""
+    host = (host or "").lower()
+    if host.startswith("www."):
+        return host[4:], True
+    return host, False
+
+
+def www_vs_non_www(item: ItemChecklist, pacote: PacoteIngestao) -> ResultadoItem:
+    export = pacote.exports.get("internal")
+    if export is None:
+        return ResultadoItem(status="sem_dados")
+    linhas = export.linhas
+    por_base: dict[str, dict[str, list[dict]]] = {}
+    for li in linhas:
+        host = urlsplit(li.get("address") or "").hostname or ""
+        if not host:
+            continue
+        base, tinha_www = _base_www(host)
+        lado = "www" if tinha_www else "non_www"
+        por_base.setdefault(base, {"www": [], "non_www": []})[lado].append(li)
+    afetadas: list[dict] = []
+    for lados in por_base.values():
+        if lados["www"] and lados["non_www"]:
+            minoritario = lados["www"] if len(lados["www"]) <= len(lados["non_www"]) else lados["non_www"]
+            afetadas.extend(minoritario)
+    return _resultado_lista(item, linhas, afetadas, export)
+
+
+def trailing_slash_misto(item: ItemChecklist, pacote: PacoteIngestao) -> ResultadoItem:
+    export = pacote.exports.get("internal")
+    if export is None:
+        return ResultadoItem(status="sem_dados")
+    linhas = export.linhas
+    por_endereco: dict[str, list[dict]] = {}
+    for li in linhas:
+        address = (li.get("address") or "").strip()
+        if address:
+            por_endereco.setdefault(address, []).append(li)
+    afetadas: list[dict] = []
+    vistos: set[str] = set()
+    for address in por_endereco:
+        if address in vistos:
+            continue
+        sem_barra = address[:-1] if address.endswith("/") else address
+        com_barra = sem_barra + "/"
+        path = urlsplit(sem_barra).path
+        if path in ("", "/"):
+            continue
+        if sem_barra in por_endereco and com_barra in por_endereco:
+            vistos.add(sem_barra)
+            vistos.add(com_barra)
+            afetadas.extend(por_endereco[sem_barra])
+            afetadas.extend(por_endereco[com_barra])
+    return _resultado_lista(item, linhas, afetadas, export)
+
+
+def case_sensitive_urls(item: ItemChecklist, pacote: PacoteIngestao) -> ResultadoItem:
+    export = pacote.exports.get("internal")
+    if export is None:
+        return ResultadoItem(status="sem_dados")
+    linhas = export.linhas
+    grupos: dict[str, dict[str, list[dict]]] = {}
+    for li in linhas:
+        address = li.get("address") or ""
+        grupos.setdefault(address.lower(), {}).setdefault(address, []).append(li)
+    afetadas: list[dict] = []
+    for variantes in grupos.values():
+        if len(variantes) > 1:
+            for lst in variantes.values():
+                afetadas.extend(lst)
+    return _resultado_lista(item, linhas, afetadas, export)
+
+
+def imagens_nome_generico(item: ItemChecklist, pacote: PacoteIngestao) -> ResultadoItem:
+    """Sinaliza imagens com nome de arquivo genérico. Nunca ultrapassa `atencao`."""
+    export = pacote.exports.get("images")
+    if export is None:
+        return ResultadoItem(status="sem_dados")
+    linhas = export.linhas
+    afetadas = []
+    for li in linhas:
+        nome = urlsplit(li.get("address") or "").path.rsplit("/", 1)[-1]
+        if _RE_IMAGEM_GENERICA.search(nome):
+            afetadas.append(li)
+    resultado = _resultado_lista(item, linhas, afetadas, export)
+    if resultado.status == "reprovado":
+        resultado = resultado.model_copy(update={"status": "atencao"})
+    return resultado
