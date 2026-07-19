@@ -100,6 +100,11 @@ def test_pagina_404_adequada():
     assert pagina_404_adequada(_item(None), _pacote()).status == "sem_dados"
 
 
+def test_pagina_404_export_vazio_sem_dados():
+    """Export presente mas zero linhas deve retornar sem_dados, não reprovado fabricado."""
+    assert pagina_404_adequada(_item(None), _pacote(pagina_404=[])).status == "sem_dados"
+
+
 def test_metas_no_head():
     pacote = _pacote(
         page_titles=[

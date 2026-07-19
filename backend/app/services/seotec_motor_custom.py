@@ -81,6 +81,8 @@ def pagina_404_adequada(item: ItemChecklist, pacote: PacoteIngestao) -> Resultad
     export = pacote.exports.get("pagina_404")
     if export is None:
         return ResultadoItem(status="sem_dados")
+    if not export.linhas:
+        return ResultadoItem(status="sem_dados")
     linha = export.linhas[0] if export.linhas else {}
     aprovado = linha.get("status_code") == 404 and not linha.get("soft_404")
     afetadas = [] if aprovado else [linha]
