@@ -137,5 +137,5 @@ clientes diferentes · edição da receita de exports pela UI.
 
 | Data | Mudança | Commit |
 |---|---|---|
-| 2026-07-18 | Onda 1 implementada (fundação de dados: seed, modelos 0029, ingestão, motor 31 regras, score, workflow, rotas, e2e); decisão: checklist YAML vive em `backend/app/data/seotec_checklist/`, não `app/kb/` | b70c771 |
+| 2026-07-18 | Onda 1 implementada (fundação de dados: seed, modelos 0030, ingestão, motor 31 regras, score, workflow, rotas, e2e); decisão: checklist YAML vive em `backend/app/data/seotec_checklist/`, não `app/kb/` | b70c771 |
 | 2026-07-17 | Spec inicial (design aprovado em brainstorming) | — |

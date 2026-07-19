@@ -143,5 +143,5 @@ completa (comparação HTML vs DOM renderizado fica no que o SF entrega).
 
 | Data | Mudança | Commit |
 |---|---|---|
-| 2026-07-18 | Onda 1 implementada (fundação de dados: seed, modelos 0029, ingestão, motor 31 regras, score, workflow, rotas, e2e) | b70c771 |
+| 2026-07-18 | Onda 1 implementada (fundação de dados: seed, modelos 0030, ingestão, motor 31 regras, score, workflow, rotas, e2e) | b70c771 |
 | 2026-07-17 | Spec inicial; classificação dos 125 itens | — |
