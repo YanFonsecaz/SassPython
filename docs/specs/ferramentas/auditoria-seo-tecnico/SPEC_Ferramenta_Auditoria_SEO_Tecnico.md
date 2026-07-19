@@ -1,6 +1,6 @@
 # SPEC — Ferramenta Auditoria de SEO Técnico (spec-mãe)
 
-**Status:** 🚧 em desenvolvimento
+**Status:** 🚧 parcial
 **Capacidade:** `auditoria-seo-tecnico`
 **Escopo:** ambos — backend (workflow, rotas, modelos, worker) + frontend (páginas da ferramenta) + conector local
 **Código:** `backend/app/agents/seotec/*`, `backend/app/routers/ferramentas_seo_tecnico.py`, `backend/app/services/seotec_*`, `backend/app/models/seo_*.py`, `frontend/src/app/(dashboard)/ferramentas/auditoria-seo-tecnico/*`, `frontend/src/components/seotec/*`

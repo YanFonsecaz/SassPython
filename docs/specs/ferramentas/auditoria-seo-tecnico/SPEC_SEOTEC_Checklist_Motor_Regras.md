@@ -1,6 +1,6 @@
 # SPEC — Seed do checklist (125 itens) + motor de regras determinístico
 
-**Status:** 🚧 em desenvolvimento
+**Status:** 🚧 parcial
 **Capacidade:** `auditoria-seo-tecnico`
 **Escopo:** backend — `backend/app/data/seotec_checklist/*.yaml`, `backend/app/services/seotec_checklist.py`, `backend/app/services/seotec_motor.py`
 **Créditos:** não cobra (motor é determinístico, zero LLM)

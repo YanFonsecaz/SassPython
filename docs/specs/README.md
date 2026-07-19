@@ -51,7 +51,7 @@ SSE de progresso). Custos reais vêm de `backend/app/services/ferramenta_service
 | **Distribuir Inlinks** (reversos) | ✅ implementado | `/ferramentas/distribuir-inlinks` | `15 + 1·N_candidatas` (teto 115) | [ferramentas/inlinks-reversos](ferramentas/inlinks-reversos/README.md) |
 | **Core Web Vitals** | ✅ implementado | `/ferramentas/core-web-vitals` | `15 + 1·N_urls` (teto 100; mede mobile+desktop) | [ferramentas/core-web-vitals](ferramentas/core-web-vitals/README.md) |
 | **Parecer Técnico** | ✅ implementado | `/ferramentas/parecer` | `10 + 3·N_imagens` (teto 90) | [ferramentas/parecer-tecnico](ferramentas/parecer-tecnico/README.md) |
-| **Auditoria de SEO Técnico** | 🚧 em desenvolvimento | `/ferramentas/auditoria-seo-tecnico` | `30` before · `15` after (proposta) | [ferramentas/auditoria-seo-tecnico](ferramentas/auditoria-seo-tecnico/README.md) |
+| **Auditoria de SEO Técnico** | 🚧 parcial | `/ferramentas/auditoria-seo-tecnico` | `30` before · `15` after (proposta) | [ferramentas/auditoria-seo-tecnico](ferramentas/auditoria-seo-tecnico/README.md) |
 
 ### Mapa capacidade → código (rastreabilidade)
 
