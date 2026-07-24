@@ -1,0 +1,79 @@
+categoria: SEO Internacional
+itens:
+- slug: uso-do-atributo-lang-html-lang-pt-br-html
+  recomendacao: >-
+    Adicione o atributo `lang` na tag `<html>` de cada página com o código
+    correto (ex.: `lang="pt-BR"`, `lang="en-US"`). Sinaliza ao Google e a leitores
+    de tela o idioma da página. Para sites multilíngues, cada versão tem seu
+    próprio `lang`.
+- slug: diretiva-de-idioma-alternativo-hreflang-no-cabecalho-do-codigo-fonte
+  recomendacao: >-
+    Implemente `hreflang` em todas as versões de idioma/região: `<link
+    rel="alternate" hreflang="es-ES" href="...">`. O Google usa o hreflang para
+    servir a versão correta por idioma. Use o formato ISO (idioma-REGIÃO),
+    inclua auto-referência e x-default.
+  solucoes:
+    wordpress: >-
+      Use Polylang/WPML para gerar hreflang automaticamente; valide as tags
+      renderizadas no <head> de cada versão de idioma.
+    nextjs: >-
+      No App Router com i18n, use `generateMetadata` para emitir `alternates:
+      { languages: {...} }` por rota/idioma.
+- slug: uso-de-urls-hreflang-com-codigo-de-status-200
+  recomendacao: >-
+    Corrija cada URL hreflang que retorna non-200: destine apenas a URLs vivas,
+    sem redirects/erros. Hreflang apontando a 3xx/4xx/5xx é ignorado pelo Google
+    e invalida o conjunto de alternativas.
+- slug: urls-hreflang-nao-vinculadas
+  recomendacao: >-
+    Certifique-se de que cada URL hreflang seja reciprocamente vinculada — se A
+    aponta para B, B deve apontar de volta para A. Páginas referenciadas só via
+    sitemap (sem link no <head>) geram inconsistência. Use <link> no <head> ou
+    sitemap com `xhtml:link` reciprocamente.
+- slug: links-de-retorno-ausentes
+  recomendacao: >-
+    Para cada par hreflang, confirme o link de retorno: A -> B exige B -> A.
+    Faltas de backlink quebram o hreflang. Implemente via <link rel="alternate">
+    bidirecional ou via sitemap XML completo (todas as versões apontando entre
+    si).
+- slug: links-de-retorno-de-idioma-e-regiao-inconsistentes
+  recomendacao: >-
+    Alinhe os pares hreflang: `es-ES` deve apontar para `pt-BR` e vice-versa,
+    sem trocas de código (ex.: es-AR -> pt-BR quando deveria ser es-AR -> pt-PT).
+    Revise a matriz hreflang e corrija os pares divergentes.
+- slug: links-de-retorno-nao-canonicos
+  recomendacao: >-
+    Hreflang deve sempre apontar para a URL canônica de cada versão, nunca para
+    uma versão duplicada/parametrizada. Revise os pares e substitua URLs
+    não-canônicas pelas canônicas.
+- slug: links-de-retorno-noindex
+  recomendacao: >-
+    Remova o `noindex` das páginas que são destino de hreflang — uma página
+    noindex não pode ser a versão alternativa de outra (o Google ignora o
+    hreflang). Ou torne a página indexável ou remova-a do conjunto hreflang.
+- slug: codigos-de-idioma-e-regiao-incorretos
+  recomendacao: >-
+    Use apenas códigos válidos ISO 639-1 (idioma) e ISO 3166-1 alpha-2 (região):
+    `pt-BR`, `en-US`, `es-MX`. Códigos inventados ou invertidos (ex.: `br-PT`)
+    são descartados pelo Google. Corrija na fonte que gera o hreflang.
+- slug: entradas-multiplas
+  recomendacao: >-
+    Garanta um par único (idioma/região) por página — se a página X aparece duas
+    vezes com o mesmo hreflang, remova a duplicada. Cada anotação hreflang deve
+    ser única no conjunto de uma página.
+- slug: auto-referencia-ausente
+  recomendacao: >-
+    Cada página deve incluir um hreflang apontando para si mesma (auto-referência):
+    a página `pt-BR` precisa de `<link rel="alternate" hreflang="pt-BR"
+    href="{propria-url}">`. Sem auto-referência o Google pode ignorar o conjunto.
+- slug: nao-usando-canonico
+  recomendacao: >-
+    Cada URL no conjunto hreflang deve apontar para a sua versão canônica
+    (self-canonical) — hreflang e canonical precisam estar alinhados. Se a
+    página é canônica de si mesma, o hreflang deve usar essa mesma URL.
+- slug: x-default-ausente
+  recomendacao: >-
+    Adicione `<link rel="alternate" hreflang="x-default" href="{url-padrao}">`
+    apontando para a versão fallback (geralmente o idioma padrão). O x-default
+    atende usuários cujo idioma não tem versão dedicada. Recomendado pelo Google
+    em todo conjunto hreflang.

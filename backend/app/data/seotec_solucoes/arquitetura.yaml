@@ -1,0 +1,20 @@
+categoria: Arquitetura
+itens:
+- slug: barra-de-navegacao-menu-em-html
+  recomendacao: >-
+    Reconstrua o menu principal em HTML semântico (`<nav>` com `<a>` reais) em
+    vez de JavaScript/imagens. O Googlebot precisa rastrear os links do menu —
+    menus em JS puro (sem fallback) escondem páginas dos crawlers e quebram a
+    descoberta interna.
+- slug: paginas-que-exigem-mais-de-tres-cliques-para-alcancar
+  recomendacao: >-
+    Achate a arquitetura: páginas importantes devem estar a no máximo 3 cliques
+    da home. Adicione links internos contextuais, amplie o menu/categorias ou
+    use breadcrumbs clicáveis. Profundidade alta reduz autoridade interna e
+    dificulta o crawl.
+- slug: hierarquia-de-urls
+  recomendacao: >-
+    Organize as URLs em hierarquia coerente (dominio.com/categoria/subcategoria/
+    pagina) que reflita a navegação. URLs planas demais ou inconsistentes diluem
+    a distribuição de autoridade. Reestruture com redirects 301 das URLs
+    antigas para as novas canonizadas.

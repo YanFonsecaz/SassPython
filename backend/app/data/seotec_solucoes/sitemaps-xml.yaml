@@ -1,0 +1,14 @@
+categoria: Sitemaps XML da Página
+itens:
+- slug: site-tem-sitemap-xml
+  recomendacao: >-
+    Gere e publique um `sitemap.xml` na raiz contendo todas as URLs indexáveis
+    canônicas. Declare-o no `robots.txt` e envie no Google Search Console >
+    Sitemaps. Sem sitemap, o Google depende só dos links internos para
+    descobrir páginas (mais lento).
+- slug: sitemap-xml-da-pagina-com-links-quebrados
+  recomendacao: >-
+    Remova do sitemap todas as URLs que retornam 4xx/5xx ou que estejam
+    redirecionadas. Sitemaps só devem listar URLs finais, canônicas e 200.
+    Regenerar o sitemap a cada deploy/ciclo de conteúdo evita o acúmulo de
+    entradas quebradas.

@@ -1,0 +1,9 @@
+categoria: Otimização para Mobile
+itens:
+- slug: tag-viewport-configurada-corretamente
+  recomendacao: >-
+    Adicione `<meta name="viewport" content="width=device-width,
+    initial-scale=1">` no <head> de todas as páginas. Sem o viewport, o mobile
+    renderiza a versão desktop comprimida (Google penaliza) e a usabilidade
+    quebra. Use design responsivo (CSS media queries) em vez de URLs mobile
+    separadas.

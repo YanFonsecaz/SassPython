@@ -1,0 +1,134 @@
+categoria: Dados Estruturados
+itens:
+- slug: uso-de-markup-de-dados-estruturados
+  recomendacao: >-
+    Implemente dados estruturados schema.org (JSON-LD) nas páginas principais
+    descrevendo o tipo de conteúdo (Article, Product, LocalBusiness, BreadcrumbList
+    etc.). Coloque o `<script type="application/ld+json">` no <head> e valide com
+    o Rich Results Test do Google. Priorize páginas com potencial de rich snippet
+    (produtos, artigos, avaliações, FAQ).
+  solucoes:
+    wordpress: >-
+      O Yoast/Rank Math injeta JSON-LD básico (Organization, WebSite,
+      BreadcrumbList) automaticamente; complete por tipo de conteúdo no plugin
+      ou via hook `wp_head`.
+    nextjs: >-
+      Use o Metadata API (`metadata.other` ou um componente `<script>` no
+      layout) para emitir JSON-LD por rota a partir dos dados do CMS.
+- slug: nao-ha-erros-no-esquema-de-marcacao
+  recomendacao: >-
+    Corrija os erros reportados no Rich Results Test / GSC > Eventos de Pesquisa:
+    normalmente faltam campos obrigatórios do tipo (ex.: `name`, `image`,
+    `datePublished`). Erros invalidam o rich snippet. Corrija a fonte que gera o
+    JSON-LD para que todas as páginas daquele tipo passem.
+- slug: nao-ha-avisos-no-esquema-de-marcacao
+  recomendacao: >-
+    Adicione as propriedades recomendadas que faltam (ex.: `author`, `headline`,
+    `aggregateRating`) para maximizar a elegibilidade a rich snippets. Avisos não
+    invalidam, mas reduzem a cobertura dos recursos visuais no SERP.
+- slug: uso-do-tipo-de-esquema-article
+  recomendacao: >-
+    Nas páginas de artigo/reportagem, adicione JSON-LD do tipo `Article`
+    (ou `NewsArticle`/`BlogPosting` quando aplicável) com `headline`, `image`,
+    `datePublished`, `dateModified`, `author` e `publisher`. Habilita o rich
+    snippet de artigo e melhora a compreensão do conteúdo editorial.
+- slug: uso-do-tipo-de-esquema-blogposting
+  recomendacao: >-
+    Em cada post do blog, adicione JSON-LD `BlogPosting` com `headline`,
+    `image`, `datePublished`, `dateModified`, `author`, `publisher`. Diferencia
+    posts de blog de artigos editoriais e habilita rich snippet.
+- slug: uso-do-tipo-de-esquema-breadcrumb
+  recomendacao: >-
+    Adicione `BreadcrumbList` (JSON-LD) em todas as páginas internas com a
+    hierarquia `itemListElement` (Home > Categoria > Página atual). Habilita
+    breadcrumbs no SERP e ajuda o Google a entender a arquitetura do site.
+  solucoes:
+    wordpress: >-
+      Yoast/Rank Math geram BreadcrumbList automaticamente; basta o tema exibir
+      breadcrumbs (função `yoast_breadcrumb()`) na frente.
+- slug: uso-do-tipo-de-esquema-broadcastevent
+  recomendacao: >-
+    Em páginas de transmissões ao vivo/eventos online, adicione JSON-LD
+    `BroadcastEvent` com `name`, `startDate`, `isLiveBroadcast`, `broadcastOfEvent`.
+    Aumenta elegibilidade a rich snippets de eventos quando aplicável ao nicho.
+- slug: uso-do-tipo-de-esquema-course
+  recomendacao: >-
+    Nas páginas de cursos, adicione JSON-LD `Course` com `name`, `description`,
+    `provider`, `hasCourseInstance`. Habilita o rich snippet de curso no SERP.
+- slug: uso-do-tipo-de-esquema-event
+  recomendacao: >-
+    Nas páginas de eventos (show, palestra, festival), adicione JSON-LD `Event`
+    com `name`, `startDate`, `endDate`, `location`, `eventStatus`, `offers`.
+    Habilita o rich snippet de evento no SERP e no Google Events.
+- slug: uso-do-tipo-de-esquema-howto
+  recomendacao: >-
+    Em páginas de passo-a-passo/tutorial, adicione JSON-LD `HowTo` com `step`
+    (nome, texto, imagem por etapa). Habilita o rich snippet expansível de
+    instruções. Apenas para receitas/procedimentos, não para conteúdo editorial
+    genérico.
+- slug: uso-do-tipo-de-esquema-localbusiness
+  recomendacao: >-
+    Na home/contato/filiais, adicione JSON-LD `LocalBusiness` (ou subtipo
+    específico: `Restaurant`, `Store`) com `name`, `address`, `telephone`,
+    `openingHoursSpecification`, `geo`, `aggregateRating`. Habilita o knowledge
+    panel local e rich snippets de horário/avaliação.
+- slug: uso-do-tipo-de-esquema-logo
+  recomendacao: >-
+    Na home (ou Organization JSON-LD), adicione a propriedade `logo` apontando
+    para a imagem do logotipo (`url`, `width`, `height`, `contentUrl`). Ajuda o
+    Google a exibir o logo correto no knowledge panel e SERP.
+- slug: uso-do-tipo-de-esquema-newsarticle
+  recomendacao: >-
+    Em artigos de notícia (dentro do Google News), use JSON-LD `NewsArticle`
+    com `headline`, `datePublished`, `dateModified`, `author`, `publisher`,
+    `image`, `mainEntityOfPage`. Habilita cobertura no Google News e rich
+    snippet.
+- slug: uso-do-tipo-de-esquema-organization
+  recomendacao: >-
+    Na home/contato, adicione JSON-LD `Organization` com `name`, `url`, `logo`,
+    `sameAs` (redes sociais), `contactPoint`. Alimenta o knowledge panel da
+    marca e consolida identidade.
+- slug: uso-do-tipo-de-esquema-product
+  recomendacao: >-
+    Em cada página de produto, adicione JSON-LD `Product` com `name`, `image`,
+    `description`, `offers` (preço, moeda, disponibilidade) e, se houver,
+    `aggregateRating`/`review`. Habilita rich snippet de preço e estrelas —
+    alto impacto em CTR de e-commerce.
+  solucoes:
+    vtex: >-
+      O Store Framework expõe schema de produto via bloco `product-schema`
+      (`vtex.product-schema`); valide o JSON-LD renderizado com o Rich Results
+      Test nos templates de produto.
+    shopify: >-
+      Temas padrão já emitem `Product` JSON-LD; se faltam campos de preço/estoque,
+      revise o tema ou use um app de SEO (ex.: Schema Plus).
+- slug: uso-do-tipo-de-esquema-realestate
+  recomendacao: >-
+    Em páginas de imóveis, adicione JSON-LD `RealEstateListing` (ou
+    `Product`/`Apartment`) com `name`, `description`, `image`, `offers`,
+    `numberOfRooms`, `floorSize`. Habilita rich snippets de listagem imobiliária.
+- slug: uso-do-tipo-de-esquema-recipe
+  recomendacao: >-
+    Em páginas de receitas, adicione JSON-LD `Recipe` com `name`, `image`,
+    `recipeIngredient`, `recipeInstructions`, `cookTime`, `nutrition`,
+    `aggregateRating`. Habilita o rich snippet expansível de receita (carrossel).
+- slug: uso-do-tipo-de-esquema-review
+  recomendacao: >-
+    Em páginas de avaliações (produto, serviço, negócio), adicione JSON-LD
+    `Review`/`aggregateRating` com `reviewRating`, `author`, `itemReviewed`.
+    Habilita estrelas no SERP — alto impacto em CTR.
+- slug: uso-do-tipo-de-esquema-softwareapplication
+  recomendacao: >-
+    Em páginas de apps/software, adicione JSON-LD `SoftwareApplication` com
+    `name`, `operatingSystem`, `applicationCategory`, `offers`,
+    `aggregateRating`. Habilita rich snippet de app com nota e preço.
+- slug: uso-do-tipo-de-esquema-videoobject
+  recomendacao: >-
+    Em páginas com vídeo, adicione JSON-LD `VideoObject` com `name`,
+    `description`, `thumbnailUrl`, `uploadDate`, `contentUrl`/`embedUrl`.
+    Habilita preview de vídeo no SERP e indexação pelo Google Vídeo.
+- slug: uso-do-tipo-de-esquema-website
+  recomendacao: >-
+    Na home, adicione JSON-LD `WebSite` com `name`, `url`, `publisher` e, se
+    houver, `potentialAction` (SearchAction para busca interna). Habilita a
+    caixa de busca sitelinks no SERP do domínio.

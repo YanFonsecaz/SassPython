@@ -1,0 +1,9 @@
+categoria: Velocidade da Página
+itens:
+- slug: paginas-lentas
+  recomendacao: >-
+    Otimize as páginas lentas (HTML que demora a carregar): ative compressão
+    gzip/brotli, faça cache HTTP, reduza TTFB (hospedagem/CDN/banco), adicione
+    `loading="lazy"` em imagens/iframes fora da dobra e minimize HTML/CSS/JS
+    crítico. Use o PageSpeed Insights para priorizar as oportunidades por
+    impacto. Velocidade é fator de ranqueamento e UX.

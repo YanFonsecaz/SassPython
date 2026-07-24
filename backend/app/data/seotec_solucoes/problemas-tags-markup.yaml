@@ -1,0 +1,18 @@
+categoria: Problemas com Tags na Página/Markup
+itens:
+- slug: html-doctype-declarada
+  recomendacao: >-
+    Adicione `<!DOCTYPE html>` como primeira linha do HTML de cada página. Sem
+    DOCTYPE o navegador entra em quirks mode e o render/SEO fica inconsistente.
+    É uma correção trivial no template base.
+- slug: nao-uso-de-meta-refresh
+  recomendacao: >-
+    Substitua cada `<meta http-equiv="refresh">` por um redirect 301 no
+    servidor/CDN. Meta-refresh é lento, confunde crawlers e foi historicamente
+    abusado — o Google prefere redirects HTTP reais.
+- slug: fonte-da-pagina-contem-tags-meta-tags-ex-title-meta-description-no-cabecalho
+  recomendacao: >-
+    Garanta que `<title>`, `<meta name="description">` e demais meta tags
+    estejam dentro do `<head>` (e não no `<body>`). Tags fora do <head> podem
+    ser ignoradas pelos crawlers. Revise o template base e valide o HTML
+    renderizado no DOM, não só o código-fonte.

@@ -1,0 +1,14 @@
+categoria: Problemas da URL
+itens:
+- slug: hifens-usados-como-delimitador-default-em-urls
+  recomendacao: >-
+    Troque underscores, %20 e vírgulas por hifens (`-`) nas URLs listadas — o
+    Google lê o hífen como separador de palavra, mas _ é ignorado. Crie
+    redirects 301 da URL antiga para a nova canonizada e atualize os links
+    internos. Padronize a regra para novas URLs no roteamento.
+- slug: usabilidade-geral-da-url-curta-e-facil-de-compartilhar
+  recomendacao: >-
+    Encurte as URLs com mais de ~115 caracteres removendo parâmetros
+    desnecessários (utm, session, filtros) e palas redundantes (preposições,
+    stop-words). URLs curtas geram mais cliques no SERP e são mais fáceis de
+    compartilhar. Use canonical para parametrizações que precisem existir.

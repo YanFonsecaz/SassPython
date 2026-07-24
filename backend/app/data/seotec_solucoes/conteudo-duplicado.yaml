@@ -1,0 +1,61 @@
+categoria: Potenciais Gatilhos de Conteúdo Duplicado
+itens:
+- slug: www-vs-non-www
+  recomendacao: >-
+    Escolha uma versão canônica (com ou sem www) e redirecione 301 a outra para
+    ela. Defina também a versão preferida no Google Search Console (Configurações
+    > Versão preferida do domínio) para consolidar os sinais.
+  solucoes:
+    wordpress: >-
+      Em Ajustes > Geral, fixe os dois endereços (WordPress e Site) na versão
+      escolhida; complete com um redirect 301 no .htaccess ou plugin de SEO.
+    nextjs: >-
+      Force a versão canônica em um middleware (next/middleware) que faz
+      `nextResponse.redirect(canonical, 308)` antes de qualquer rota.
+- slug: http-vs-https
+  recomendacao: >-
+    Instale um certificado SSL/TLS válido e redirecione 301 todo tráfego HTTP
+    para HTTPS no servidor/CDN. Ative HSTS para impedir downgrade futuro.
+- slug: nao-uso-de-trailing-slash
+  recomendacao: >-
+    Padronize o uso (ou não) da barra final e redirecione 301 a versão
+    secundária para a canônica. Mantenha a regra consistente em todo o site para
+    evitar que `url` e `url/` respondam 200 ao mesmo tempo.
+- slug: case-sensitive-habilitado
+  recomendacao: >-
+    Configure o servidor para redirecionar 301 qualquer URL com letra
+    maiúscula para a versão minúscula canônica. URLs devem ser tratadas como
+    case-insensitive para evitar duplicação acidental.
+  solucoes:
+    nextjs: >-
+      Adicione um middleware que normaliza `request.nextUrl.pathname` para
+      lowercase e redireciona quando o caminho difere.
+- slug: conteudo-duplicado
+  recomendacao: >-
+    Para cada par de páginas com similaridade alta, defina um `<link
+    rel="canonical">` na página secundária apontando para a principal, ou
+    consolide o conteúdo. Quando a duplicação for intencional (variações/filtros),
+    use canonical ou `noindex` na versão não-canônica. Priorize páginas com
+    backlinks ou tráfego.
+- slug: uso-de-self-canonical
+  recomendacao: >-
+    Adicione `<link rel="canonical" href="{url-canônica}">` em todas as páginas
+    listadas, apontando para a própria URL limpa (sem query strings de
+    rastreio/utm). O canonical deve apontar para uma URL que responde 200.
+  solucoes:
+    wordpress: >-
+      O Yoast/Rank Math gera o self-canonical automaticamente; se faltam, revise
+      o tema ou o plugin de cache que possa estar removendo a tag do <head>.
+    nextjs: >-
+      Use o Metadata API (`metadata.alternates.canonical`) por rota para emitir
+      o self-canonical correto.
+- slug: link-canonical-quebrado
+  recomendacao: >-
+    Corrija cada `<link rel="canonical">` que aponta para uma URL 4xx/5xx — ou
+    aponte para a URL válida correta, ou remova o canonical para que o
+    self-canonical entre em vigor. Valide o HTML renderizado.
+- slug: varias-urls-canonical
+  recomendacao: >-
+    Deixe apenas UM `<link rel="canonical">` por página; remova os extras
+    injetados por tema/plugin/tag manager. Vários canonicais confundem o Google
+    e costumam ser ignorados.

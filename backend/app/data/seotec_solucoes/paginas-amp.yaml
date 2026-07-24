@@ -1,0 +1,33 @@
+categoria: Páginas AMP
+itens:
+- slug: uso-de-paginas-amp-em-amp-estrutura-de-url
+  recomendacao: >-
+    Padronize as URLs AMP sob `/amp/` (ex.: dominio.com/artigo/amp/) e mantenha
+    consistência em todo o site. Evite variações de path que confundam o Google
+    AMP Cache. Se o site abandonou AMP (recomendado hoje), desative as páginas
+    /amp/, remova do sitemap e 301 para a versão canônica.
+- slug: uso-de-rel-canonical-em-pagina-amp-para-pagina-regular
+  recomendacao: >-
+    Cada página AMP deve ter `<link rel="canonical" href="{url-nao-amp}">`
+    apontando para a versão canônica original. Se a página é AMP-only, o
+    canonical é self-referencial. Sem esse canonical o AMP é inválido e pode
+    ser indexado como duplicado.
+- slug: uso-de-rel-alternate-em-pagina-regular-para-pagina-amp
+  recomendacao: >-
+    Na página canônica (não-AMP), adicione `<link rel="amphtml"
+    href="{url-amp}">` apontando para a versão AMP correspondente. Esse
+    pareamento bidirecional (AMP -> canonical + canonical -> amphtml) é
+    obrigatório para o Google indexar corretamente as duas versões.
+- slug: html-declarada-como-amp-html
+  recomendacao: >-
+    Se mantém AMP, valide o HTML contra as regras do projeto AMP
+    (validator.ampproject.org) — erros impedem o cache e a exibição. Se
+    abandonou AMP, remova o `⚡`/`amp` do `<html>` e migre para HTML padrão
+    otimizado (a velocidade do AMP hoje é replicável sem ele).
+- slug: amp-nao-indexavel
+  recomendacao: >-
+    Se a página AMP não é indexável, verifique o motivo: canonical ausente/
+    quebrado, `noindex`, erro de validação AMP ou 4xx/5xx. Corrija o bloqueador
+    — AMPs não indexáveis desperdiçam crawl budget e não aparecem no carrossel
+    de notícias. Se o site abandonou AMP, redirecione as URLs /amp/ para a
+    canônica.

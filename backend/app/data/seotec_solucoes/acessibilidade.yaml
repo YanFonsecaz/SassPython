@@ -1,0 +1,57 @@
+categoria: Problemas de Accessibilidade/Encontrabilidade
+itens:
+- slug: ha-um-robots-txt-configurado-corretamente-no-site
+  recomendacao: >-
+    Publique um `robots.txt` na raiz do domínio respondendo 200 e com sintaxe
+    válida. Bloqueie apenas o que não deve ser rastreado (buscas internas,
+    parâmetros de filtro, áreas admin) — não bloqueie CSS/JS que o Googlebot
+    precisa renderizar. Valide no Google Search Console (robots.txt Tester).
+- slug: sitemap-xml-encontrado-em-robots-txt
+  recomendacao: >-
+    Adicione a linha `Sitemap: https://{dominio}/sitemap.xml` no final do
+    `robots.txt` apontando para o sitemap principal. Se houver mais de um
+    sitemap, liste todos. Isso acelera a descoberta pelo Googlebot.
+- slug: sitemap-xml-otimizado
+  recomendacao: >-
+    Gere um sitemap XML válido contendo apenas URLs indexáveis canônicas
+    (remova redirects, 4xx, noindex e duplicadas). Mantenha `lastmod` atualizado
+    por página, use `<priority>` e `<changefreq>` com coerência e divida
+    sitemaps com mais de ~50 mil URLs em um índice (`sitemapindex`). Valide via
+    GSC > Sitemaps.
+  solucoes:
+    wordpress: >-
+      O Yoast/Rank Math gera sitemaps em /sitemap_index.xml automaticamente;
+      revise em SEO > XML Sitemaps as exclusões e a contagem de URLs.
+    nextjs: >-
+      Gere rotas `sitemap.ts`/`robots.ts` (App Router) a partir do CMS para
+      manter lastmod sincronizado com as atualizações de conteúdo.
+- slug: uso-de-tags-de-meta-robots-follow-nofollow-index-noindex
+  recomendacao: >-
+    Revise as páginas com `<meta name="robots" content="noindex">` — confirme
+    que o bloqueio é intencional (paginas de filtro, busca interna, finais de
+    paginação). Remova o `noindex` de páginas estratégicas que deveriam
+    rankear. Nunca combine `noindex` com `Disallow` no robots.txt (o Google não
+    veria a tag).
+- slug: configuracao-adequada-para-pagina-de-erro-404
+  recomendacao: >-
+    Configure a página 404 para responder HTTP 404 (não 200 nem 302) e inclua
+    navegação útil: busca, links para categorias principais e link para a home.
+    Monitore os 404 no GSC > Cobertura e crie redirects 301 para as URLs com
+    tráfego/backlink. Não retorne 404 "soft" (200 com mensagem de erro).
+- slug: erros-no-lado-do-cliente-40x
+  recomendacao: >-
+    Mapeie as URLs 4xx listadas: se a página foi movida, crie redirect 301 para
+    a nova (principalmente as com backlinks/tráfego); se realmente não existe
+    mais, deixe o 404 ou sirva uma 410 (Gone) para acelerar a remoção do índice.
+    Corrija os links internos que apontam para essas URLs quebradas.
+- slug: erros-no-lado-do-servidor-50x
+  recomendacao: >-
+    Investigue as URLs 5xx: erros de código, timeout de banco, memória ou
+    limites do servidor. Avalie hospedagem/capacidade e corrija a causa raiz —
+    páginas 5xx saem do índice e prejudicam o crawl budget.
+- slug: pagina-orfa-sem-links-internos-recebidos
+  recomendacao: >-
+    Para cada página órfã valiosa, crie ao menos um link interno a partir de
+    uma página relevante (menu, breadcrumb, contextual no conteúdo). Se a página
+    não for mais útil, redirecione (301) ou remova. Confirme que as páginas
+    órfãs estratégicas estão no sitemap.xml.

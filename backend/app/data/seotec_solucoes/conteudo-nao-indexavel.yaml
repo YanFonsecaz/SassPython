@@ -1,0 +1,14 @@
+categoria: 'Conteúdo não indexável (ex: uso de JS)'
+itens:
+- slug: nao-uso-de-flash
+  recomendacao: >-
+    Remova todo conteúdo em Flash e substitua por HTML5/CSS/JS moderno. O Flash
+    é obsoleto, não roda em mobile, não é rastreável pelo Google e é bloqueado
+    pelos navegadores atuais. Páginas dependentes de Flash ficam invisíveis ao
+    indexador.
+- slug: cuidado-no-uso-de-iframe
+  recomendacao: >-
+    Evite iframes para conteúdo crítico — o Google atribui o conteúdo do iframe
+    à URL de origem, não à página que o incorpora. Se precisar de iframe
+    (YouTube, widgets), use `loading="lazy"` e `title` descritivo; nunca coloque
+    texto/links principais dentro de iframes.

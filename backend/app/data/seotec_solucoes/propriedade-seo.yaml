@@ -1,0 +1,26 @@
+categoria: Propriedade de SEO
+itens:
+- slug: redirecionamentos-302
+  recomendacao: >-
+    Troque cada redirect 302 que deveria ser permanente por 301 (ou 308). O 302
+    é temporário por definição e, embora transmita PageRank hoje, não consolida
+    sinais de canonicalização tão bem quanto o 301. Reserve o 302 só para
+    redirecionamentos realmente momentâneos (ex.: A/B test, manutenção).
+- slug: cadeias-de-redirecionamento
+  recomendacao: >-
+    Quebre as cadeias: atualize o link interno para apontar direto ao destino
+    final da cadeia, e configure o redirect para pular os hops intermediários.
+    Cadeias (ex.: A -> B -> C -> D) somam latência, diluem autoridade e
+    complicam o crawl. Meta: no máximo 1 hop.
+- slug: loops-de-redirecionamento
+  recomendacao: >-
+    Corrija o loop identificando a URL que aponta de volta a si mesma ou a um
+    ancestral da cadeia. Loops geram `ERR_TOO_MANY_REDIRECTS`, travam o usuário
+    e desperdiçam crawl budget. Remova a regra conflitante no
+    servidor/CDN/plugin.
+- slug: redirecionamentos-quebrados
+  recomendacao: >-
+    Para cada redirect que cai em 4xx/5xx: ajuste o destino para uma URL válida
+    e relacionada, ou remova o redirect. Priorize URLs com backlinks externos
+    ou tráfego — redirecione para a página mais próxima por intenção, nunca
+    para a home (salvo sem alternativa).

@@ -1,0 +1,8 @@
+categoria: Problemas com Links
+itens:
+- slug: links-quebrados-codigos-de-resposta-4xx-ou-5xx
+  recomendacao: >-
+    Corrija cada link interno que aponta para uma URL 4xx/5xx: ou atualize o
+    href para uma URL válida relacionada, ou remova o link. Para páginas que
+    mudaram, crie redirect 301 no servidor para preservar a autoridade. Links
+    quebrados geram má experiência e desperdiçam crawl budget.

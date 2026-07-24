@@ -1,0 +1,14 @@
+categoria: Conteúdo do Corpo Principal
+itens:
+- slug: presenca-de-lorem-ipsum-no-conteudo
+  recomendacao: >-
+    Remova todo texto placeholder (Lorem Ipsum) e substitua por conteúdo real.
+    Páginas com placeholder são sinal de site inacabado, prejudicam o usuário e
+    podem ser consideradas thin/low-quality pelo Google. Publique ou despublique
+    (noindex/redirect) as páginas afetadas.
+- slug: paginas-com-numero-de-palavras-baixo
+  recomendacao: >-
+    Expanda as páginas com pouco conteúdo: adicione texto útil, contexto,
+    imagens/vídeos e respostas às perguntas do usuário. Páginas thin content
+    (poucas palavras sem rich media) rankeiam mal. Consolide páginas fracas
+    relacionadas ou enriqueça cada uma com conteúdo único.

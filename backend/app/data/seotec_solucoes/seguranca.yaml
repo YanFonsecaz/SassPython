@@ -1,0 +1,36 @@
+categoria: Problemas de Segurança
+itens:
+- slug: certificado-ssl
+  recomendacao: >-
+    Instale um certificado SSL/TLS válido (Let's Encrypt é gratuito) e force
+    HTTPS em todo o site via redirect 301. Renove o certificado antes do
+    vencimento (automatize com certbot/ACME). Um certificado inválido ou
+    vencido derruba o ranking e exibe aviso de "não seguro" nos navegadores.
+  solucoes:
+    wordpress: >-
+      Use o plugin Really Simple SSL para forçar HTTPS em massa; depois valide
+      com o Why No Padlock? para achar recursos mistos remanescentes.
+    nextjs: >-
+      O certificado fica na borda (Vercel/CDN); force HTTPS nas variáveis de
+      ambiente (`NEXT_FORCE_HTTPS`) e no headers do next.config.js.
+- slug: sem-suporte-hsts
+  recomendacao: >-
+    Envie o header `Strict-Transport-Security: max-age=31536000;
+    includeSubDomains` em todas as respostas HTTPS. Comece com max-age curto
+    (ex.: 300) para validar e só depois suba para 1 ano. Requer HTTPS pleno em
+    todo o domínio (sem mistos).
+  solucoes:
+    nextjs: >-
+      Adicione o header em `next.config.js` (`headers()` async) para todas as
+      rotas.
+- slug: paginas-https-levando-a-paginas-http
+  recomendacao: >-
+    Substitua cada link interno `http://` por `https://` nas páginas listadas.
+    Revise redirecionamentos que caem para HTTP e force HTTPS no destino. Links
+    HTTP a partir de páginas HTTPS quebram a cadeia de segurança.
+- slug: paginas-https-levando-a-recursos-http
+  recomendacao: >-
+    Troque cada recurso (imagem/CSS/JS) `http://` por `https://` — muitas vezes
+    basta adicionar o "s". Para recursos de terceiros sem HTTPS, troque de
+    fornecedor ou hospede você mesmo. Conteúdo misto é bloqueado pelos
+    navegadores e invalida o cadeado verde.
