@@ -117,20 +117,16 @@ async def test_comparar_com_anterior_sucesso():
     mock_problema_atual_1 = _make_mock_problema("js-bundle-grande", "Bundle JS grande")
     mock_problema_atual_2 = _make_mock_problema("img-lcp-grande", "Imagem LCP grande")
 
-    mock_user = MagicMock()
-    mock_user.id = user_id
-
     mock_db = MagicMock()
 
     with (
-        patch("app.services.cwv_persistencia.buscar_analise_por_id", new_callable=AsyncMock, return_value=mock_analise_atual),
         patch("app.services.cwv_persistencia.buscar_problemas_analise", new_callable=AsyncMock, side_effect=[
             [mock_problema_atual_1, mock_problema_atual_2],
             [mock_problema_anterior],
         ]),
         patch("app.services.cwv_persistencia.buscar_analise_anterior", new_callable=AsyncMock, return_value=mock_analise_anterior),
     ):
-        response = await comparar_com_anterior(analise_atual_id, mock_db, mock_user)
+        response = await comparar_com_anterior(mock_analise_atual, mock_db)
 
     assert response.analise_atual_id == analise_atual_id
     assert response.analise_anterior_id == analise_anterior_id
@@ -166,10 +162,7 @@ async def test_comparar_com_anterior_sem_anterior():
 
     analise_atual_id = str(uuid4())
 
-    mock_user = MagicMock()
     user_id = uuid4()
-    mock_user.id = user_id
-
     mock_db = MagicMock()
 
     mock_analise_atual = _make_mock_analise(
@@ -179,11 +172,10 @@ async def test_comparar_com_anterior_sem_anterior():
     )
 
     with (
-        patch("app.services.cwv_persistencia.buscar_analise_por_id", new_callable=AsyncMock, return_value=mock_analise_atual),
         patch("app.services.cwv_persistencia.buscar_problemas_analise", new_callable=AsyncMock, return_value=[]),
         patch("app.services.cwv_persistencia.buscar_analise_anterior", new_callable=AsyncMock, return_value=None),
     ):
-        response = await comparar_com_anterior(analise_atual_id, mock_db, mock_user)
+        response = await comparar_com_anterior(mock_analise_atual, mock_db)
 
     assert response.analise_atual_id == analise_atual_id
     assert response.analise_anterior_id is None
@@ -231,19 +223,16 @@ async def test_diff_distingue_problemas_kb_nulo_com_audit_ids_diferentes():
     problema_p1 = _make_mock_problema(None, "Unknown Audit A", audit_id="audit-aaa")
     problema_p2 = _make_mock_problema(None, "Unknown Audit C", audit_id="audit-ccc")
 
-    mock_user = MagicMock()
-    mock_user.id = user_id
     mock_db = MagicMock()
 
     with (
-        patch("app.services.cwv_persistencia.buscar_analise_por_id", new_callable=AsyncMock, return_value=mock_analise_atual),
         patch("app.services.cwv_persistencia.buscar_problemas_analise", new_callable=AsyncMock, side_effect=[
             [problema_a1, problema_a2],
             [problema_p1, problema_p2],
         ]),
         patch("app.services.cwv_persistencia.buscar_analise_anterior", new_callable=AsyncMock, return_value=mock_analise_anterior),
     ):
-        response = await comparar_com_anterior(analise_atual_id, mock_db, mock_user)
+        response = await comparar_com_anterior(mock_analise_atual, mock_db)
 
     assert len(response.problemas_resolvidos) == 1
     assert response.problemas_resolvidos[0].titulo == "Unknown Audit C"

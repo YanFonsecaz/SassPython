@@ -9,7 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.dependencies import get_db
 from app.models.cwv_analise import CwvAnalise
-from app.services.cwv_kb import AUDIT_ALIASES, listar_kb_codigos, recarregar_kb
+from app.services.cwv_kb import (
+    AUDIT_ALIASES,
+    listar_kb_codigos,
+    mapeamento_audit_kb_com_aliases,
+    recarregar_kb,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,12 +29,60 @@ def _require_admin_token(x_admin_token: str | None) -> None:
 
 
 @router.post("/admin/cwv/kb/reload")
-async def reload_kb(x_admin_token: str | None = Header(default=None)) -> dict:
+async def reload_kb(
+    x_admin_token: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
     _require_admin_token(x_admin_token)
     recarregar_kb()
     codigos = listar_kb_codigos()
-    logger.info("CWV KB recarregada: %d codigos", len(codigos))
-    return {"reloaded": True, "n_codigos": len(codigos)}
+    # SPEC_CWV_Cache_Classificacao_Audit_KB: invalida cache coberto por novo direto.
+    diretos = mapeamento_audit_kb_com_aliases()
+    n_invalidados = 0
+    try:
+        from app.services.cwv_audit_kb_cache import invalidar_cobertos_por_direto
+
+        n_invalidados = await invalidar_cobertos_por_direto(db, diretos)
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        logger.warning("Falha ao invalidar cache na recarga da KB", exc_info=True)
+    logger.info(
+        "CWV KB recarregada: %d codigos, %d entradas de cache invalidadas",
+        len(codigos), n_invalidados,
+    )
+    return {"reloaded": True, "n_codigos": len(codigos), "n_cache_invalidados": n_invalidados}
+
+
+@router.get("/admin/cwv/audit-kb-cache")
+async def listar_audit_kb_cache(
+    x_admin_token: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+    offset: int = 0,
+    limit: int = 100,
+) -> dict:
+    """SPEC_CWV_Cache_Classificacao_Audit_KB: lista o cache LLM→KB."""
+    _require_admin_token(x_admin_token)
+    from app.services.cwv_audit_kb_cache import listar_tudo
+
+    items, total = await listar_tudo(db, offset=offset, limit=limit)
+    return {"items": items, "total": total, "offset": offset, "limit": limit}
+
+
+@router.delete("/admin/cwv/audit-kb-cache/{audit_id}")
+async def invalidar_audit_kb_cache(
+    audit_id: str,
+    x_admin_token: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """SPEC_CWV_Cache_Classificacao_Audit_KB: invalida UMA entrada — próxima
+    análise reclassifica via LLM."""
+    _require_admin_token(x_admin_token)
+    from app.services.cwv_audit_kb_cache import invalidar
+
+    removido = await invalidar(db, audit_id)
+    await db.commit()
+    return {"audit_id": audit_id, "invalidado": removido}
 
 
 @router.get("/admin/cwv/health")

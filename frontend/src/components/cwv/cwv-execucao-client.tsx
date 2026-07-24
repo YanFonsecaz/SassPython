@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { createSSEConnection } from "@/lib/sse-client";
 import {
@@ -44,6 +45,7 @@ interface ExecucaoCwv {
   creditos_cobrados: number;
   criado_em: string;
   resultado_json: Record<string, unknown> | null;
+  entrada_json: Record<string, unknown> | null;
   erro_msg: string | null;
   concluida_em: string | null;
   cliente_id?: string | null;
@@ -135,6 +137,7 @@ export function CwvExecucaoClient() {
       }
     );
     closeRef.current = close;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setConectandoSSE(true);
 
     return () => { close.close(); closeRef.current = null; };
@@ -147,6 +150,7 @@ export function CwvExecucaoClient() {
     const embutido = execucao?.resultado_json as { health_score?: HealthScoreResposta | null } | null;
     if (embutido && "health_score" in embutido && embutido.health_score !== undefined) {
       const hs = embutido.health_score;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHealthScore(hs === null
         ? { health_score: null, n_pass: 0, n_total: 0, por_estrategia: { mobile: null, desktop: null } }
         : hs);
@@ -160,6 +164,12 @@ export function CwvExecucaoClient() {
     if (!id || statusFinal !== "concluida") return;
     buscarPageExperienceCwv(id).then(setPageExperience).catch(() => setPageExperience(null));
   }, [id, statusFinal]);
+
+  // SPEC_CWV_Execucao_Pos_Analise_UX: refetch saldo da sidebar na conclusão.
+  useEffect(() => {
+    if (statusFinal !== "concluida") return;
+    window.dispatchEvent(new CustomEvent("creditos:atualizar"));
+  }, [statusFinal]);
 
   if (!execucao && !erroMsg) {
     return (
@@ -175,6 +185,19 @@ export function CwvExecucaoClient() {
 
   const resultado = execucao?.resultado_json as Record<string, unknown> | null;
   const analiseIds = (resultado?.analise_ids as string[]) ?? [];
+
+  // SPEC_CWV_Execucao_Pos_Analise_UX: links com URL canônica + estratégia.
+  interface AnaliseResumo { id: string; url_canonica: string; estrategia: string; score_performance: number | null }
+  const analisesEnriquecidas = (resultado?.analises as AnaliseResumo[]) ?? null;
+  const auditoriaIdVinculada = (execucao?.resultado_json as Record<string, unknown> | null)?.auditoria_id as string | undefined
+    // SPEC_CWV_Auditoria_Automatica_Pos_Execucao: auditoria aberta existente / re-auditoria.
+    ?? (execucao?.resultado_json as Record<string, unknown> | null)?.auditoria_existente_id as string | undefined
+    ?? (execucao?.entrada_json as Record<string, unknown> | null)?.auditoria_id as string | undefined;
+  // Análise avulsa apontando para auditoria aberta (não é re-auditoria): esta
+  // execução NÃO atualiza o before/after — orientar o caminho correto.
+  const ehReauditoria = Boolean((execucao?.entrada_json as Record<string, unknown> | null)?.auditoria_id);
+  const apontaAuditoriaExistente = !ehReauditoria
+    && Boolean((execucao?.resultado_json as Record<string, unknown> | null)?.auditoria_existente_id);
 
   async function handleExportarExecucao() {
     if (!id || exportandoExecucao) return;
@@ -242,13 +265,26 @@ export function CwvExecucaoClient() {
                 <div className="space-y-2">
                   <p className="text-sm font-medium">{analiseIds.length} URL{analiseIds.length !== 1 ? "s" : ""} analisada{analiseIds.length !== 1 ? "s" : ""}:</p>
                   <div className="space-y-1.5">
-                    {analiseIds.map((aId) => (
-                      <Link key={aId} href={`/ferramentas/core-web-vitals/url/${aId}`}
-                        className="flex items-center gap-3 rounded-lg border bg-surface-light px-3 py-2.5 group transition-all hover:border-brand/30 hover:shadow-sm">
-                        <ArrowRightIcon className="size-4 text-muted-foreground group-hover:text-brand-dark transition-colors shrink-0" />
-                        <span className="text-sm font-medium text-brand-dark">Ver dashboard</span>
-                      </Link>
-                    ))}
+                    {analisesEnriquecidas
+                      ? analisesEnriquecidas.map((a) => (
+                          <Link key={a.id} href={`/ferramentas/core-web-vitals/url/${a.id}`}
+                            className="flex items-center gap-3 rounded-lg border bg-surface-light px-3 py-2.5 group transition-all hover:border-brand/30 hover:shadow-sm">
+                            <ArrowRightIcon className="size-4 text-muted-foreground group-hover:text-brand-dark transition-colors shrink-0" />
+                            <span className="flex-1 truncate text-sm font-medium text-brand-dark" title={a.url_canonica}>{a.url_canonica}</span>
+                            <Badge variant="outline" className="text-[10px] shrink-0">{a.estrategia}</Badge>
+                            {a.score_performance !== null && a.score_performance !== undefined && (
+                              <span className="text-xs text-muted-foreground shrink-0">{a.score_performance}</span>
+                            )}
+                          </Link>
+                        ))
+                      : analiseIds.map((aId) => (
+                          <Link key={aId} href={`/ferramentas/core-web-vitals/url/${aId}`}
+                            className="flex items-center gap-3 rounded-lg border bg-surface-light px-3 py-2.5 group transition-all hover:border-brand/30 hover:shadow-sm">
+                            <ArrowRightIcon className="size-4 text-muted-foreground group-hover:text-brand-dark transition-colors shrink-0" />
+                            <span className="text-sm font-medium text-brand-dark">Ver dashboard</span>
+                          </Link>
+                        ))
+                    }
                   </div>
                 </div>
               )}
@@ -264,7 +300,15 @@ export function CwvExecucaoClient() {
                   {exportandoExecucao ? <Loader2Icon className="size-4 mr-1 animate-spin" /> : <DownloadIcon className="size-4 mr-1" />}
                   Baixar relatório completo (.docx)
                 </Button>
-                {execucao?.cliente_id && (
+                {auditoriaIdVinculada ? (
+                  <Link
+                    href={`/ferramentas/core-web-vitals/auditoria/${auditoriaIdVinculada}`}
+                    className={buttonVariants({ variant: "default", size: "sm" })}
+                  >
+                    <ShieldCheckIcon className="size-4 mr-1" />
+                    Ver auditoria (comparativo)
+                  </Link>
+                ) : execucao?.cliente_id && (
                   <Button variant="outline" onClick={handleCriarAuditoria} disabled={criandoAuditoria}>
                     {criandoAuditoria ? <Loader2Icon className="size-4 mr-1 animate-spin" /> : <ShieldCheckIcon className="size-4 mr-1" />}
                     Criar auditoria
@@ -274,6 +318,14 @@ export function CwvExecucaoClient() {
                   Nova análise
                 </Button>
               </div>
+
+              {apontaAuditoriaExistente && (
+                <p className="text-xs text-muted-foreground">
+                  Esta análise não atualiza o before/after da auditoria em andamento. Para registrar o
+                  &quot;depois&quot;, abra a auditoria e use <strong>Re-auditar (verificar implementações)</strong>
+                  {" "}(disponível na fase &quot;Aguardando implementação&quot;).
+                </p>
+              )}
             </>
           ) : statusFinal === "falhou" ? (
             <CwvErroExecucao

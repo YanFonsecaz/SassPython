@@ -33,16 +33,75 @@ PE_CHECKS = [
 
 _ESFORCO_ORDEM = {"baixo": 1, "medio": 2, "alto": 3}
 
+ITENS_MANUAIS = [
+    ("manual_popups", "Pop-ups intrusivos"),
+    ("manual_interstitials", "Interstitials intrusivos"),
+    ("manual_ads_above_fold", "Anúncios intrusivos acima da dobra"),
+]
+
+# SPEC_CWV_Navegacao_Agentica: WebMCP não é automatizável sem render headless
+# (registra tools em runtime via JS) — 3 checks manuais, default 'na'.
+ITENS_MANUAIS_AGENTIC = [
+    ("manual_webmcp_forms", "WebMCP: detecção de formulários"),
+    ("manual_webmcp_tools", "WebMCP: ferramentas registradas"),
+    ("manual_webmcp_schemas", "WebMCP: schemas válidos"),
+]
+
+# Limiar de acessibilidade (score da categoria accessibility do PSI).
+_ACESSIBILIDADE_MIN = 0.9
+
+# Descrições curtas para itens sem KB (field data, page experience, manuais e
+# agênticos) — usadas na ficha (detalhe) com tem_kb=False.
+# SPEC_CWV_Navegacao_Agentica / Checklist_Itens_Manuais / Page_Experience.
+DESCRICOES_ITENS_SEM_KB = {
+    # Field data (CrUX — usuários reais, p75 dos últimos 28 dias).
+    "crux_lcp": "Dados reais de usuários (CrUX) para o LCP — tempo até o maior elemento visível terminar de carregar. p75 acima de 2,5s reprova. Como corrigir: otimize a imagem/hero principal (formato moderno, preload, CDN), reduza o tempo de resposta do servidor e elimine recursos que bloqueiam a renderização.",
+    "crux_inp": "Dados reais de usuários (CrUX) para o INP — demora entre uma interação (clique/toque/tecla) e a resposta visual. p75 acima de 200ms reprova. Como corrigir: quebre tarefas longas de JavaScript, adie scripts de terceiros e simplifique handlers de eventos.",
+    "crux_cls": "Dados reais de usuários (CrUX) para o CLS — o quanto o layout 'pula' durante o carregamento. p75 acima de 0,1 reprova. Como corrigir: reserve espaço fixo para imagens, anúncios e embeds (width/height) e evite fontes que trocam de tamanho ao carregar.",
+    # Page Experience (checks por origem).
+    "pe_https": "O site deve ser servido inteiramente via HTTPS. Falha indica conexão insegura ou erro de TLS ao acessar a origem. Como corrigir: instale um certificado válido e force HTTPS em todo o site.",
+    "pe_ssl": "Certificado SSL válido, com cadeia confiável e sem expirar nos próximos 14 dias. Como corrigir: renove o certificado no provedor/CDN e confirme a cadeia completa (intermediários).",
+    "pe_mixed_content": "Página HTTPS carregando recursos via http:// (mixed content) — navegadores bloqueiam ou marcam como inseguro. Como corrigir: troque URLs de imagens, scripts e estilos para https:// (ou URLs relativas).",
+    "pe_redirect_301": "http:// deve redirecionar para https:// em um único salto com 301 (permanente). Cadeias longas ou 302 desperdiçam crawl budget e diluem sinais de ranqueamento. Como corrigir: configure o redirect no servidor/CDN, direto para a URL final.",
+    "pe_security_headers": "Headers de segurança esperados: Strict-Transport-Security (HSTS), Content-Security-Policy ou X-Frame-Options, e X-Content-Type-Options: nosniff. Como corrigir: adicione os headers no servidor, CDN ou edge (ex.: Cloudflare/Nginx).",
+    "pe_safe_browsing": "Verifica se a origem aparece nas listas do Google Safe Browsing (malware, phishing, software indesejado). n/a significa que a checagem não pôde rodar (sem chave de API configurada).",
+    "pe_mobile_friendly": "Audit de viewport do Lighthouse mobile — a página deve se adaptar a telas pequenas (meta viewport correta, sem zoom bloqueado). Como corrigir: inclua <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> e valide o layout responsivo.",
+    # Manuais (avaliação humana — planilha NPBR).
+    "manual_popups": "Verifique manualmente se há pop-ups intrusivos cobrindo o conteúdo principal logo na entrada.",
+    "manual_interstitials": "Verifique interstitials (telas cheias) que bloqueiam o acesso ao conteúdo, sobretudo no mobile.",
+    "manual_ads_above_fold": "Verifique anúncios acima da dobra que empurram o conteúdo ou causam layout shift.",
+    # Navegação agêntica.
+    "agentic_llms_txt": "Arquivo /llms.txt em Markdown com cabeçalho H1, descrevendo o site para agentes de IA (padrão emergente de navegação agêntica).",
+    "agentic_acessibilidade": "Árvore de acessibilidade bem estruturada — score de acessibilidade do Lighthouse ≥ 0.9. Base para navegação por agentes e leitores de tela.",
+    "manual_webmcp_forms": "WebMCP: a página expõe formulários detectáveis por agentes (navigator.modelContext). Verificação manual — o registro ocorre em runtime via JS.",
+    "manual_webmcp_tools": "WebMCP: ferramentas/ações registradas para agentes (registerTool). Verificação manual — registro em runtime.",
+    "manual_webmcp_schemas": "WebMCP: schemas das ferramentas válidos, descrevendo entradas/saídas de forma que um agente consiga usar.",
+}
+
+
+def _pior_veredito(valores: list[str]) -> str:
+    """Pior veredito entre origens: fail > (erro|na) > pass."""
+    if any(v == "fail" for v in valores):
+        return "fail"
+    if any(v in ("erro", "na") for v in valores):
+        return "na"
+    return "pass"
+
+
+_KB_NAO_CATALOGADO = "outros"
+
 
 def chave_problema(p) -> str:
     """Chave canônica de problema para dedup (mesma regra do comparador/S3).
 
     Aceita dict (serializado) ou objeto ORM (CwvProblema).
+    Trata ``kb_codigo='outros'`` como ``None`` — bucket genérico não identifica
+    o problema (SPEC_CWV_Chave_Problema_Outros).
     """
     kb = p.get("kb_codigo") if isinstance(p, dict) else p.kb_codigo
     audit = p.get("audit_id") if isinstance(p, dict) else p.audit_id
     titulo = p.get("titulo") if isinstance(p, dict) else p.titulo
-    if kb:
+    if kb and kb != _KB_NAO_CATALOGADO:
         return kb
     if audit:
         return f"audit:{audit}"
@@ -110,19 +169,28 @@ async def gerar_checklist(session, auditoria: CwvAuditoria, execucao_id: str) ->
 
     for prioridade, (ch, probs_grupo) in enumerate(grupos_ordenados, start=1):
         primeiro = probs_grupo[0]
+        # Título: se chave é audit:* e título é genérico, humaniza o audit_id
+        # (SPEC_CWV_Chave_Problema_Outros).
+        titulo_item = primeiro.titulo
+        if ch.startswith("audit:") and "não catalogado" in titulo_item.lower():
+            audit_id = ch.split(":", 1)[1]
+            titulo_item = audit_id.replace("-", " ").replace("_", " ").capitalize()
+
         # Esforço = max do grupo.
         esforcos = [p.esforco for p in probs_grupo if p.esforco]
         esforco = max(esforcos, key=lambda e: _ESFORCO_ORDEM.get(e, 0)) if esforcos else None
         urls = sorted(escopo_urls_por_chave.get(ch, set()))
+        metricas_grupo = sorted({m for p in probs_grupo for m in (p.metricas_afetadas or [])})
         itens.append(CwvChecklistItem(
             auditoria_id=auditoria.id,
             origem="psi_audit",
             item_codigo=ch,
-            titulo=primeiro.titulo,
+            titulo=titulo_item,
             status_before="fail",
             prioridade=prioridade,
             esforco=esforco,
             escopo_json={"urls": urls},
+            metricas_afetadas=metricas_grupo,
         ))
 
     # 2. Passes — audits saudáveis mapeados na KB, não-falhos.
@@ -141,6 +209,7 @@ async def gerar_checklist(session, auditoria: CwvAuditoria, execucao_id: str) ->
     for kb_codigo in sorted(audits_saudaveis):
         entrada = buscar_entrada(kb_codigo)
         titulo = entrada.get("titulo", kb_codigo) if entrada else kb_codigo
+        metricas_kb = entrada.get("metricas_afetadas") or [] if entrada else []
         itens.append(CwvChecklistItem(
             auditoria_id=auditoria.id,
             origem="psi_audit",
@@ -148,6 +217,7 @@ async def gerar_checklist(session, auditoria: CwvAuditoria, execucao_id: str) ->
             titulo=titulo,
             status_before="pass",
             prioridade=0,
+            metricas_afetadas=metricas_kb,
         ))
 
     # 3. Field data — crux_lcp/inp/cls.
@@ -170,6 +240,7 @@ async def gerar_checklist(session, auditoria: CwvAuditoria, execucao_id: str) ->
             titulo=f"Dado de campo — {codigo.split('_')[1].upper()}",
             status_before=status,
             prioridade=0 if status == "pass" else len(grupos_ordenados) + 1,
+            metricas_afetadas=[codigo.split("_")[1].upper()],
         ))
 
     # 4. Page experience — pior veredito entre origens (tolerante à ausência).
@@ -177,6 +248,20 @@ async def gerar_checklist(session, auditoria: CwvAuditoria, execucao_id: str) ->
         itens.extend(await _itens_page_experience(session, execucao_id, auditoria.id))
     except Exception:
         logger.warning("gerar_checklist: page_experience indisponível para exec %s", execucao_id, exc_info=True)
+
+    # 5. Itens manuais — SPEC_CWV_Checklist_Itens_Manuais (avaliação humana).
+    for codigo, titulo in ITENS_MANUAIS:
+        itens.append(CwvChecklistItem(
+            auditoria_id=auditoria.id,
+            origem="page_experience",
+            item_codigo=codigo,
+            titulo=titulo,
+            status_before="na",
+            prioridade=0,
+        ))
+
+    # 6. Navegação agêntica — SPEC_CWV_Navegacao_Agentica (llms.txt + a11y + WebMCP).
+    itens.extend(await _itens_agentic(session, execucao_id, auditoria.id, analises))
 
     # Persiste todos (UNIQUE (auditoria_id, item_codigo) já garante dedup).
     for item in itens:
@@ -199,20 +284,12 @@ async def _itens_page_experience(session, execucao_id: str, auditoria_id) -> lis
     if not rows:
         return []
 
-    def pior_veredito(valores: list[str]) -> str:
-        # fail > (erro|na) > pass
-        if any(v == "fail" for v in valores):
-            return "fail"
-        if any(v in ("erro", "na") for v in valores):
-            return "na"
-        return "pass"
-
     itens = []
     for codigo, coluna, titulo in PE_CHECKS:
         vereditos = [getattr(r, coluna) for r in rows if getattr(r, coluna)]
         if not vereditos:
             continue
-        status = pior_veredito(vereditos)
+        status = _pior_veredito(vereditos)
         itens.append(CwvChecklistItem(
             auditoria_id=auditoria_id,
             origem="page_experience",
@@ -220,6 +297,75 @@ async def _itens_page_experience(session, execucao_id: str, auditoria_id) -> lis
             titulo=titulo,
             status_before=status,
             prioridade=0 if status == "pass" else 999,
+        ))
+    return itens
+
+
+async def _itens_agentic(
+    session, execucao_id: str, auditoria_id, analises: list
+) -> list[CwvChecklistItem]:
+    """Grupo 'Navegação agêntica' (SPEC_CWV_Navegacao_Agentica):
+
+    - ``agentic_llms_txt``: pior veredito da coluna ``llms_txt`` entre origens
+      (mesmo padrão dos ``pe_*``; omitido se não houver page_experience);
+    - ``agentic_acessibilidade``: ``pass`` se ``accessibility_score >= 0.9`` em
+      todas as análises de sucesso, ``fail`` se alguma < 0.9, ``na`` sem dado;
+    - ``manual_webmcp_*``: 3 checks manuais (default ``na``).
+    """
+    itens: list[CwvChecklistItem] = []
+
+    # llms.txt — pior veredito entre origens.
+    try:
+        from app.models.cwv_page_experience import CwvPageExperience
+
+        result = await session.execute(
+            select(CwvPageExperience).where(CwvPageExperience.execucao_id == execucao_id)
+        )
+        rows = list(result.scalars().all())
+        vereditos = [r.llms_txt for r in rows if getattr(r, "llms_txt", None)]
+        if vereditos:
+            status = _pior_veredito(vereditos)
+            itens.append(CwvChecklistItem(
+                auditoria_id=auditoria_id,
+                origem="agentic",
+                item_codigo="agentic_llms_txt",
+                titulo="Arquivo llms.txt válido",
+                status_before=status,
+                prioridade=0 if status == "pass" else 999,
+            ))
+    except Exception:
+        logger.warning("_itens_agentic: llms_txt indisponível para exec %s", execucao_id, exc_info=True)
+
+    # Acessibilidade — score da categoria accessibility do PSI (raw_resumo_json).
+    scores: list[float] = []
+    for a in analises:
+        s = (a.raw_resumo_json or {}).get("accessibility_score")
+        if s is not None:
+            scores.append(float(s))
+    if not scores:
+        status_acc = "na"
+    elif all(s >= _ACESSIBILIDADE_MIN for s in scores):
+        status_acc = "pass"
+    else:
+        status_acc = "fail"
+    itens.append(CwvChecklistItem(
+        auditoria_id=auditoria_id,
+        origem="agentic",
+        item_codigo="agentic_acessibilidade",
+        titulo="Árvore de acessibilidade bem estruturada",
+        status_before=status_acc,
+        prioridade=0 if status_acc == "pass" else 999,
+    ))
+
+    # WebMCP — 3 checks manuais (não automatizável sem render headless).
+    for codigo, titulo in ITENS_MANUAIS_AGENTIC:
+        itens.append(CwvChecklistItem(
+            auditoria_id=auditoria_id,
+            origem="agentic",
+            item_codigo=codigo,
+            titulo=titulo,
+            status_before="na",
+            prioridade=0,
         ))
     return itens
 
@@ -259,6 +405,57 @@ async def criar_auditoria(
 
     await gerar_checklist(session, auditoria, execucao_id)
     return auditoria
+
+
+async def _criar_auditoria_automatica(
+    session,
+    *,
+    execucao,
+    cliente_id: str,
+    usuario_id: str,
+) -> tuple[str | None, str | None]:
+    """Cria auditoria automática após execução CWV. Fail-open.
+
+    Returns (auditoria_id_criada, auditoria_existente_id).
+
+    SPEC_CWV_Auditoria_Automatica_Pos_Execucao:
+    - re-auditoria (``entrada_json.auditoria_id``): aponta para a auditoria dona;
+    - cliente com auditoria ABERTA (``before``/``aguardando_implementacao``/
+      ``after``): aponta para ela e NÃO cria outra (evita pilha paralela);
+    - caso contrário: cria uma nova.
+    """
+    auditoria_existente = (execucao.entrada_json or {}).get("auditoria_id")
+    if auditoria_existente:
+        return (None, str(auditoria_existente))
+
+    # Cliente já tem auditoria aberta? Aponta em vez de empilhar (crit. #2).
+    aberta_res = await session.execute(
+        select(CwvAuditoria.id)
+        .where(
+            CwvAuditoria.cliente_id == cliente_id,
+            CwvAuditoria.fase.in_(("before", "aguardando_implementacao", "after")),
+        )
+        .limit(1)
+    )
+    aberta_id = aberta_res.scalar_one_or_none()
+    if aberta_id:
+        return (None, str(aberta_id))
+
+    try:
+        auditoria = await criar_auditoria(
+            session,
+            usuario_id=usuario_id,
+            cliente_id=cliente_id,
+            execucao_id=str(execucao.id),
+        )
+        return (str(auditoria.id), None)
+    except Exception:
+        logger.warning(
+            "criar_auditoria_automatica falhou para execucao %s",
+            execucao.id,
+            exc_info=True,
+        )
+        return (None, None)
 
 
 async def aplicar_resultado_after(session, auditoria_id: str, execucao_after_id: str) -> None:
@@ -322,8 +519,9 @@ async def aplicar_resultado_after(session, auditoria_id: str, execucao_after_id:
             if val:
                 categorias_crux[chave].append(val)
 
-    # Page experience after.
+    # Page experience after (inclui llms_txt do grupo agêntico).
     pe_vereditos_after: dict[str, list[str]] = {}
+    llms_txt_after: list[str] = []
     try:
         from app.models.cwv_page_experience import CwvPageExperience
 
@@ -335,11 +533,25 @@ async def aplicar_resultado_after(session, auditoria_id: str, execucao_after_id:
                 v = getattr(row, coluna)
                 if v:
                     pe_vereditos_after.setdefault(coluna, []).append(v)
+            llms_v = getattr(row, "llms_txt", None)
+            if llms_v:
+                llms_txt_after.append(llms_v)
     except Exception:
         logger.warning("aplicar_resultado_after: page_experience indisponível", exc_info=True)
 
+    # SPEC_CWV_Navegacao_Agentica: accessibility_score das análises after.
+    acc_scores_after: list[float] = []
+    for a in analises_after:
+        s = (a.raw_resumo_json or {}).get("accessibility_score")
+        if s is not None:
+            acc_scores_after.append(float(s))
+
     n_pass = n_fail = 0
     for item in itens:
+        # SPEC_CWV_Checklist_Itens_Manuais: preservar avaliação humana.
+        if item.item_codigo.startswith("manual_"):
+            continue
+
         escopo_urls = (item.escopo_json or {}).get("urls", [])
 
         if item.origem == "psi_audit":
@@ -384,6 +596,28 @@ async def aplicar_resultado_after(session, auditoria_id: str, execucao_after_id:
                 item.status_after = "pass"
                 n_pass += 1
 
+        elif item.origem == "agentic":
+            # manual_webmcp_* já foram preservados no guard startswith("manual_").
+            if item.item_codigo == "agentic_llms_txt":
+                if not llms_txt_after:
+                    item.status_after = "na"
+                else:
+                    st = _pior_veredito(llms_txt_after)
+                    item.status_after = st
+                    if st == "pass":
+                        n_pass += 1
+                    elif st == "fail":
+                        n_fail += 1
+            elif item.item_codigo == "agentic_acessibilidade":
+                if not acc_scores_after:
+                    item.status_after = "na"
+                elif all(s >= _ACESSIBILIDADE_MIN for s in acc_scores_after):
+                    item.status_after = "pass"
+                    n_pass += 1
+                else:
+                    item.status_after = "fail"
+                    n_fail += 1
+
     # Copia health_score_after.
     from app.models.execucao_ferramenta import ExecucaoFerramenta
 
@@ -412,3 +646,165 @@ async def aplicar_resultado_after(session, auditoria_id: str, execucao_after_id:
         )
     except Exception:
         logger.warning("aplicar_resultado_after: publish_event falhou", exc_info=True)
+
+
+_CAP_TITULOS = 20
+
+
+def _metricas_analise(a: dict) -> dict:
+    return {
+        "analise_id": str(a.get("id", "")),
+        "score_performance": a.get("score_performance"),
+        "lcp_ms": a.get("lcp_ms"),
+        "cls": a.get("cls"),
+        "inp_ms": a.get("inp_ms"),
+        "tbt_ms": a.get("tbt_ms"),
+        "n_problemas": len(a.get("problemas") or []),
+    }
+
+
+def montar_comparativo(
+    analises_before: list[dict], analises_after: list[dict] | None
+) -> list[dict]:
+    """SPEC_CWV_Auditoria_Comparativo_API: pares URL×estratégia before/after.
+
+    Função pura — recebe dicts de ``buscar_analises_da_execucao``. Diff de
+    problemas pela mesma ``chave_problema`` do checklist/S5.
+    """
+    ok_before = [a for a in analises_before if a.get("status") == "sucesso"]
+    ok_after = [a for a in (analises_after or []) if a.get("status") == "sucesso"]
+    idx_after = {(a["url_canonica"], a["estrategia"]): a for a in ok_after}
+
+    pares: list[dict] = []
+    for a in ok_before:
+        b = idx_after.get((a["url_canonica"], a["estrategia"]))
+        problemas = None
+        if b is not None:
+            chaves_b = {chave_problema(p): p for p in (a.get("problemas") or [])}
+            chaves_a = {chave_problema(p): p for p in (b.get("problemas") or [])}
+            resolvidas = sorted(set(chaves_b) - set(chaves_a))
+            novas = sorted(set(chaves_a) - set(chaves_b))
+            persistentes = set(chaves_b) & set(chaves_a)
+            problemas = {
+                "resolvidos": len(resolvidas),
+                "persistentes": len(persistentes),
+                "novos": len(novas),
+                "titulos_resolvidos": [chaves_b[c].get("titulo") or c for c in resolvidas[:_CAP_TITULOS]],
+                "titulos_novos": [chaves_a[c].get("titulo") or c for c in novas[:_CAP_TITULOS]],
+            }
+        pares.append({
+            "url_canonica": a["url_canonica"],
+            "estrategia": a["estrategia"],
+            "template_tipo": a.get("template_tipo", ""),
+            "before": _metricas_analise(a),
+            "after": _metricas_analise(b) if b is not None else None,
+            "problemas": problemas,
+        })
+
+    pares.sort(key=lambda p: (p["template_tipo"], p["url_canonica"], p["estrategia"]))
+    return pares
+
+
+def montar_detalhe_item(
+    *,
+    item_codigo: str,
+    titulo: str,
+    esforco: str | None,
+    urls_escopo: list[str],
+    plataforma: str | None,
+    evidencias: list[dict] | None = None,
+) -> dict:
+    """SPEC_CWV_Auditoria_UI_V2: ficha explicativa de um item do checklist.
+
+    Enriquece o item com a KB (``item_codigo`` == código KB para itens mapeados):
+    o que é o problema (``descricao``), como corrigir (``solucoes`` — geral +
+    plataforma) e referências. Itens sem KB (``audit:*``, ``titulo:*``, field
+    data, page experience) retornam ``tem_kb=False`` com o restante nulo — a UI
+    mostra só título/esforço/URLs nesses casos.
+    """
+    from app.services.cwv_kb import buscar_entrada
+
+    entrada = buscar_entrada(item_codigo)
+    if entrada is None:
+        return {
+            "item_codigo": item_codigo,
+            "titulo": titulo,
+            "tem_kb": False,
+            "descricao": DESCRICOES_ITENS_SEM_KB.get(item_codigo),
+            "severidade": None,
+            "metricas_afetadas": [],
+            "solucao_geral": None,
+            "solucao_plataforma": None,
+            "plataforma": plataforma,
+            "links_referencia": [],
+            "esforco": esforco,
+            "urls_escopo": urls_escopo,
+            "evidencias": evidencias or [],
+        }
+
+    solucoes = entrada.get("solucoes") or {}
+    solucao_plataforma = None
+    if plataforma and plataforma != "geral":
+        solucao_plataforma = solucoes.get(plataforma)
+    return {
+        "item_codigo": item_codigo,
+        "titulo": entrada.get("titulo") or titulo,
+        "tem_kb": True,
+        "descricao": entrada.get("descricao"),
+        "severidade": entrada.get("severidade"),
+        "metricas_afetadas": entrada.get("metricas_afetadas") or [],
+        "solucao_geral": solucoes.get("geral"),
+        "solucao_plataforma": solucao_plataforma,
+        "plataforma": plataforma,
+        "links_referencia": entrada.get("links_referencia") or [],
+        "esforco": esforco,
+        "urls_escopo": urls_escopo,
+        "evidencias": evidencias or [],
+    }
+
+
+def _elemento_legivel(item: dict) -> str | None:
+    """Extrai uma string legível de um item de contexto_especifico."""
+    if not isinstance(item, dict):
+        return None
+    for chave in ("node_label", "label", "selector", "url", "snippet"):
+        val = item.get(chave)
+        if val and isinstance(val, str) and val.strip():
+            return val.strip()[:200]
+    return None
+
+
+_CAP_EVIDENCIAS = 40
+
+
+def montar_evidencias(rows: list[tuple]) -> list[dict]:
+    """SPEC_CWV_Detalhe_Evidencias_Elementos: agrupa elementos com falha por URL×estratégia.
+
+    ``rows`` = [(problema, url_canonica, estrategia), ...]. Um item de checklist pode
+    agregar vários audits (mesma chave) na mesma URL×estratégia — funde todos,
+    deduplica preservando ordem e retorna a contagem total (``total``) além dos
+    ``elementos`` exibíveis (cap de ``_CAP_EVIDENCIAS``).
+    """
+    grupos: dict[tuple, list[str]] = {}
+    for p, url, estrategia in rows:
+        ctx = (p.contexto_especifico if hasattr(p, "contexto_especifico") else p.get("contexto_especifico")) or {}
+        items = ctx.get("items") or []
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            el = _elemento_legivel(it)
+            if el:
+                grupos.setdefault((url, estrategia), []).append(el)
+
+    out: list[dict] = []
+    for (url, estrategia), els in sorted(grupos.items()):
+        vistos: set[str] = set()
+        unicos = [e for e in els if not (e in vistos or vistos.add(e))]
+        if unicos:
+            out.append({
+                "url_canonica": url,
+                "estrategia": estrategia,
+                "elementos": unicos[:_CAP_EVIDENCIAS],
+                "total": len(unicos),
+            })
+    return out

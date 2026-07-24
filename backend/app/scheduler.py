@@ -165,6 +165,68 @@ async def job_limpar_embeddings_cache():
             logger.debug("Limpeza do embeddings_cache pulada: %s", e)
 
 
+async def job_sanear_execucoes_orfas():
+    """SPEC_Saneamento_Execucoes_Orfas: marca como ``falhou`` execuções presas
+    em ``status='executando'`` após o prazo (worker morreu/OOM/deploy).
+
+    Margem de 10 min sobre ``timeout_em`` para não competir com worker vivo que
+    ainda vai estourar o próprio timeout. Libera a reserva de créditos via
+    ``_obter_reserva_estimada`` (mesma conta usada por ``finalizar_falha``) e é
+    idempotente: depois de virar ``falhou``, o WHERE não match mais; dentro da
+    transação, re-check do status + ``with_for_update(skip_locked=True)`` para
+    concorrência.
+    """
+    logger.info("Iniciando saneamento de execucoes orfas")
+    async with async_session_factory() as session:
+        try:
+            from sqlalchemy import select
+
+            from app.models.execucao_ferramenta import ExecucaoFerramenta
+            from app.services import credito_service
+            from app.services.ferramenta_service import _obter_reserva_estimada
+
+            margem = datetime.now(UTC) - timedelta(minutes=10)
+            res = await session.execute(
+                select(ExecucaoFerramenta)
+                .where(
+                    ExecucaoFerramenta.status == "executando",
+                    ExecucaoFerramenta.timeout_em < margem,
+                )
+                .with_for_update(skip_locked=True)
+            )
+            execucoes = res.scalars().all()
+            n_saneadas = 0
+            for exe in execucoes:
+                # Re-check idempotente dentro da transação (segurança extra).
+                if exe.status != "executando":
+                    continue
+                exe.status = "falhou"
+                exe.erro_msg = "Execução interrompida (worker reiniciado ou falha inesperada)"
+                exe.concluida_em = datetime.now(UTC)
+                reserva = _obter_reserva_estimada(exe.ferramenta or "", exe)
+                if reserva > 0:
+                    try:
+                        await credito_service.liberar_reserva(
+                            session, str(exe.usuario_id), reserva
+                        )
+                    except Exception as exc:
+                        # Fail-open na devolução: ainda assim marca como falhou
+                        # para destravar o usuário; loga para acompanhamento.
+                        logger.warning(
+                            "Falha ao liberar reserva da execucao %s: %s",
+                            exe.id, exc,
+                        )
+                n_saneadas += 1
+            await session.commit()
+            if n_saneadas:
+                logger.info("Saneadas %d execucoes orfas", n_saneadas)
+            else:
+                logger.debug("Nenhuma execucao orfa encontrada")
+        except Exception as e:
+            await session.rollback()
+            logger.error("Erro no saneamento de execucoes orfas: %s", e)
+
+
 def criar_scheduler() -> AsyncIOScheduler:
     scheduler = AsyncIOScheduler()
 
@@ -180,6 +242,13 @@ def criar_scheduler() -> AsyncIOScheduler:
         hour=6,
         minute=0,
         id="limpar_embeddings_cache",
+    )
+    # SPEC_Saneamento_Execucoes_Orfas: horário, margem 10 min cobre latência.
+    scheduler.add_job(
+        job_sanear_execucoes_orfas,
+        "cron",
+        minute=15,
+        id="sanear_execucoes_orfas",
     )
 
     return scheduler

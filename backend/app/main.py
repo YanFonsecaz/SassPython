@@ -106,7 +106,24 @@ if FRONTEND_DIR.is_dir():
         (re.compile(r"^ferramentas/core-web-vitals/execucao/[\w-]+$"), "ferramentas/core-web-vitals/execucao/placeholder.html"),
         (re.compile(r"^ferramentas/core-web-vitals/historico/[\w-]+$"), "ferramentas/core-web-vitals/historico/placeholder.html"),
         (re.compile(r"^ferramentas/core-web-vitals/url/[\w-]+$"), "ferramentas/core-web-vitals/url/placeholder.html"),
+        # SPEC_CWV_Auditoria_UI_V2: deep-link/refresh da página da auditoria
+        # (bug capturado no e2e — rota existia no front mas faltava o fallback).
+        (re.compile(r"^ferramentas/core-web-vitals/auditoria/[\w-]+$"), "ferramentas/core-web-vitals/auditoria/placeholder.html"),
+        # SEOTec: deep-link para página de detalhe da auditoria.
+        (re.compile(r"^ferramentas/auditoria-seo-tecnico/[\w-]+$"), "ferramentas/auditoria-seo-tecnico/placeholder.html"),
     ]
+
+    # HTML e payloads RSC (.txt) mudam a cada deploy e referenciam chunks com
+    # hash — se o browser cachear, usuários ficam presos ao bundle antigo até
+    # hard-refresh. no-cache = sempre revalidar (chunks em /_next/static seguem
+    # immutable, então o custo é só o HTML).
+    _NO_CACHE = {"Cache-Control": "no-cache"}
+
+    def _spa_file(path, status_code: int = 200) -> FileResponse:
+        p = str(path)
+        if p.endswith((".html", ".txt")):
+            return FileResponse(p, status_code=status_code, headers=_NO_CACHE)
+        return FileResponse(p, status_code=status_code)
 
     @application.api_route("/{full_path:path}", methods=["GET", "HEAD"])
     async def serve_spa(request: Request, full_path: str):
@@ -114,33 +131,33 @@ if FRONTEND_DIR.is_dir():
             return RedirectResponse("/login", status_code=302)
         file_path = FRONTEND_DIR / full_path
         if file_path.is_file():
-            return FileResponse(str(file_path))
+            return _spa_file(file_path)
         html_path = FRONTEND_DIR / (full_path + ".html")
         if html_path.is_file():
-            return FileResponse(str(html_path))
+            return _spa_file(html_path)
         for pattern, fallback in _DYNAMIC_SEGMENTS:
             if pattern.match(full_path):
                 fallback_path = FRONTEND_DIR / fallback
                 if fallback_path.is_file():
-                    return FileResponse(str(fallback_path))
+                    return _spa_file(fallback_path)
         dir_path = FRONTEND_DIR / full_path
         if dir_path.is_dir():
             index_path = dir_path / "index.html"
             if index_path.is_file():
                 if not full_path.endswith("/"):
                     return RedirectResponse(f"/{full_path}/", status_code=301)
-                return FileResponse(str(index_path))
+                return _spa_file(index_path)
         # Arquivos internos de dados/prefetch do Next (RSC) não são páginas: devolver
         # o SPA (200) em vez de 404, senão o prefetch de rotas dinâmicas loga 404 no console.
         if "__next" in full_path or "_rsc" in request.url.query:
-            return FileResponse(str(FRONTEND_DIR / "index.html"))
+            return _spa_file(FRONTEND_DIR / "index.html")
 
         # Rota não-casada: servir a página 404 estática (not-found.tsx) com status 404,
         # em vez de devolver index.html (que mascarava o 404 e caía no início).
         not_found = FRONTEND_DIR / "404.html"
         if not_found.is_file():
-            return FileResponse(str(not_found), status_code=404)
-        return FileResponse(str(FRONTEND_DIR / "index.html"), status_code=404)
+            return _spa_file(not_found, status_code=404)
+        return _spa_file(FRONTEND_DIR / "index.html", status_code=404)
 
     @application.head("/{full_path:path}")
     async def serve_spa_head(request: Request, full_path: str):

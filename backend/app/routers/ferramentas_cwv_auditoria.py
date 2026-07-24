@@ -6,7 +6,8 @@ em billing — criação de auditoria é gratuita; execuções continuam com bil
 from __future__ import annotations
 
 import logging
-from typing import Any
+from datetime import UTC, datetime
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -14,21 +15,39 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_user, get_db, rate_limit_autenticado
+from app.config import settings
+
+from app.dependencies import (
+    get_auditoria_do_usuario,
+    get_current_user,
+    get_db,
+    rate_limit_autenticado,
+)
 from app.models.cliente import Cliente
 from app.models.cwv_auditoria import CwvAuditoria
 from app.models.cwv_checklist_item import CwvChecklistItem
 from app.models.execucao_ferramenta import ExecucaoFerramenta
 from app.models.usuario import Usuario
 from app.schemas.cwv_auditoria import (
+    ArtefatoAgenticoResposta,
     AuditoriaCriarRequest,
     AuditoriaListResponse,
     AuditoriaPatch,
     AuditoriaResposta,
     ChecklistItemPatch,
     ChecklistItemResposta,
+    ComparativoResposta,
+    ConsolidadosResposta,
+    ItemDetalheResposta,
 )
-from app.services.cwv_auditoria_service import avancar_fase, criar_auditoria
+from app.services.cwv_auditoria_service import (
+    avancar_fase,
+    chave_problema,
+    criar_auditoria,
+    montar_comparativo,
+    montar_detalhe_item,
+    montar_evidencias,
+)
 from app.services.ferramenta_service import calcular_custo_cwv
 
 logger = logging.getLogger(__name__)
@@ -59,6 +78,7 @@ def _item_to_dict(item: CwvChecklistItem) -> dict:
         "prioridade": item.prioridade,
         "esforco": item.esforco,
         "escopo_json": item.escopo_json or {},
+        "metricas_afetadas": item.metricas_afetadas or [],
     }
 
 
@@ -84,6 +104,7 @@ async def _auditoria_to_dict(db: AsyncSession, auditoria: CwvAuditoria) -> dict[
         "health_score_before": float(auditoria.health_score_before) if auditoria.health_score_before is not None else None,
         "health_score_after": float(auditoria.health_score_after) if auditoria.health_score_after is not None else None,
         "consolidacao_status": auditoria.consolidacao_status,
+        "relatorio_json": auditoria.relatorio_json or None,
         "checklist": checklist,
         "n_pass_before": sum(1 for i in itens if i.status_before == "pass"),
         "n_fail_before": sum(1 for i in itens if i.status_before == "fail"),
@@ -130,64 +151,95 @@ async def criar_auditoria_endpoint(
 
 @router.get("/core-web-vitals/auditorias", response_model=AuditoriaListResponse)
 async def listar_auditorias(
-    cliente_id: UUID = Query(...),
+    cliente_id: UUID | None = Query(None),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
-    await _validar_cliente(db, str(usuario.id), str(cliente_id))
-    result = await db.execute(
-        select(CwvAuditoria)
-        .where(CwvAuditoria.cliente_id == cliente_id)
+    """Lista auditorias — de um cliente, ou todas do usuário (sem ``cliente_id``).
+
+    SPEC_CWV_Paginacao_Listagens: ``limit``/``offset`` aditivos. Default 20
+    mantém compat com clientes antigos (campos extras são ignorados).
+    """
+    from sqlalchemy import func
+
+    if cliente_id is not None:
+        await _validar_cliente(db, str(usuario.id), str(cliente_id))
+
+    n_itens_sq = (
+        select(
+            CwvChecklistItem.auditoria_id.label("auditoria_id"),
+            func.count(CwvChecklistItem.id).label("n_itens"),
+        )
+        .group_by(CwvChecklistItem.auditoria_id)
+        .subquery()
+    )
+    base = (
+        select(CwvAuditoria, Cliente.nome, func.coalesce(n_itens_sq.c.n_itens, 0))
+        .join(Cliente, Cliente.id == CwvAuditoria.cliente_id)
+        .outerjoin(n_itens_sq, n_itens_sq.c.auditoria_id == CwvAuditoria.id)
+        .where(CwvAuditoria.usuario_id == usuario.id)
         .order_by(CwvAuditoria.criado_em.desc())
     )
-    auditorias = list(result.scalars().all())
+    if cliente_id is not None:
+        base = base.where(CwvAuditoria.cliente_id == cliente_id)
+
+    # Contagem total na mesma query filtrada (sem carregar linhas).
+    count_base = select(CwvAuditoria.id).where(CwvAuditoria.usuario_id == usuario.id)
+    if cliente_id is not None:
+        count_base = count_base.where(CwvAuditoria.cliente_id == cliente_id)
+    total = (await db.execute(select(func.count()).select_from(count_base.subquery()))).scalar_one()
+
+    result = await db.execute(base.limit(limit).offset(offset))
     out = []
-    for a in auditorias:
-        itens_count = await db.execute(
-            select(CwvChecklistItem).where(CwvChecklistItem.auditoria_id == a.id)
-        )
-        n_itens = len(list(itens_count.scalars().all()))
+    for a, cliente_nome, n_itens in result.all():
         out.append({
             "id": str(a.id),
             "titulo": a.titulo,
             "fase": a.fase,
+            "cliente_id": str(a.cliente_id),
+            "cliente_nome": cliente_nome,
             "health_score_before": float(a.health_score_before) if a.health_score_before is not None else None,
             "health_score_after": float(a.health_score_after) if a.health_score_after is not None else None,
-            "n_itens": n_itens,
+            "n_itens": int(n_itens),
             "criado_em": a.criado_em.isoformat() if a.criado_em else "",
         })
-    return {"auditorias": out}
+    return {"auditorias": out, "total": int(total)}
 
 
 @router.get("/core-web-vitals/auditorias/{auditoria_id}", response_model=AuditoriaResposta)
 async def buscar_auditoria(
-    auditoria_id: str,
+    auditoria: CwvAuditoria = Depends(get_auditoria_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
-    result = await db.execute(
-        select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id)
-    )
-    auditoria = result.scalar_one_or_none()
-    if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
-        raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
     return await _auditoria_to_dict(db, auditoria)
+
+
+@router.get(
+    "/core-web-vitals/auditorias/{auditoria_id}/comparativo",
+    response_model=ComparativoResposta,
+)
+async def comparativo_auditoria(
+    auditoria: CwvAuditoria = Depends(get_auditoria_do_usuario),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    from app.services.cwv_persistencia import buscar_analises_da_execucao
+
+    analises_before = await buscar_analises_da_execucao(db, str(auditoria.execucao_before_id))
+    analises_after = None
+    if auditoria.execucao_after_id:
+        analises_after = await buscar_analises_da_execucao(db, str(auditoria.execucao_after_id))
+
+    return {"fase": auditoria.fase, "pares": montar_comparativo(analises_before, analises_after)}
 
 
 @router.patch("/core-web-vitals/auditorias/{auditoria_id}", response_model=AuditoriaResposta)
 async def atualizar_auditoria(
-    auditoria_id: str,
     corpo: AuditoriaPatch,
+    auditoria: CwvAuditoria = Depends(get_auditoria_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
-    result = await db.execute(
-        select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id)
-    )
-    auditoria = result.scalar_one_or_none()
-    if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
-        raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
-
     # Transições manuais permitidas; 'after' só é atingida pela re-auditoria
     # (que vincula a execução after) — nunca por PATCH direto.
     transicoes_manuais = {("before", "aguardando_implementacao"), ("after", "concluida")}
@@ -217,24 +269,15 @@ async def atualizar_auditoria(
     response_model=ChecklistItemResposta,
 )
 async def atualizar_item_checklist(
-    auditoria_id: str,
     item_id: str,
     corpo: ChecklistItemPatch,
+    auditoria: CwvAuditoria = Depends(get_auditoria_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
-    # Ownership via auditoria.
-    aud_result = await db.execute(
-        select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id)
-    )
-    auditoria = aud_result.scalar_one_or_none()
-    if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
-        raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
-
     result = await db.execute(
         select(CwvChecklistItem).where(
             CwvChecklistItem.id == item_id,
-            CwvChecklistItem.auditoria_id == auditoria_id,
+            CwvChecklistItem.auditoria_id == auditoria.id,
         )
     )
     item = result.scalar_one_or_none()
@@ -247,15 +290,91 @@ async def atualizar_item_checklist(
         item.nota_cliente = corpo.nota_cliente
     if corpo.nota_seo is not None:
         item.nota_seo = corpo.nota_seo
+    if corpo.prioridade is not None:
+        item.prioridade = corpo.prioridade
+    # SPEC_CWV_Checklist_Itens_Manuais: status automático editável só em itens manuais.
+    if corpo.status_before is not None or corpo.status_after is not None:
+        if not item.item_codigo.startswith("manual_"):
+            raise HTTPException(
+                status_code=422,
+                detail="Status automático (before/after) só é editável em itens manuais",
+            )
+        if corpo.status_before is not None:
+            item.status_before = corpo.status_before
+        if corpo.status_after is not None:
+            item.status_after = corpo.status_after
 
     await db.commit()
     await db.refresh(item)
     return _item_to_dict(item)
 
 
+@router.get(
+    "/core-web-vitals/auditorias/{auditoria_id}/itens/{item_id}/detalhe",
+    response_model=ItemDetalheResposta,
+)
+async def detalhe_item_checklist(
+    item_id: str,
+    auditoria: CwvAuditoria = Depends(get_auditoria_do_usuario),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """SPEC_CWV_Auditoria_UI_V2: ficha do problema (o que é + como corrigir, KB).
+
+    Carregada sob demanda ao expandir a linha do checklist — mantém a lista leve.
+    """
+    result = await db.execute(
+        select(CwvChecklistItem).where(
+            CwvChecklistItem.id == item_id,
+            CwvChecklistItem.auditoria_id == auditoria.id,
+        )
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item nao encontrado")
+
+    # Plataforma para escolher a solução específica: detectada na execução before.
+    from app.models.cwv_analise import CwvAnalise
+    from app.models.cwv_problema import CwvProblema
+
+    plataforma = None
+    if auditoria.execucao_before_id:
+        plat_result = await db.execute(
+            select(CwvAnalise.plataforma_detectada)
+            .where(CwvAnalise.execucao_id == auditoria.execucao_before_id)
+            .limit(1)
+        )
+        plataforma = plat_result.scalar_one_or_none()
+
+    # Evidências (elementos com falha por URL×estratégia) — só para fails de PSI.
+    # SPEC_CWV_Detalhe_Evidencias_Elementos.
+    evidencias: list[dict] = []
+    if item.origem == "psi_audit" and item.status_before == "fail" and auditoria.execucao_before_id:
+        probs_result = await db.execute(
+            select(CwvProblema, CwvAnalise.url_canonica, CwvAnalise.estrategia)
+            .join(CwvAnalise, CwvAnalise.id == CwvProblema.analise_id)
+            .where(CwvAnalise.execucao_id == auditoria.execucao_before_id)
+        )
+        rows_grupo = [
+            (p, url, estrategia)
+            for p, url, estrategia in probs_result.all()
+            if chave_problema(p) == item.item_codigo
+        ]
+        evidencias = montar_evidencias(rows_grupo)
+
+    urls_escopo = (item.escopo_json or {}).get("urls") or []
+    return montar_detalhe_item(
+        item_codigo=item.item_codigo,
+        titulo=item.titulo,
+        esforco=item.esforco,
+        urls_escopo=urls_escopo,
+        plataforma=plataforma,
+        evidencias=evidencias,
+    )
+
+
 @router.post("/core-web-vitals/auditorias/{auditoria_id}/reauditar", status_code=202)
 async def reauditar_auditoria(
-    auditoria_id: str,
+    auditoria: CwvAuditoria = Depends(get_auditoria_do_usuario),
     db: AsyncSession = Depends(get_db),
     usuario: Usuario = Depends(get_current_user),
     _: None = Depends(rate_limit_autenticado("cwv_reanalisar", max_requests=3, window_seconds=300)),
@@ -266,14 +385,6 @@ async def reauditar_auditoria(
 
     from app.config import settings
     from app.services import credito_service
-
-    # Ownership.
-    aud_result = await db.execute(
-        select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id)
-    )
-    auditoria = aud_result.scalar_one_or_none()
-    if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
-        raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
 
     # Fase: primeira re-auditoria parte de aguardando_implementacao; fase 'after'
     # é aceita apenas para re-tentar após falha (guard abaixo).
@@ -367,17 +478,10 @@ async def reauditar_auditoria(
 
 @router.post("/core-web-vitals/auditorias/{auditoria_id}/consolidar", status_code=202)
 async def consolidar_auditoria(
-    auditoria_id: str,
+    auditoria: CwvAuditoria = Depends(get_auditoria_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
     """SPEC_CWV_Consolidador_Cross_URL: enfileira a consolidação."""
-    aud_result = await db.execute(
-        select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id)
-    )
-    auditoria = aud_result.scalar_one_or_none()
-    if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
-        raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
     if not auditoria.execucao_before_id:
         raise HTTPException(status_code=409, detail="Auditoria sem execucao before")
     if auditoria.consolidacao_status == "executando":
@@ -387,7 +491,7 @@ async def consolidar_auditoria(
         from app.core.redis_pool import get_redis_pool
 
         redis = await get_redis_pool()
-        await redis.enqueue_job("executar_consolidador_cwv", auditoria_id)
+        await redis.enqueue_job("executar_consolidador_cwv", str(auditoria.id))
         auditoria.consolidacao_status = "executando"
         await db.commit()
     except Exception as e:
@@ -396,28 +500,28 @@ async def consolidar_auditoria(
         await db.commit()
         raise HTTPException(status_code=500, detail="Falha ao enfileirar consolidação") from e
 
-    return {"status": "executando", "auditoria_id": auditoria_id}
+    return {"status": "executando", "auditoria_id": str(auditoria.id)}
 
 
-@router.get("/core-web-vitals/auditorias/{auditoria_id}/consolidados")
+@router.get(
+    "/core-web-vitals/auditorias/{auditoria_id}/consolidados",
+    response_model=ConsolidadosResposta,
+)
 async def listar_consolidados(
-    auditoria_id: str,
+    auditoria: CwvAuditoria = Depends(get_auditoria_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """SPEC_CWV_Consolidador_Cross_URL: lista consolidados da auditoria."""
-    from app.models.cwv_problema_consolidado import CwvProblemaConsolidado
+    """SPEC_CWV_Consolidador_Cross_URL: lista consolidados da auditoria.
 
-    aud_result = await db.execute(
-        select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id)
-    )
-    auditoria = aud_result.scalar_one_or_none()
-    if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
-        raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
+    SPEC_CWV_Contratos_JSONB_Tipados: response_model = ``ConsolidadosResposta``
+    (espelha ``ProblemaConsolidadoResposta`` TS). Campos fora do schema são
+    descartados — diff verificado antes de ativar.
+    """
+    from app.models.cwv_problema_consolidado import CwvProblemaConsolidado
 
     result = await db.execute(
         select(CwvProblemaConsolidado)
-        .where(CwvProblemaConsolidado.auditoria_id == auditoria_id)
+        .where(CwvProblemaConsolidado.auditoria_id == auditoria.id)
         .order_by(CwvProblemaConsolidado.prioridade_ordem)
     )
     consolidados = []
@@ -439,19 +543,165 @@ async def listar_consolidados(
     return {"consolidados": consolidados, "status": auditoria.consolidacao_status}
 
 
+# --- SPEC_CWV_Navegacao_Agentica_Geracao_IA: geração de artefatos por IA ------
+
+
+def _artefato_to_dict(row) -> dict[str, Any]:
+    return {
+        "tipo": row.tipo,
+        "diagnostico": row.diagnostico,
+        "conteudo_md": row.conteudo_md,
+        "explicacao_md": row.explicacao_md,
+        "meta_json": row.meta_json or {},
+        "modelo": row.modelo,
+        "gerado_em": row.gerado_em.isoformat() if row.gerado_em else "",
+    }
+
+
+async def _urls_e_plataforma_da_auditoria(db: AsyncSession, auditoria: CwvAuditoria) -> tuple[list[str], str]:
+    """URLs canônicas (anti-SSRF: SÓ do cliente dono) + plataforma detectada.
+
+    Origem: análises de sucesso da execução ``before`` da auditoria. Nenhuma URL
+    vem do request.
+    """
+    from app.models.cwv_analise import CwvAnalise
+
+    if not auditoria.execucao_before_id:
+        return [], "geral"
+    res = await db.execute(
+        select(CwvAnalise.url_canonica, CwvAnalise.plataforma_detectada).where(
+            CwvAnalise.execucao_id == auditoria.execucao_before_id,
+            CwvAnalise.status == "sucesso",
+        )
+    )
+    rows = res.all()
+    urls: list[str] = []
+    for url, _ in rows:
+        if url and url not in urls:
+            urls.append(url)
+    plataforma = next((p for _, p in rows if p), "geral")
+    return urls, plataforma
+
+
+@router.post(
+    "/core-web-vitals/auditorias/{auditoria_id}/artefatos/{tipo}",
+    response_model=ArtefatoAgenticoResposta,
+)
+async def gerar_artefato_agentico(
+    tipo: Literal["llms_txt", "webmcp"],
+    auditoria: CwvAuditoria = Depends(get_auditoria_do_usuario),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(rate_limit_autenticado("cwv_artefato", max_requests=10, window_seconds=300)),
+) -> dict[str, Any]:
+    """SPEC_CWV_Navegacao_Agentica_Geracao_IA: gera llms.txt ideal ou scaffold
+    WebMCP. Kill-switch (409), fail-open (nunca 500), anti-SSRF (URLs do cliente)."""
+    if not settings.cwv_agentico_llm_habilitado:
+        raise HTTPException(status_code=409, detail="Geração por IA desabilitada")
+
+    from app.agents.cwv.agentico import WEBMCP_SPEC_VERSION, CWVAgenticoAgent
+    from app.models.cwv_artefato_agentico import CwvArtefatoAgentico
+    from app.services.cwv_site_fetch import coletar_conteudo_site
+
+    urls, plataforma = await _urls_e_plataforma_da_auditoria(db, auditoria)
+
+    agora = datetime.now(UTC)
+    try:
+        site = await coletar_conteudo_site(urls)
+        agente = CWVAgenticoAgent(usuario_id=str(auditoria.usuario_id))
+        if tipo == "llms_txt":
+            out = await agente.gerar_llms_txt(site, site.get("llms_txt_atual"))
+            artefato = {
+                "tipo": "llms_txt",
+                "diagnostico": out.diagnostico,
+                "conteudo_md": out.conteudo_llms_txt,
+                "explicacao_md": None,
+                "meta_json": {"justificativa": out.justificativa},
+                "modelo": settings.cwv_agentico_llm_model,
+            }
+        else:
+            out = await agente.gerar_webmcp(site, plataforma, site.get("webmcp") or {})
+            artefato = {
+                "tipo": "webmcp",
+                "diagnostico": None,
+                "conteudo_md": out.codigo,
+                "explicacao_md": out.explicacao_md,
+                "meta_json": {
+                    "detectado": out.detectado,
+                    "ferramentas_sugeridas": out.ferramentas_sugeridas,
+                    "linguagem": out.linguagem,
+                    "como_aplicar_md": out.como_aplicar_md,
+                    "versao_spec": WEBMCP_SPEC_VERSION,
+                    "plataforma": plataforma,
+                },
+                "modelo": settings.cwv_agentico_llm_model,
+            }
+    except Exception:
+        logger.warning(
+            "gerar_artefato_agentico falhou (fail-open) auditoria=%s tipo=%s",
+            auditoria.id, tipo, exc_info=True,
+        )
+        return {
+            "tipo": tipo,
+            "diagnostico": None,
+            "conteudo_md": "Não foi possível gerar o artefato agora. Tente novamente em instantes.",
+            "explicacao_md": None,
+            "meta_json": {"erro": True},
+            "modelo": None,
+            "gerado_em": agora.isoformat(),
+        }
+
+    # Upsert: 1 vigente por (auditoria, tipo). Regenerar substitui.
+    existente_res = await db.execute(
+        select(CwvArtefatoAgentico).where(
+            CwvArtefatoAgentico.auditoria_id == auditoria.id,
+            CwvArtefatoAgentico.tipo == tipo,
+        )
+    )
+    row = existente_res.scalar_one_or_none()
+    if row:
+        row.diagnostico = artefato["diagnostico"]
+        row.conteudo_md = artefato["conteudo_md"]
+        row.explicacao_md = artefato["explicacao_md"]
+        row.meta_json = artefato["meta_json"]
+        row.modelo = artefato["modelo"]
+        row.gerado_em = agora
+    else:
+        db.add(CwvArtefatoAgentico(auditoria_id=auditoria.id, gerado_em=agora, **artefato))
+    await db.commit()
+    # Resposta construída dos valores (evita lazy-load pós-commit).
+    return {**artefato, "gerado_em": agora.isoformat()}
+
+
+@router.get(
+    "/core-web-vitals/auditorias/{auditoria_id}/artefatos/{tipo}",
+    response_model=ArtefatoAgenticoResposta,
+)
+async def buscar_artefato_agentico(
+    tipo: Literal["llms_txt", "webmcp"],
+    auditoria: CwvAuditoria = Depends(get_auditoria_do_usuario),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Retorna o artefato vigente do tipo (404 se nunca gerado)."""
+    from app.models.cwv_artefato_agentico import CwvArtefatoAgentico
+
+    res = await db.execute(
+        select(CwvArtefatoAgentico).where(
+            CwvArtefatoAgentico.auditoria_id == auditoria.id,
+            CwvArtefatoAgentico.tipo == tipo,
+        )
+    )
+    row = res.scalar_one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Artefato ainda não gerado")
+    return _artefato_to_dict(row)
+
+
 @router.post("/core-web-vitals/auditorias/{auditoria_id}/relatorio", status_code=202)
 async def gerar_relatorio_auditoria(
-    auditoria_id: str,
+    auditoria: CwvAuditoria = Depends(get_auditoria_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
     """SPEC_CWV_Relatorio_Executivo: enfileira a geração do relatório executivo."""
-    aud_result = await db.execute(
-        select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id)
-    )
-    auditoria = aud_result.scalar_one_or_none()
-    if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
-        raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
     if auditoria.consolidacao_status != "concluida":
         raise HTTPException(status_code=409, detail="Consolidação precisa estar concluída antes do relatório")
 
@@ -463,21 +713,20 @@ async def gerar_relatorio_auditoria(
         from app.core.redis_pool import get_redis_pool
 
         redis = await get_redis_pool()
-        await redis.enqueue_job("executar_relatorio_cwv", auditoria_id)
+        await redis.enqueue_job("executar_relatorio_cwv", str(auditoria.id))
         auditoria.relatorio_json = {"status": "gerando"}
         await db.commit()
     except Exception as e:
         logger.error("Falha ao enfileirar relatório: %s", e)
         raise HTTPException(status_code=500, detail="Falha ao enfileirar relatório") from e
 
-    return {"status": "gerando", "auditoria_id": auditoria_id}
+    return {"status": "gerando", "auditoria_id": str(auditoria.id)}
 
 
 @router.get("/core-web-vitals/auditorias/{auditoria_id}/docx")
 async def exportar_auditoria_docx(
-    auditoria_id: str,
+    auditoria: CwvAuditoria = Depends(get_auditoria_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
     _: None = Depends(rate_limit_autenticado("cwv_export", max_requests=30, window_seconds=300)),
 ) -> StreamingResponse:
     """SPEC_CWV_Relatorio_Executivo: DOCX da auditoria completa (8 seções)."""
@@ -490,16 +739,9 @@ async def exportar_auditoria_docx(
     from app.services.cwv_persistencia import buscar_analises_da_execucao
     from app.services.parecer_service import html_para_docx_bytes
 
-    aud_result = await db.execute(
-        select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id)
-    )
-    auditoria = aud_result.scalar_one_or_none()
-    if not auditoria or str(auditoria.usuario_id) != str(usuario.id):
-        raise HTTPException(status_code=404, detail="Auditoria nao encontrada")
-
     # Checklist.
     itens_result = await db.execute(
-        select(CwvChecklistItem).where(CwvChecklistItem.auditoria_id == auditoria_id)
+        select(CwvChecklistItem).where(CwvChecklistItem.auditoria_id == auditoria.id)
         .order_by(CwvChecklistItem.status_before != "fail", CwvChecklistItem.prioridade)
     )
     checklist = [{
@@ -514,7 +756,7 @@ async def exportar_auditoria_docx(
     from app.models.cwv_problema import CwvProblema
 
     consol_result = await db.execute(
-        select(CwvProblemaConsolidado).where(CwvProblemaConsolidado.auditoria_id == auditoria_id)
+        select(CwvProblemaConsolidado).where(CwvProblemaConsolidado.auditoria_id == auditoria.id)
         .order_by(CwvProblemaConsolidado.prioridade_ordem)
     )
     consolidados_orm = list(consol_result.scalars().all())
@@ -572,7 +814,7 @@ async def exportar_auditoria_docx(
         cliente_nome=cliente_nome,
     )
     docx = await asyncio.to_thread(html_para_docx_bytes, html)
-    nome = f"cwv-relatorio-auditoria-{slugify_titulo(cliente_nome) if cliente_nome else auditoria_id[:8]}"
+    nome = f"cwv-relatorio-auditoria-{slugify_titulo(cliente_nome) if cliente_nome else str(auditoria.id)[:8]}"
     return StreamingResponse(
         io.BytesIO(docx),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",

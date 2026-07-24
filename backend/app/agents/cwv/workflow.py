@@ -29,6 +29,7 @@ class EstadoCWV(TypedDict):
     plataformas: dict[str, str]
     problemas_por_url: dict[str, list[dict]]
     analises_persistidas: list[str]
+    analises_metadata: list[dict]
     llm_stats_por_url: dict[str, dict]
     page_experience_por_origem: dict[str, dict]
 
@@ -205,11 +206,15 @@ async def node_analisar_seo(estado: EstadoCWV) -> dict[str, Any]:
             chave = _chave(url, estrategia)
             r = estado["psi_resultados"][chave]
             await publish_event(eid, "node_progress", "analisar_seo", f"Analisando {idx}/{total}: {url[:60]} ({estrategia})")
-            problemas, stats = await agente.analisar(
-                audits_falhos=r["parsed"]["audits_falhos"],
-                plataforma=estado["plataformas"][chave],
-                metricas=r["parsed"],
-            )
+            # SPEC_CWV_Cache_Classificacao_Audit_KB: sessão para lookup/upsert do cache.
+            async with async_session_factory() as session:
+                problemas, stats = await agente.analisar(
+                    audits_falhos=r["parsed"]["audits_falhos"],
+                    plataforma=estado["plataformas"][chave],
+                    metricas=r["parsed"],
+                    db=session,
+                )
+                await session.commit()
             return chave, problemas, stats
 
     if jobs_to_analyze:
@@ -349,6 +354,7 @@ async def node_persistir(estado: EstadoCWV) -> dict[str, Any]:
     from app.core.metrics import cwv_problemas_por_analise
 
     analises_ids: list[str] = []
+    analises_meta: list[dict] = []
     llm_stats = estado.get("llm_stats_por_url", {})
     async with async_session_factory() as session:
         for template, url, estrategia in estado["jobs"]:
@@ -369,6 +375,13 @@ async def node_persistir(estado: EstadoCWV) -> dict[str, Any]:
                 llm_stats=llm_stats.get(chave),
             )
             analises_ids.append(analise_id)
+            parsed = r.get("parsed", {}) if r.get("ok") else {}
+            analises_meta.append({
+                "id": analise_id,
+                "url_canonica": url,
+                "estrategia": estrategia,
+                "score_performance": parsed.get("score_performance"),
+            })
             if r.get("ok"):
                 cwv_problemas_por_analise.observe(len(problemas_url))
 
@@ -385,7 +398,7 @@ async def node_persistir(estado: EstadoCWV) -> dict[str, Any]:
         await session.commit()
 
     await publish_event(eid, "node_complete", "persistir", f"{len(analises_ids)} analises persistidas")
-    return {"analises_persistidas": analises_ids}
+    return {"analises_persistidas": analises_ids, "analises_metadata": analises_meta}
 
 
 def construir_workflow():
@@ -538,8 +551,10 @@ async def _run_workflow_cwv(workflow, estado_inicial, config, execucao_id: str):
         reserva = ferramenta_service._obter_reserva_estimada("core_web_vitals", execucao)
 
         analises_ids = []
+        analises_meta = []
         if estado_final:
             analises_ids = estado_final.get("analises_persistidas", [])
+            analises_meta = estado_final.get("analises_metadata", [])
 
         n_sucesso = 0
         n_total_jobs = len(estado_final.get("jobs", [])) if estado_final else 0
@@ -560,6 +575,7 @@ async def _run_workflow_cwv(workflow, estado_inicial, config, execucao_id: str):
                 "n_urls_analisadas": 0,
                 "n_urls_falharam": n_total_jobs,
                 "analise_ids": analises_ids,
+                "analises": analises_meta,
                 "health_score": None,
                 "motivo_falha": "psi_total",
             }
@@ -598,6 +614,7 @@ async def _run_workflow_cwv(workflow, estado_inicial, config, execucao_id: str):
             "n_urls_analisadas": n_sucesso,
             "n_urls_falharam": n_total_jobs - n_sucesso,
             "analise_ids": analises_ids,
+            "analises": analises_meta,
             "health_score": health_score,
         }
 
@@ -607,6 +624,39 @@ async def _run_workflow_cwv(workflow, estado_inicial, config, execucao_id: str):
         execucao.concluida_em = datetime.now(UTC)
         await session.commit()
         logger.info("%s CWV concluida: %d URLs, custo=%d creditos", _log_prefix(execucao_id), n_sucesso, custo)
+
+        # A2: auditoria automática após execução CWV. Fail-open.
+        try:
+            from app.services.cwv_auditoria_service import _criar_auditoria_automatica
+
+            if not execucao.cliente_id:
+                raise ValueError("execucao sem cliente_id — auditoria automática pulada")
+            async with async_session_factory() as aud_session:
+                nova_id, existente_id = await _criar_auditoria_automatica(
+                    aud_session,
+                    execucao=execucao,
+                    cliente_id=str(execucao.cliente_id),
+                    usuario_id=str(execucao.usuario_id),
+                )
+                if nova_id or existente_id:
+                    await aud_session.commit()
+                    # crit.#5: auditoria criada → auditoria_id; aberta existente
+                    # (ou re-auditoria) → auditoria_existente_id.
+                    campo = "auditoria_id" if nova_id else "auditoria_existente_id"
+                    valor = nova_id or existente_id
+                    async with async_session_factory() as upd_session:
+                        from sqlalchemy import select
+
+                        from app.models.execucao_ferramenta import ExecucaoFerramenta
+
+                        result = await upd_session.execute(
+                            select(ExecucaoFerramenta).where(ExecucaoFerramenta.id == execucao_id)
+                        )
+                        exec_row = result.scalar_one()
+                        exec_row.resultado_json = {**(exec_row.resultado_json or {}), campo: valor}
+                        await upd_session.commit()
+        except Exception:
+            logger.warning("auditoria automatica falhou para execucao %s", execucao_id, exc_info=True)
 
         # SPEC_CWV_Reauditoria_After: se esta execução é o "after" de uma auditoria,
         # aplica os resultados no checklist. Fail-open — nunca derruba a execução.

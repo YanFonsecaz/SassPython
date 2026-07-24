@@ -112,8 +112,36 @@ export async function analisarCwv(dados: CwvAnalisarRequest): Promise<CwvExecuca
   return api.post<CwvExecucaoCriada>("/ferramentas/core-web-vitals/analisar", dados);
 }
 
-export async function buscarExecucaoCwv(execucaoId: string) {
-  return api.get<CwvExecucaoCriada & { resultado_json: Record<string, unknown> | null; erro_msg: string | null; concluida_em: string | null }>(
+// SPEC_CWV_Contratos_JSONB_Tipados: espelha backend ResultadoJsonResposta.
+export interface ResultadoJsonResposta {
+  n_urls_analisadas?: number | null;
+  n_urls_falharam?: number | null;
+  analise_ids?: string[];
+  analises?: Array<Record<string, unknown>>;
+  health_score?: Record<string, unknown> | null;
+  motivo_falha?: string | null;
+  // SPEC_CWV_Auditoria_Automatica_Pos_Execucao (A2):
+  auditoria_id?: string | null;
+  auditoria_existente_id?: string | null;
+  [k: string]: unknown;
+}
+
+export interface ExecucaoResposta {
+  id: string;
+  ferramenta: string;
+  status: string;
+  etapa_atual: string | null;
+  creditos_cobrados: number;
+  resultado_json: ResultadoJsonResposta | null;
+  entrada_json: Record<string, unknown>;
+  erro_msg: string | null;
+  criado_em: string;
+  concluida_em: string | null;
+  cliente_id: string | null;
+}
+
+export async function buscarExecucaoCwv(execucaoId: string): Promise<ExecucaoResposta> {
+  return api.get<ExecucaoResposta>(
     `/ferramentas/core-web-vitals/execucao/${execucaoId}`
   );
 }
@@ -122,9 +150,21 @@ export async function buscarAnaliseCwv(analiseId: string): Promise<CwvAnaliseRes
   return api.get<CwvAnaliseResposta>(`/ferramentas/core-web-vitals/analise/${analiseId}`);
 }
 
-export async function buscarHistoricoCwv(clienteId: string, template?: string): Promise<{ urls: CwvHistoricoUrlResposta[] }> {
+// SPEC_CWV_Paginacao_Listagens: params opcionais, default backend = 20.
+export interface PaginacaoParams {
+  limit?: number;
+  offset?: number;
+}
+
+export async function buscarHistoricoCwv(
+  clienteId: string,
+  template?: string,
+  pag?: PaginacaoParams,
+): Promise<{ urls: CwvHistoricoUrlResposta[]; total: number }> {
   const qs = new URLSearchParams({ cliente_id: clienteId });
   if (template) qs.set("template", template);
+  if (pag?.limit !== undefined) qs.set("limit", String(pag.limit));
+  if (pag?.offset !== undefined) qs.set("offset", String(pag.offset));
   return api.get(`/ferramentas/core-web-vitals/historico?${qs}`);
 }
 
@@ -237,7 +277,7 @@ export async function buscarPageExperienceCwv(execucaoId: string): Promise<PageE
 // --- SPEC_CWV_Auditoria_Ciclo_De_Vida ---------------------------------------
 
 export type FaseAuditoria = "before" | "aguardando_implementacao" | "after" | "concluida";
-export type OrigemItem = "psi_audit" | "page_experience" | "field_data";
+export type OrigemItem = "psi_audit" | "page_experience" | "field_data" | "agentic";
 export type StatusCheck = "pass" | "fail" | "na";
 export type StatusImplementacao = "nao_executado" | "em_andamento" | "implementado";
 
@@ -254,6 +294,24 @@ export interface ChecklistItemResposta {
   prioridade: number;
   esforco: string | null;
   escopo_json: Record<string, unknown>;
+  metricas_afetadas: string[];
+}
+
+// SPEC_CWV_Contratos_JSONB_Tipados: relatorio_json tipado (espelha backend).
+export interface PlanoFaseRelatorio {
+  titulo: string;
+  justificativa: string;
+  itens_codigos: string[];
+}
+
+export interface RelatorioJsonResposta {
+  status?: string | null;
+  sumario_executivo_md?: string | null;
+  diagnostico_tecnico_md?: string | null;
+  plano_fases?: PlanoFaseRelatorio[];
+  gerado_em?: string | null;
+  modelo?: string | null;
+  [k: string]: unknown; // extra="allow" no backend
 }
 
 export interface AuditoriaResposta {
@@ -266,7 +324,7 @@ export interface AuditoriaResposta {
   health_score_before: number | null;
   health_score_after: number | null;
   consolidacao_status: string;
-  relatorio_json: Record<string, unknown> | null;
+  relatorio_json: RelatorioJsonResposta | null;
   checklist: ChecklistItemResposta[];
   n_pass_before: number;
   n_fail_before: number;
@@ -279,10 +337,46 @@ export interface AuditoriaResumo {
   id: string;
   titulo: string;
   fase: FaseAuditoria;
+  cliente_id: string | null;
+  cliente_nome: string | null;
   health_score_before: number | null;
   health_score_after: number | null;
   n_itens: number;
   criado_em: string;
+}
+
+// --- SPEC_CWV_Auditoria_Comparativo_API ------------------------------------
+
+export interface ComparativoMetricas {
+  analise_id: string;
+  score_performance: number | null;
+  lcp_ms: number | null;
+  cls: number | null;
+  inp_ms: number | null;
+  tbt_ms: number | null;
+  n_problemas: number;
+}
+
+export interface ComparativoProblemas {
+  resolvidos: number;
+  persistentes: number;
+  novos: number;
+  titulos_resolvidos: string[];
+  titulos_novos: string[];
+}
+
+export interface ComparativoPar {
+  url_canonica: string;
+  estrategia: string;
+  template_tipo: string;
+  before: ComparativoMetricas;
+  after: ComparativoMetricas | null;
+  problemas: ComparativoProblemas | null;
+}
+
+export interface ComparativoResposta {
+  fase: FaseAuditoria;
+  pares: ComparativoPar[];
 }
 
 export async function criarAuditoriaCwv(clienteId: string, execucaoId: string, titulo?: string): Promise<AuditoriaResposta> {
@@ -293,12 +387,94 @@ export async function criarAuditoriaCwv(clienteId: string, execucaoId: string, t
   });
 }
 
-export async function listarAuditoriasCwv(clienteId: string): Promise<{ auditorias: AuditoriaResumo[] }> {
-  return api.get(`/ferramentas/core-web-vitals/auditorias?cliente_id=${clienteId}`);
+export async function listarAuditoriasCwv(
+  clienteId?: string,
+  pag?: PaginacaoParams,
+): Promise<{ auditorias: AuditoriaResumo[]; total: number }> {
+  const params = new URLSearchParams();
+  if (clienteId) params.set("cliente_id", clienteId);
+  if (pag?.limit !== undefined) params.set("limit", String(pag.limit));
+  if (pag?.offset !== undefined) params.set("offset", String(pag.offset));
+  const qs = params.toString() ? `?${params.toString()}` : "";
+  return api.get(`/ferramentas/core-web-vitals/auditorias${qs}`);
 }
 
 export async function buscarAuditoriaCwv(auditoriaId: string): Promise<AuditoriaResposta> {
   return api.get<AuditoriaResposta>(`/ferramentas/core-web-vitals/auditorias/${auditoriaId}`);
+}
+
+export async function buscarComparativoAuditoria(auditoriaId: string): Promise<ComparativoResposta> {
+  return api.get<ComparativoResposta>(`/ferramentas/core-web-vitals/auditorias/${auditoriaId}/comparativo`);
+}
+
+// --- SPEC_CWV_Auditoria_UI_V2: ficha do item (KB) --------------------------
+
+export interface LinkReferencia {
+  titulo: string;
+  url: string;
+}
+
+export interface EvidenciaItem {
+  url_canonica: string;
+  estrategia: string;
+  elementos: string[];
+  total: number;
+}
+
+export interface ItemDetalheResposta {
+  item_codigo: string;
+  titulo: string;
+  tem_kb: boolean;
+  descricao: string | null;
+  severidade: number | null;
+  metricas_afetadas: string[];
+  solucao_geral: string | null;
+  solucao_plataforma: string | null;
+  plataforma: string | null;
+  links_referencia: LinkReferencia[];
+  esforco: string | null;
+  urls_escopo: string[];
+  evidencias: EvidenciaItem[];
+}
+
+// SPEC_CWV_Navegacao_Agentica_Geracao_IA: artefato gerado por IA (llms.txt/WebMCP).
+export type TipoArtefatoAgentico = "llms_txt" | "webmcp";
+
+export interface ArtefatoAgenticoResposta {
+  tipo: string;
+  diagnostico: string | null;
+  conteudo_md: string;
+  explicacao_md: string | null;
+  meta_json: Record<string, unknown>;
+  modelo: string | null;
+  gerado_em: string;
+}
+
+export async function gerarArtefatoAgentico(
+  auditoriaId: string,
+  tipo: TipoArtefatoAgentico,
+): Promise<ArtefatoAgenticoResposta> {
+  return api.post<ArtefatoAgenticoResposta>(
+    `/ferramentas/core-web-vitals/auditorias/${auditoriaId}/artefatos/${tipo}`,
+  );
+}
+
+export async function buscarArtefatoAgentico(
+  auditoriaId: string,
+  tipo: TipoArtefatoAgentico,
+): Promise<ArtefatoAgenticoResposta> {
+  return api.get<ArtefatoAgenticoResposta>(
+    `/ferramentas/core-web-vitals/auditorias/${auditoriaId}/artefatos/${tipo}`,
+  );
+}
+
+export async function buscarDetalheItemChecklist(
+  auditoriaId: string,
+  itemId: string,
+): Promise<ItemDetalheResposta> {
+  return api.get<ItemDetalheResposta>(
+    `/ferramentas/core-web-vitals/auditorias/${auditoriaId}/itens/${itemId}/detalhe`,
+  );
 }
 
 export async function atualizarAuditoriaCwv(auditoriaId: string, dados: { fase?: FaseAuditoria; titulo?: string }): Promise<AuditoriaResposta> {
@@ -308,7 +484,7 @@ export async function atualizarAuditoriaCwv(auditoriaId: string, dados: { fase?:
 export async function atualizarItemChecklistCwv(
   auditoriaId: string,
   itemId: string,
-  dados: { status_implementacao?: StatusImplementacao; nota_cliente?: string; nota_seo?: string },
+  dados: { status_implementacao?: StatusImplementacao; nota_cliente?: string; nota_seo?: string; prioridade?: number; status_before?: StatusCheck; status_after?: StatusCheck },
 ): Promise<ChecklistItemResposta> {
   return api.patch<ChecklistItemResposta>(`/ferramentas/core-web-vitals/auditorias/${auditoriaId}/itens/${itemId}`, dados);
 }

@@ -1,6 +1,7 @@
 import logging
 
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.base import BaseAgent
 from app.services.cwv_kb import AUDITS_IGNORADOS, listar_kb_codigos_descritos, mapeamento_audit_kb_com_aliases
@@ -31,9 +32,19 @@ class CWVAnalisadorAgent(BaseAgent):
         )
 
     async def analisar(
-        self, *, audits_falhos: list[dict], plataforma: str, metricas: dict
+        self,
+        *,
+        audits_falhos: list[dict],
+        plataforma: str,
+        metricas: dict,
+        db: AsyncSession | None = None,
     ) -> tuple[list[dict], dict]:
-        """Retorna (problemas, stats) onde stats tem chaves: llm_usado, processados, descartados."""
+        """Retorna (problemas, stats) onde stats tem chaves:
+        llm_usado, processados, descartados, cache_hits, cache_misses.
+
+        SPEC_CWV_Cache_Classificacao_Audit_KB: se ``db`` for passado, classifica
+        via cache antes de chamar o LLM — só audits NUNCA vistos pagam tokens.
+        """
         diretos = mapeamento_audit_kb_com_aliases()
         identificados: list[ProblemaIdentificado] = []
 
@@ -53,69 +64,157 @@ class CWVAnalisadorAgent(BaseAgent):
 
         audits_residuais = [a for a in audits_falhos if a.get("id", "") not in diretos]
 
-        stats = {"llm_usado": False, "processados": 0, "descartados": 0}
+        stats = {
+            "llm_usado": False,
+            "processados": 0,
+            "descartados": 0,
+            "cache_hits": 0,
+            "cache_misses": 0,
+        }
 
-        if audits_residuais:
-            stats["llm_usado"] = True
-            stats["processados"] = len(audits_residuais)
-            kb_descritos = listar_kb_codigos_descritos()
-            kb_codigos_validos = {c["codigo"] for c in kb_descritos}
-            try:
-                prompt = _montar_prompt_analise(
-                    audits_residuais, kb_descritos, plataforma, metricas
-                )
-                logger.info(
-                    "CWV analisador prompt size: %d chars, %d audits",
-                    len(prompt), len(audits_residuais),
-                )
-                resp: ListaProblemas = await self.invoke_structured(prompt, ListaProblemas)
+        if not audits_residuais:
+            return [p.model_dump() for p in identificados], stats
 
-                validos = [p for p in resp.problemas if p.kb_codigo in kb_codigos_validos]
-                descartados = len(resp.problemas) - len(validos)
-                if descartados:
-                    logger.warning(
-                        "CWV analisador descartou %d problemas com kb_codigo inexistente",
-                        descartados,
-                    )
-                    stats["descartados"] += descartados
-                identificados.extend(validos)
+        # SPEC_CWV_Cache_Classificacao_Audit_KB: lookup antes do LLM.
+        cache_map: dict[str, str | None] = {}
+        audits_para_llm: list[dict] = []
+        if db is not None:
+            from app.services.cwv_audit_kb_cache import buscar_classificacoes
 
-                audits_cobertos_llm: set[str] = set()
-                for p in validos:
-                    audits_cobertos_llm.update(p.audits_origem)
-                for a in audits_residuais:
-                    aid = a.get("id", "")
-                    if aid not in audits_cobertos_llm:
-                        _emit_kb_miss(a)
-                        identificados.append(
-                            ProblemaIdentificado(
-                                kb_codigo=None,
-                                audit_id=aid,
-                                contexto_especifico={
-                                    **_extrair_contexto(a),
-                                    "audit_id": aid,
-                                },
-                                audits_origem=[aid],
-                            )
+            cache_map = await buscar_classificacoes(
+                db, [a.get("id", "") for a in audits_residuais]
+            )
+            for audit in audits_residuais:
+                aid = audit.get("id", "")
+                if aid in cache_map:
+                    # Hit: kb_codigo pode ser None (catalogado como "sem KB").
+                    stats["cache_hits"] += 1
+                    identificados.append(
+                        ProblemaIdentificado(
+                            kb_codigo=cache_map[aid],
+                            audit_id=aid,
+                            contexto_especifico=_extrair_contexto(audit),
+                            audits_origem=[aid],
                         )
-            except Exception as e:
-                logger.warning("CWV analisador LLM fallback falhou: %s", e)
-                stats["descartados"] += len(audits_residuais)
-                for a in audits_residuais:
+                    )
+                else:
+                    stats["cache_misses"] += 1
+                    audits_para_llm.append(audit)
+        else:
+            # Sem DB (fallback / testes antigos): behavior igual a pré-cache.
+            stats["cache_misses"] += len(audits_residuais)
+            audits_para_llm = audits_residuais
+
+        if not audits_para_llm:
+            # Todos cobertos pelo cache — zero chamadas LLM.
+            return [p.model_dump() for p in identificados], stats
+
+        # LLM só para audits não resolvidos (direto + cache).
+        stats["llm_usado"] = True
+        stats["processados"] = len(audits_para_llm)
+        kb_descritos = [c for c in listar_kb_codigos_descritos() if c["codigo"] != "outros"]
+        kb_codigos_validos = {c["codigo"] for c in kb_descritos}
+        try:
+            prompt = _montar_prompt_analise(
+                audits_para_llm, kb_descritos, plataforma, metricas
+            )
+            logger.info(
+                "CWV analisador prompt size: %d chars, %d audits",
+                len(prompt), len(audits_para_llm),
+            )
+            resp: ListaProblemas = await self.invoke_structured(prompt, ListaProblemas)
+
+            # Normaliza kb_codigo='outros' → None (SPEC_CWV_Chave_Problema_Outros).
+            for p in resp.problemas:
+                if p.kb_codigo == "outros":
+                    p.kb_codigo = None
+
+            validos = [p for p in resp.problemas if p.kb_codigo in kb_codigos_validos or p.kb_codigo is None]
+            descartados = len(resp.problemas) - len(validos)
+            if descartados:
+                logger.warning(
+                    "CWV analisador descartou %d problemas com kb_codigo inexistente",
+                    descartados,
+                )
+                stats["descartados"] += descartados
+            identificados.extend(validos)
+
+            # SPEC_CWV_Cache_Classificacao_Audit_KB: persiste o resultado por audit_id.
+            if db is not None:
+                from app.services.cwv_audit_kb_cache import salvar_classificacao
+
+                # Mapa audit_id → kb_codigo decidido pelo LLM para os válidos.
+                kb_por_audit: dict[str, str | None] = {}
+                for p in validos:
+                    for aid in p.audits_origem:
+                        kb_por_audit[aid] = p.kb_codigo
+                # Audits residuais que o LLM NÃO cobriu ganham null no cache
+                # (próxima análise já sabe: sem KB catalogada).
+                for a in audits_para_llm:
+                    aid = a.get("id", "")
+                    if aid and aid not in kb_por_audit:
+                        kb_por_audit[aid] = None
+
+                modelo_llm = self._modelo_nome()
+                for aid, kb in kb_por_audit.items():
+                    try:
+                        await salvar_classificacao(
+                            db,
+                            audit_id=aid,
+                            kb_codigo=kb,
+                            origem="llm",
+                            modelo=modelo_llm,
+                        )
+                    except Exception:
+                        logger.warning(
+                            "Falha ao gravar cache para audit_id=%s",
+                            aid,
+                            exc_info=True,
+                        )
+
+            audits_cobertos_llm: set[str] = set()
+            for p in validos:
+                audits_cobertos_llm.update(p.audits_origem)
+            for a in audits_para_llm:
+                aid = a.get("id", "")
+                if aid not in audits_cobertos_llm:
                     _emit_kb_miss(a)
                     identificados.append(
                         ProblemaIdentificado(
                             kb_codigo=None,
-                            audit_id=a.get("id", ""),
+                            audit_id=aid,
                             contexto_especifico={
                                 **_extrair_contexto(a),
-                                "audit_id": a.get("id", ""),
+                                "audit_id": aid,
                             },
-                            audits_origem=[a.get("id", "")],
+                            audits_origem=[aid],
                         )
                     )
+        except Exception as e:
+            logger.warning("CWV analisador LLM fallback falhou: %s", e)
+            stats["descartados"] += len(audits_para_llm)
+            for a in audits_para_llm:
+                _emit_kb_miss(a)
+                identificados.append(
+                    ProblemaIdentificado(
+                        kb_codigo=None,
+                        audit_id=a.get("id", ""),
+                        contexto_especifico={
+                            **_extrair_contexto(a),
+                            "audit_id": a.get("id", ""),
+                        },
+                        audits_origem=[a.get("id", "")],
+                    )
+                )
 
         return [p.model_dump() for p in identificados], stats
+
+    def _modelo_nome(self) -> str | None:
+        """Nome do modelo LLM usado (para auditoria no cache)."""
+        try:
+            return getattr(self, "model_name", None) or getattr(self, "model", None)
+        except Exception:
+            return None
 
 
 def _emit_kb_miss(audit: dict):

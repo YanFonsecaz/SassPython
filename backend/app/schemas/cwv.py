@@ -150,6 +150,8 @@ class HistoricoUrlResposta(BaseModel):
 
 class HistoricoListResponse(BaseModel):
     urls: list[HistoricoUrlResposta]
+    # SPEC_CWV_Paginacao_Listagens: total sem página.
+    total: int = 0
 
 
 class CustoCwvResponse(BaseModel):
@@ -210,3 +212,43 @@ class PageExperienceResposta(BaseModel):
 
 class PageExperienceListResponse(BaseModel):
     origens: list[PageExperienceResposta]
+
+
+# --- SPEC_CWV_Contratos_JSONB_Tipados --------------------------------------
+
+
+class ResultadoJsonResposta(BaseModel):
+    """Shape nível-1 do JSONB ``execucoes_ferramentas.resultado_json`` (CWV).
+
+    Mantém ``extra="allow"`` para preservar chaves experimentais sem quebrar
+    clientes; o tipo garante que campos críticos estejam presentes no contrato.
+    """
+
+    model_config = {"extra": "allow"}
+
+    n_urls_analisadas: int | None = None
+    n_urls_falharam: int | None = None
+    analise_ids: list[str] = []
+    analises: list[dict] = []
+    health_score: dict | None = None
+    motivo_falha: str | None = None
+    # SPEC_CWV_Auditoria_Automatica_Pos_Execucao (A2): preenchido pela hook
+    # pós-workflow quando cria/vincula auditoria.
+    auditoria_id: str | None = None
+    auditoria_existente_id: str | None = None
+
+
+class ExecucaoResposta(BaseModel):
+    """``GET /core-web-vitals/execucao/{id}`` — resultado_json tipado."""
+
+    id: str
+    ferramenta: str
+    status: str
+    etapa_atual: str | None = None
+    creditos_cobrados: int
+    resultado_json: ResultadoJsonResposta | None = None
+    entrada_json: dict
+    erro_msg: str | None = None
+    criado_em: str
+    concluida_em: str | None = None
+    cliente_id: str | None = None

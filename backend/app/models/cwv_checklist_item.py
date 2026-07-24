@@ -18,7 +18,8 @@ class CwvChecklistItem(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "cwv_checklist_item"
     __table_args__ = (
         CheckConstraint(
-            "origem IN ('psi_audit','page_experience','field_data')",
+            # SPEC_CWV_Navegacao_Agentica: 'agentic' (migração 0034).
+            "origem IN ('psi_audit','page_experience','field_data','agentic')",
             name="cwv_checklist_origem_check",
         ),
         CheckConstraint(
@@ -53,6 +54,7 @@ class CwvChecklistItem(Base, UUIDPrimaryKeyMixin):
     prioridade: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     esforco: Mapped[str | None] = mapped_column(String(10), nullable=True)
     escopo_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+    metricas_afetadas: Mapped[list] = mapped_column(JSONB, nullable=False, server_default="[]")
     # Sem FK aqui — a FK chega na migração da S8 (Consolidador_Cross_URL).
     problema_consolidado_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     criado_em: Mapped[datetime] = mapped_column(

@@ -51,9 +51,18 @@ def _get_client() -> httpx.AsyncClient:
 
 
 async def _fetch_psi_once(url: str, estrategia: str, api_key: str | None) -> dict:
-    params = {"url": url, "strategy": estrategia, "category": "performance"}
+    # SPEC_CWV_Navegacao_Agentica: pede performance E accessibility na mesma
+    # requisição (param repetido — httpx aceita lista de tuplas; mesmo billing).
+    # Só o SCORE da categoria accessibility é retido; os audits de a11y NÃO
+    # entram no pipeline de problemas (filtrados por auditRefs em parse_psi).
+    params: list[tuple[str, str]] = [
+        ("url", url),
+        ("strategy", estrategia),
+        ("category", "performance"),
+        ("category", "accessibility"),
+    ]
     if api_key:
-        params["key"] = api_key
+        params.append(("key", api_key))
     resp = await _get_client().get(PSI_ENDPOINT, params=params)
     resp.raise_for_status()
     return resp.json()
@@ -180,6 +189,19 @@ def _extrair_field_data(payload: dict) -> dict:
     }
 
 
+def _perf_audit_ids(lh: dict) -> set[str]:
+    """IDs dos audits referenciados pela categoria ``performance``.
+
+    SPEC_CWV_Navegacao_Agentica: com ``category=accessibility`` na chamada,
+    ``lighthouseResult.audits`` passa a conter audits de a11y. O pipeline de
+    performance (problemas, score_map, contagem) deve iterar SÓ os audits da
+    performance. Fallback: sem ``auditRefs`` (payloads sintéticos/antigos),
+    retorna ``set()`` — o chamador trata como "sem filtro" (mantém tudo).
+    """
+    refs = ((lh.get("categories") or {}).get("performance") or {}).get("auditRefs") or []
+    return {r.get("id") for r in refs if r.get("id")}
+
+
 def _construir_resumo(payload: dict) -> dict:
     """Constrói o resumo compacto (≤64KB) do payload PSI.
 
@@ -194,21 +216,28 @@ def _construir_resumo(payload: dict) -> dict:
     """
     lh = payload.get("lighthouseResult") or {}
     audits = lh.get("audits") or {}
+    perf_ids = _perf_audit_ids(lh)
 
     audits_score_map = {
         aid: a.get("score")
         for aid, a in audits.items()
-        if a.get("score") is not None and aid not in _AUDITS_DESCARTAR_NO_RESUMO
+        if a.get("score") is not None
+        and aid not in _AUDITS_DESCARTAR_NO_RESUMO
+        and (not perf_ids or aid in perf_ids)  # só performance (exclui a11y)
     }
 
     stack_packs = [sp.get("id") for sp in (lh.get("stackPacks") or []) if sp.get("id")]
     entities = [e.get("name") for e in (lh.get("entities") or []) if e.get("name")][:30]
     config_settings = lh.get("configSettings") or {}
+    # SPEC_CWV_Navegacao_Agentica: só o score da categoria accessibility é retido.
+    acc = (lh.get("categories") or {}).get("accessibility") or {}
+    accessibility_score = acc.get("score")
 
     resumo = {
         "loading_experience": payload.get("loadingExperience"),
         "origin_loading_experience": payload.get("originLoadingExperience"),
         "audits_score_map": audits_score_map,
+        "accessibility_score": accessibility_score,
         "stack_packs": stack_packs,
         "entities": entities,
         "lighthouse_version": lh.get("lighthouseVersion"),
@@ -228,6 +257,13 @@ def parse_psi(payload: dict) -> dict:
     lh = payload["lighthouseResult"]
     categories = lh.get("categories", {})
     audits = lh.get("audits", {})
+    # SPEC_CWV_Navegacao_Agentica: filtra o pipeline de performance por auditRefs
+    # (com accessibility na chamada, ``audits`` inclui audits de a11y que não
+    # devem virar problemas). Fallback sem refs = mantém tudo (payloads antigos).
+    perf_ids = _perf_audit_ids(lh)
+
+    def _is_perf(aid: str) -> bool:
+        return not perf_ids or aid in perf_ids
 
     def audit_val(key: str, field: str = "numericValue") -> float | None:
         a = audits.get(key, {})
@@ -241,7 +277,9 @@ def parse_psi(payload: dict) -> dict:
             main_doc_bytes = item.get("transferSize", 0)
             break
 
-    audits_com_score = sum(1 for a in audits.values() if a.get("score") is not None)
+    audits_com_score = sum(
+        1 for aid, a in audits.items() if _is_perf(aid) and a.get("score") is not None
+    )
 
     field_data = _extrair_field_data(payload)
     resumo = _construir_resumo(payload)
@@ -269,7 +307,8 @@ def parse_psi(payload: dict) -> dict:
                 "details": a.get("details"),
             }
             for k, a in audits.items()
-            if a.get("score") is not None
+            if _is_perf(k)
+            and a.get("score") is not None
             and a["score"] < 0.9
             and a.get("scoreDisplayMode") not in ("informative", "notApplicable")
         ],

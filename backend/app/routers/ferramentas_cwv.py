@@ -1,21 +1,32 @@
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import get_current_user, get_db, rate_limit_autenticado
+from app.dependencies import (
+    get_analise_do_usuario,
+    get_current_user,
+    get_db,
+    get_execucao_do_usuario,
+    rate_limit_autenticado,
+)
 from app.models.cliente import Cliente
 from app.models.usuario import Usuario
+
+if TYPE_CHECKING:
+    from app.models.cwv_analise import CwvAnalise
+    from app.models.execucao_ferramenta import ExecucaoFerramenta
 from app.schemas.cwv import (
     AnalisarRequest,
     AnaliseResposta,
     ComparacaoResposta,
     CustoCwvResponse,
+    ExecucaoResposta,
     HealthScoreResposta,
     HistoricoListResponse,
     PageExperienceListResponse,
@@ -104,24 +115,13 @@ async def analisar_cwv(
     }
 
 
-@router.get("/core-web-vitals/execucao/{execucao_id}")
+@router.get("/core-web-vitals/execucao/{execucao_id}", response_model=ExecucaoResposta)
 async def buscar_execucao_cwv(
-    execucao_id: str,
-    db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
+    execucao: "ExecucaoFerramenta" = Depends(get_execucao_do_usuario),
 ) -> dict[str, Any]:
-    from app.models.execucao_ferramenta import ExecucaoFerramenta
-
-    resultado = await db.execute(
-        select(ExecucaoFerramenta).where(
-            ExecucaoFerramenta.id == execucao_id,
-            ExecucaoFerramenta.usuario_id == usuario.id,
-        )
-    )
-    execucao = resultado.scalar_one_or_none()
-    if not execucao:
-        raise HTTPException(status_code=404, detail="Execucao nao encontrada")
-
+    """SPEC_CWV_Contratos_JSONB_Tipados: ``response_model=ExecucaoResposta`` com
+    ``resultado_json`` tipado (motivo_falha, health_score, auditoria_id, etc).
+    """
     return {
         "id": str(execucao.id),
         "ferramenta": execucao.ferramenta,
@@ -129,6 +129,7 @@ async def buscar_execucao_cwv(
         "etapa_atual": execucao.etapa_atual,
         "creditos_cobrados": execucao.creditos_cobrados,
         "resultado_json": execucao.resultado_json,
+        "entrada_json": execucao.entrada_json,
         "erro_msg": execucao.erro_msg,
         "criado_em": str(execucao.criado_em),
         "concluida_em": str(execucao.concluida_em) if execucao.concluida_em else None,
@@ -138,9 +139,8 @@ async def buscar_execucao_cwv(
 
 @router.get("/core-web-vitals/execucao/{execucao_id}/health-score", response_model=HealthScoreResposta)
 async def health_score_cwv(
-    execucao_id: str,
+    execucao: "ExecucaoFerramenta" = Depends(get_execucao_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Health Score % da execução (proporção de audits saudáveis).
 
@@ -150,19 +150,8 @@ async def health_score_cwv(
     persistidas — sem persistir.
     """
     from app.models.cwv_analise import CwvAnalise
-    from app.models.execucao_ferramenta import ExecucaoFerramenta
     from app.services.cwv_health import calcular_health_score
     from app.services.cwv_persistencia import contar_problemas_por_analise
-
-    resultado = await db.execute(
-        select(ExecucaoFerramenta).where(
-            ExecucaoFerramenta.id == execucao_id,
-            ExecucaoFerramenta.usuario_id == usuario.id,
-        )
-    )
-    execucao = resultado.scalar_one_or_none()
-    if not execucao:
-        raise HTTPException(status_code=404, detail="Execucao nao encontrada")
 
     # Execuções novas: o workflow já gravou o health_score (pode ser None).
     if execucao.resultado_json and "health_score" in execucao.resultado_json:
@@ -174,7 +163,7 @@ async def health_score_cwv(
     # Execução antiga sem o campo: cálculo on-the-fly.
     res = await db.execute(
         select(CwvAnalise.id, CwvAnalise.status, CwvAnalise.estrategia, CwvAnalise.audits_totais)
-        .where(CwvAnalise.execucao_id == execucao_id)
+        .where(CwvAnalise.execucao_id == execucao.id)
     )
     rows = res.all()
     if not rows:
@@ -200,27 +189,15 @@ async def health_score_cwv(
     response_model=PageExperienceListResponse,
 )
 async def page_experience_cwv(
-    execucao_id: str,
+    execucao: "ExecucaoFerramenta" = Depends(get_execucao_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Checagens de Page Experience por origem da execução (SPEC_CWV_Page_Experience)."""
     from app.models.cwv_page_experience import CwvPageExperience
-    from app.models.execucao_ferramenta import ExecucaoFerramenta
-
-    # Ownership: confirma que a execução é do usuário (404 se não).
-    exec_result = await db.execute(
-        select(ExecucaoFerramenta.id).where(
-            ExecucaoFerramenta.id == execucao_id,
-            ExecucaoFerramenta.usuario_id == usuario.id,
-        )
-    )
-    if exec_result.scalar_one_or_none() is None:
-        raise HTTPException(status_code=404, detail="Execucao nao encontrada")
 
     resultado = await db.execute(
         select(CwvPageExperience)
-        .where(CwvPageExperience.execucao_id == execucao_id)
+        .where(CwvPageExperience.execucao_id == execucao.id)
         .order_by(CwvPageExperience.origem)
     )
     origens = []
@@ -241,22 +218,21 @@ async def page_experience_cwv(
 
 @router.get("/core-web-vitals/analise/{analise_id}", response_model=AnaliseResposta)
 async def buscar_analise_cwv(
-    analise_id: str,
+    analise: "CwvAnalise" = Depends(get_analise_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
     from app.services.cwv_persistencia import buscar_analise_com_problemas
 
-    analise = await buscar_analise_com_problemas(db, analise_id)
-    if not analise or analise["usuario_id"] != str(usuario.id):
-        raise HTTPException(status_code=404, detail="Analise nao encontrada")
-    return analise
+    # Re-busca com problemas (shape enriquecido que o front consome).
+    return await buscar_analise_com_problemas(db, str(analise.id))
 
 
 @router.get("/core-web-vitals/historico", response_model=HistoricoListResponse)
 async def listar_historico_cwv(
     cliente_id: uuid.UUID,
     template: str | None = Query(None),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -264,8 +240,11 @@ async def listar_historico_cwv(
 
     from app.services.cwv_persistencia import listar_historico_cliente
 
-    historico = await listar_historico_cliente(db, str(cliente_id), template=template)
-    return {"urls": historico}
+    # SPEC_CWV_Paginacao_Listagens: passar limit/offset; legado passa None.
+    historico, total = await listar_historico_cliente(
+        db, str(cliente_id), template=template, limit=limit, offset=offset
+    )
+    return {"urls": historico, "total": total}
 
 
 @router.get("/core-web-vitals/historico-url")
@@ -295,17 +274,11 @@ async def historico_url_cwv(
 
 @router.post("/core-web-vitals/reanalisar/{analise_id}", status_code=202)
 async def reanalisar_cwv(
-    analise_id: str,
+    analise: "CwvAnalise" = Depends(get_analise_do_usuario),
     db: AsyncSession = Depends(get_db),
     usuario: Usuario = Depends(get_current_user),
     _: None = Depends(rate_limit_autenticado("cwv_reanalisar", max_requests=3, window_seconds=300)),
 ) -> dict[str, Any]:
-    from app.services.cwv_persistencia import buscar_analise_por_id
-
-    analise = await buscar_analise_por_id(db, analise_id)
-    if not analise or str(analise.usuario_id) != str(usuario.id):
-        raise HTTPException(status_code=404, detail="Analise nao encontrada")
-
     from app.schemas.cwv import UrlsPorTemplate
 
     url_obj = UrlsPorTemplate(**{analise.template_tipo: [analise.url_canonica]})
@@ -354,21 +327,16 @@ async def reanalisar_cwv(
 
 @router.get("/core-web-vitals/comparacao/{analise_id}")
 async def comparar_com_anterior(
-    analise_id: str,
+    analise_atual: "CwvAnalise" = Depends(get_analise_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
 ) -> ComparacaoResposta:
 
     from app.schemas.cwv import MetricaComparada, ProblemaComparado
-    from app.services.cwv_persistencia import buscar_analise_anterior, buscar_analise_por_id
+    from app.services.cwv_persistencia import buscar_analise_anterior, buscar_problemas_analise
 
-    # Buscar análise atual
-    analise_atual = await buscar_analise_por_id(db, analise_id)
-    if not analise_atual or str(analise_atual.usuario_id) != str(usuario.id):
-        raise HTTPException(status_code=404, detail="Analise nao encontrada")
+    analise_id = str(analise_atual.id)
 
     # Buscar problemas da análise atual
-    from app.services.cwv_persistencia import buscar_problemas_analise
     problemas_atual = await buscar_problemas_analise(db, analise_id)
 
     # Buscar análise anterior
@@ -458,17 +426,12 @@ async def comparar_com_anterior(
 
 @router.get("/core-web-vitals/analise/{analise_id}/irma")
 async def buscar_irma_cwv(
-    analise_id: str,
+    analise: "CwvAnalise" = Depends(get_analise_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
-    from app.services.cwv_persistencia import buscar_analise_irma, buscar_analise_por_id
+    from app.services.cwv_persistencia import buscar_analise_irma
 
-    analise = await buscar_analise_por_id(db, analise_id)
-    if not analise or str(analise.usuario_id) != str(usuario.id):
-        raise HTTPException(status_code=404, detail="Analise nao encontrada")
-
-    irma = await buscar_analise_irma(db, analise_id)
+    irma = await buscar_analise_irma(db, str(analise.id))
     if not irma:
         return {"existe": False, "analise": None}
     return {"existe": True, "analise": irma}
@@ -476,27 +439,21 @@ async def buscar_irma_cwv(
 
 @router.patch("/core-web-vitals/analise/{analise_id}/plataforma")
 async def override_plataforma_cwv(
-    analise_id: str,
     body: PlataformaOverrideRequest,
+    analise: "CwvAnalise" = Depends(get_analise_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Permite usuario corrigir manualmente a plataforma detectada e regenera
     documentacao_md de todos os problemas com a nova plataforma."""
     from app.agents.cwv.documentador import CWVDocumentadorAgent
     from app.models.cwv_problema import CwvProblema
     from app.services.cwv_kb import buscar_entrada
-    from app.services.cwv_persistencia import buscar_analise_por_id
-
-    analise = await buscar_analise_por_id(db, analise_id)
-    if not analise or str(analise.usuario_id) != str(usuario.id):
-        raise HTTPException(status_code=404, detail="Analise nao encontrada")
 
     nova_plataforma = body.plataforma
     analise.plataforma_detectada = nova_plataforma
 
     probs_result = await db.execute(
-        select(CwvProblema).where(CwvProblema.analise_id == analise_id)
+        select(CwvProblema).where(CwvProblema.analise_id == analise.id)
     )
     problemas = probs_result.scalars().all()
 
@@ -560,8 +517,9 @@ async def exportar_problema_docx(
         raise HTTPException(status_code=404, detail="Problema nao encontrado")
     analise_result = await db.execute(select(CwvAnalise).where(CwvAnalise.id == prob.analise_id))
     analise = analise_result.scalar_one_or_none()
-    if not analise or str(analise.usuario_id) != str(usuario.id):
-        raise HTTPException(status_code=404, detail="Problema nao encontrado")
+    # Ownership via _dono_ou_404 (não vaza existência).
+    from app.dependencies import _dono_ou_404
+    _dono_ou_404(analise, usuario, "Problema nao encontrado")
 
     prob_dict = {
         "titulo": prob.titulo,
@@ -587,15 +545,14 @@ async def exportar_problema_docx(
 
 @router.get("/core-web-vitals/analise/{analise_id}/docx")
 async def exportar_relatorio_docx(
-    analise_id: str,
+    analise: "CwvAnalise" = Depends(get_analise_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
     _: None = Depends(rate_limit_autenticado("cwv_export", max_requests=30, window_seconds=300)),
 ) -> StreamingResponse:
     from app.services import cwv_persistencia
 
-    analise_dict = await cwv_persistencia.buscar_analise_com_problemas(db, analise_id)
-    if not analise_dict or str(analise_dict.get("usuario_id")) != str(usuario.id):
+    analise_dict = await cwv_persistencia.buscar_analise_com_problemas(db, str(analise.id))
+    if not analise_dict:
         raise HTTPException(status_code=404, detail="Analise nao encontrada")
 
     problemas = analise_dict.get("problemas", [])
@@ -627,9 +584,8 @@ async def exportar_relatorio_docx(
 
 @router.get("/core-web-vitals/execucao/{execucao_id}/docx")
 async def exportar_execucao_docx(
-    execucao_id: str,
+    execucao: "ExecucaoFerramenta" = Depends(get_execucao_do_usuario),
     db: AsyncSession = Depends(get_db),
-    usuario: Usuario = Depends(get_current_user),
     _: None = Depends(rate_limit_autenticado("cwv_export", max_requests=30, window_seconds=300)),
 ) -> StreamingResponse:
     """SPEC_CWV_Export_Consolidado_Execucao: DOCX consolidado da execução."""
@@ -637,23 +593,11 @@ async def exportar_execucao_docx(
     import io
 
     from app.models.cliente import Cliente as ClienteModel
-    from app.models.execucao_ferramenta import ExecucaoFerramenta
     from app.services import cwv_persistencia
     from app.services.cwv_export import relatorio_execucao_para_html, slugify_titulo
     from app.services.parecer_service import html_para_docx_bytes
 
-    # Ownership 404 (nunca 403).
-    exec_result = await db.execute(
-        select(ExecucaoFerramenta).where(
-            ExecucaoFerramenta.id == execucao_id,
-            ExecucaoFerramenta.usuario_id == usuario.id,
-        )
-    )
-    execucao = exec_result.scalar_one_or_none()
-    if not execucao:
-        raise HTTPException(status_code=404, detail="Execucao nao encontrada")
-
-    analises = await cwv_persistencia.buscar_analises_da_execucao(db, execucao_id)
+    analises = await cwv_persistencia.buscar_analises_da_execucao(db, str(execucao.id))
 
     cliente_nome = ""
     if execucao.cliente_id:

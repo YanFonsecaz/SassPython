@@ -6,7 +6,7 @@ import { vi } from "vitest";
 
 // Mock do helper cn para evitar problemas de importação de CSS/Tailwind.
 vi.mock("@/lib/utils", () => ({
-  cn: (...args: any[]) => args.filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
 
 describe("ComparadorComponent", () => {

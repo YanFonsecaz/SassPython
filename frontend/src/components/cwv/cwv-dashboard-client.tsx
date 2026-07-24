@@ -65,6 +65,7 @@ export function DashboardUrlClient({
     if (historico.length >= 1 && analiseAtual) {
       carregarComparacao();
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCarregandoComparacao(false);
     }
   }, [analiseAtual.id, historico.length]);

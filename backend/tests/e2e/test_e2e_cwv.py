@@ -173,10 +173,11 @@ async def verify_api_analise(execucao_id: str, usuario_id: str):
         assert "problemas" in analise
         logger.info("[VERIFY API] analise OK: url=%s, score=%s, %d problemas", analise["url_canonica"], analise["score_performance"], len(analise["problemas"]))
 
-        historico = await listar_historico_cliente(session, analise["cliente_id"])
+        historico, total = await listar_historico_cliente(session, analise["cliente_id"])
         assert len(historico) >= 1, "historico vazio"
         assert historico[0]["analises"], "historico sem analises"
-        logger.info("[VERIFY API] historico OK: %d URLs", len(historico))
+        assert total >= 1, "total vazio"
+        logger.info("[VERIFY API] historico OK: %d URLs (total=%d)", len(historico), total)
 
     return True
 

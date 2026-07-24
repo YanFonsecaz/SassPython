@@ -252,6 +252,37 @@ async def check_mobile_friendly(payloads: list[dict]) -> tuple[str, dict]:
     return "fail", {"scores": scores}
 
 
+_LLMS_TXT_MAX_BYTES = 256 * 1024  # parse até 256KB do corpo
+
+
+async def check_llms_txt(origem: str) -> tuple[str, dict]:
+    """GET ``{origem}/llms.txt`` (SPEC_CWV_Navegacao_Agentica).
+
+    200 textual com H1 Markdown (``^# `` em alguma linha) → ``pass``;
+    200 sem H1 (ou não-textual) → ``fail``; 404/erro de rede → ``fail``
+    (arquivo ausente — recomendado criar); 401/403/429 (WAF) → ``na``.
+    Timeout vira ``erro`` no ``_com_timeout``.
+    """
+    url = f"{origem}/llms.txt"
+    try:
+        resp = await _get_client().get(url)
+        if resp.status_code in _STATUS_BLOQUEIO:
+            return "na", {"status_code": resp.status_code, "motivo": "bloqueio WAF/anti-bot — inconclusivo"}
+        if resp.status_code != 200:
+            return "fail", {"status_code": resp.status_code, "motivo": "arquivo ausente — recomendado criar"}
+        ctype = resp.headers.get("content-type", "").lower()
+        if "text" not in ctype and "markdown" not in ctype:
+            return "fail", {"status_code": 200, "content_type": ctype, "motivo": "Content-Type não textual"}
+        corpo = resp.text[:_LLMS_TXT_MAX_BYTES]
+        tem_h1 = any(linha.startswith("# ") for linha in corpo.splitlines())
+        if tem_h1:
+            return "pass", {"status_code": 200}
+        return "fail", {"status_code": 200, "motivo": "sem cabeçalho H1 obrigatório"}
+    except Exception as e:
+        logger.debug("check_llms_txt falhou para %s: %s", url, e)
+        return "fail", {"erro": str(e)[:200], "motivo": "arquivo ausente — recomendado criar"}
+
+
 async def _com_timeout(coro, nome: str) -> tuple[str, dict]:
     """Envolve um check em wait_for + try/except → 'erro' (fail-open)."""
     try:
@@ -272,7 +303,7 @@ async def auditar_origem(origem: str, payloads: list[dict]) -> dict:
     mobile friendly).
     """
     host = _host(origem)
-    https, ssl_v, redirect, headers, safe, mixed, mobile = await asyncio.gather(
+    https, ssl_v, redirect, headers, safe, mixed, mobile, llms = await asyncio.gather(
         _com_timeout(check_https(origem), "https"),
         _com_timeout(check_ssl(host), "ssl"),
         _com_timeout(check_redirect_301(origem), "redirect_301"),
@@ -280,6 +311,7 @@ async def auditar_origem(origem: str, payloads: list[dict]) -> dict:
         _com_timeout(check_safe_browsing(origem), "safe_browsing"),
         _com_timeout(check_mixed_content(payloads), "mixed_content"),
         _com_timeout(check_mobile_friendly(payloads), "mobile_friendly"),
+        _com_timeout(check_llms_txt(origem), "llms_txt"),
     )
     return {
         "https": https[0],
@@ -289,6 +321,7 @@ async def auditar_origem(origem: str, payloads: list[dict]) -> dict:
         "safe_browsing": safe[0],
         "mixed_content": mixed[0],
         "mobile_friendly": mobile[0],
+        "llms_txt": llms[0],
         "detalhes": {
             "https": https[1],
             "ssl": ssl_v[1],
@@ -297,5 +330,6 @@ async def auditar_origem(origem: str, payloads: list[dict]) -> dict:
             "safe_browsing": safe[1],
             "mixed_content": mixed[1],
             "mobile_friendly": mobile[1],
+            "llms_txt": llms[1],
         },
     }

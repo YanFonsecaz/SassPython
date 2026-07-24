@@ -227,7 +227,18 @@ async def buscar_analise_irma(session, analise_id: str) -> dict | None:
     return _analise_to_dict(irma, probs)
 
 
-async def listar_historico_cliente(session, cliente_id: str, template: str | None = None) -> list[dict]:
+async def listar_historico_cliente(
+    session,
+    cliente_id: str,
+    template: str | None = None,
+    *,
+    limit: int | None = None,
+    offset: int = 0,
+) -> tuple[list[dict], int]:
+    """SPEC_CWV_Paginacao_Listagens: retorna (historico, total_urls_distintas).
+
+    Sem ``limit`` mantém comportamento legado (todas as URLs).
+    """
     base = select(
         CwvAnalise.url_canonica,
         CwvAnalise.template_tipo,
@@ -243,11 +254,9 @@ async def listar_historico_cliente(session, cliente_id: str, template: str | Non
     if template:
         base = base.where(CwvAnalise.template_tipo == template)
 
-    subq = (
-        base.order_by(CwvAnalise.criado_em.desc()).subquery()
-    )
+    subq = base.order_by(CwvAnalise.criado_em.desc()).subquery()
 
-    resultados = await session.execute(
+    unique_urls_q = (
         select(
             subq.c.url_canonica,
             subq.c.template_tipo,
@@ -255,6 +264,20 @@ async def listar_historico_cliente(session, cliente_id: str, template: str | Non
         ).distinct(subq.c.url_canonica)
     )
 
+    # Conta o total de URLs distintas (sem paginação).
+    from sqlalchemy import func as _func
+
+    total = (
+        await session.execute(select(_func.count()).select_from(unique_urls_q.subquery()))
+    ).scalar_one()
+
+    paginada = unique_urls_q
+    if offset:
+        paginada = paginada.offset(offset)
+    if limit is not None:
+        paginada = paginada.limit(limit)
+
+    resultados = await session.execute(paginada)
     urls = resultados.all()
     historico = []
     for url_row in urls:
@@ -268,7 +291,7 @@ async def listar_historico_cliente(session, cliente_id: str, template: str | Non
                 "analises": analises,
             })
 
-    return historico
+    return historico, int(total)
 
 
 async def buscar_analise_por_id(session, analise_id: str) -> CwvAnalise | None:
@@ -375,7 +398,7 @@ async def persistir_page_experience(
     row = existente.scalar_one_or_none()
     vereditos = {k: resultado.get(k, "na") for k in (
         "https", "ssl", "redirect_301", "security_headers",
-        "safe_browsing", "mixed_content", "mobile_friendly",
+        "safe_browsing", "mixed_content", "mobile_friendly", "llms_txt",
     )}
     detalhes = resultado.get("detalhes", {})
     if row:

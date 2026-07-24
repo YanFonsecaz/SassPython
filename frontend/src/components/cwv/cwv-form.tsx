@@ -26,6 +26,7 @@ import { analisarCwv, buscarCustoCwv } from "@/lib/api/cwv";
 import Link from "next/link";
 import { TermoComAjuda } from "@/components/ui/termo-com-ajuda";
 import { ComoUsar } from "@/components/ferramentas/como-usar";
+import { AuditoriasPainel } from "@/components/cwv/auditoria/auditorias-painel";
 
 const STEPS = [
   { label: "Cliente", icon: GlobeIcon },
@@ -153,7 +154,8 @@ export function CwvFormPage() {
         }
       />
 
-      <div className="max-w-2xl animate-slide-up">
+      <div className="grid animate-slide-up gap-6 lg:grid-cols-[minmax(0,42rem)_minmax(0,1fr)]">
+      <div className="min-w-0">
         <div className="flex items-center gap-0 mb-8">
           {STEPS.map((s, i) => {
             const StepIcon = s.icon;
@@ -388,6 +390,11 @@ export function CwvFormPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      <aside className="min-w-0">
+        <AuditoriasPainel />
+      </aside>
       </div>
     </div>
   );

@@ -44,6 +44,10 @@ class CwvPageExperience(Base, UUIDPrimaryKeyMixin):
             "mobile_friendly IN ('pass','fail','erro','na')",
             name="cwv_page_experience_mobile_check",
         ),
+        CheckConstraint(
+            "llms_txt IN ('pass','fail','erro','na')",
+            name="cwv_page_experience_llms_txt_check",
+        ),
         # UNIQUE (execucao_id, origem) — uma linha por origem por execução.
         Index("uq_cwv_page_experience_exec_origem", "execucao_id", "origem", unique=True),
         Index("ix_cwv_page_experience_execucao", "execucao_id"),
@@ -62,6 +66,8 @@ class CwvPageExperience(Base, UUIDPrimaryKeyMixin):
     safe_browsing: Mapped[str] = mapped_column(String(10), nullable=False, server_default="na")
     mixed_content: Mapped[str] = mapped_column(String(10), nullable=False, server_default="na")
     mobile_friendly: Mapped[str] = mapped_column(String(10), nullable=False, server_default="na")
+    # SPEC_CWV_Navegacao_Agentica: llms.txt válido (H1 Markdown) por origem.
+    llms_txt: Mapped[str] = mapped_column(String(10), nullable=False, server_default="na")
     detalhes_json: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     criado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default="now()", nullable=False,

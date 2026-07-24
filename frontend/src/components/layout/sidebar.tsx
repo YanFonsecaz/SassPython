@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
@@ -64,8 +64,15 @@ function NavItemComponent({ item, active, onClick }: { item: NavItem; active: bo
 export function Sidebar() {
   const pathname = usePathname();
   const { usuario, logout } = useAuth();
-  const { saldo } = useCreditos();
+  const { saldo, recarregarSaldo } = useCreditos();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // SPEC_CWV_Execucao_Pos_Analise_UX: refetch saldo quando uma execução conclui.
+  useEffect(() => {
+    const handler = () => recarregarSaldo();
+    window.addEventListener("creditos:atualizar", handler);
+    return () => window.removeEventListener("creditos:atualizar", handler);
+  }, [recarregarSaldo]);
 
   const isActive = (href: string) => {
     if (href === "/ferramentas") {

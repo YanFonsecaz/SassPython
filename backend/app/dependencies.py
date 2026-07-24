@@ -1,9 +1,10 @@
 import contextlib
 import logging
 from typing import Annotated, Any
+from uuid import UUID
 
 import jwt
-from fastapi import Depends, Request
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -138,3 +139,62 @@ def rate_limit_autenticado(key_prefix: str, max_requests: int, window_seconds: i
             pass
 
     return _check
+
+
+# --- SPEC_CWV_Ownership_Dependencies --------------------------------------
+# Ownership centralizado via Depends. Critério de aceite:
+#   rg "usuario_id\) != str\(usuario\.id\)" backend/app/routers/ferramentas_cwv*.py
+# deve retornar vazio.
+
+
+def _dono_ou_404(obj: Any, usuario: Usuario, detail: str):
+    """404 se objeto não existe OU não pertence ao usuário (não vaza existência)."""
+    if not obj or str(obj.usuario_id) != str(usuario.id):
+        raise HTTPException(status_code=404, detail=detail)
+    return obj
+
+
+async def get_auditoria_do_usuario(
+    auditoria_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+):
+    """Resolve ``auditoria_id`` do path, valida ownership e retorna o ORM."""
+    from app.models.cwv_auditoria import CwvAuditoria
+
+    res = await db.execute(select(CwvAuditoria).where(CwvAuditoria.id == auditoria_id))
+    return _dono_ou_404(res.scalar_one_or_none(), usuario, "Auditoria nao encontrada")
+
+
+async def get_execucao_do_usuario(
+    execucao_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+):
+    """Resolve ``execucao_id`` do path, valida ownership e retorna o ORM."""
+    from app.models.execucao_ferramenta import ExecucaoFerramenta
+
+    res = await db.execute(
+        select(ExecucaoFerramenta).where(
+            ExecucaoFerramenta.id == execucao_id,
+            ExecucaoFerramenta.usuario_id == usuario.id,
+        )
+    )
+    execucao = res.scalar_one_or_none()
+    if not execucao:
+        raise HTTPException(status_code=404, detail="Execucao nao encontrada")
+    return execucao
+
+
+async def get_analise_do_usuario(
+    analise_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+):
+    """Resolve ``analise_id`` do path, valida ownership e retorna o ORM CwvAnalise."""
+    from app.services.cwv_persistencia import buscar_analise_por_id
+
+    analise = await buscar_analise_por_id(db, str(analise_id))
+    if not analise or str(analise.usuario_id) != str(usuario.id):
+        raise HTTPException(status_code=404, detail="Analise nao encontrada")
+    return analise

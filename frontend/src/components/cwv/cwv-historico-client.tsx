@@ -83,15 +83,21 @@ export function CwvHistoricoClient() {
   const clienteId = pathname.split("/").filter(Boolean).pop() || "";
 
   const [urls, setUrls] = useState<CwvHistoricoUrlResposta[]>([]);
+  const [total, setTotal] = useState(0);
   const [carregando, setCarregando] = useState(true);
+  const [carregandoMais, setCarregandoMais] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  const PAGE = 20;
 
   async function load() {
     setCarregando(true);
     setErro(null);
     try {
-      const dados = await buscarHistoricoCwv(clienteId);
+      // SPEC_CWV_Paginacao_Listagens: primeira página.
+      const dados = await buscarHistoricoCwv(clienteId, undefined, { limit: PAGE, offset: 0 });
       setUrls(dados.urls);
+      setTotal(dados.total);
     } catch {
       setErro("Não foi possível carregar o histórico de análises.");
     } finally {
@@ -99,7 +105,21 @@ export function CwvHistoricoClient() {
     }
   }
 
+  async function carregarMais() {
+    if (carregandoMais || urls.length >= total) return;
+    setCarregandoMais(true);
+    try {
+      const dados = await buscarHistoricoCwv(clienteId, undefined, { limit: PAGE, offset: urls.length });
+      setUrls((prev) => [...prev, ...dados.urls]);
+    } catch {
+      // Silencioso: botão persiste para retry.
+    } finally {
+      setCarregandoMais(false);
+    }
+  }
+
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (clienteId) load();
   }, [clienteId]);
 
@@ -159,6 +179,13 @@ export function CwvHistoricoClient() {
           {urls.map((entry) => (
             <UrlCard key={entry.url_canonica} urlEntry={entry} />
           ))}
+          {total > urls.length && (
+            <div className="pt-4 flex justify-center">
+              <Button onClick={carregarMais} variant="outline" disabled={carregandoMais}>
+                {carregandoMais ? "Carregando…" : `Carregar mais (${total - urls.length} restantes)`}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

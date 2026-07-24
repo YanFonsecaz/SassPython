@@ -113,6 +113,10 @@ class Settings(BaseSettings):
     cwv_redator_llm_model: str = "gpt-4.1"
     cwv_redator_llm_temperature: float = 0.3
     cwv_redator_llm_habilitado: bool = True
+    # SPEC_CWV_Navegacao_Agentica_Geracao_IA: geração de llms.txt + WebMCP.
+    cwv_agentico_llm_model: str = "gpt-4.1"
+    cwv_agentico_llm_temperature: float = 0.2
+    cwv_agentico_llm_habilitado: bool = True
     cwv_admin_reload_token: str = ""
     cwv_alerta_webhook_url: str = ""
 
