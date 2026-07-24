@@ -20,11 +20,11 @@ custo controlado por lote.
 - [x] Todo item `Reprovado`/`Atenção` recebe `diagnostico` (o que está errado NESTE site, com
       números reais: "X de Y páginas sem title…") e `recomendacao` (como corrigir, acionável).
 - [x] Itens `Aprovado` recebem texto curto padrão da KB (sem LLM).
-- [ ] KB por item (`seotec_solucoes/*.yaml`): recomendação canônica (base = textos das abas da
+- [x] KB por item (`seotec_solucoes/*.yaml`): recomendação canônica (base = textos das abas da
       planilha) + variações por plataforma quando fizer sentido (WordPress/Yoast, VTEX, Shopify,
       Next.js — reusa detecção de plataforma do CWV quando disponível).
-      _Cobertura parcial: 4 categorias seedadas (headings, title, meta-description, imagens-seo);
-      miss cai no fallback LLM do recomendador (fail-open, padrão CWV)._
+      _Cobertura 100%: 98/98 itens sf cobertos por 20 YAMLs de categoria; variações por plataforma
+      em itens de alto impacto (wordpress/yoast, vtex, nextjs, shopify)._
 - [x] LLM entra para: contextualizar diagnóstico com as evidências (lote), cobrir item sem entrada
       na KB (fallback, padrão `SPEC_CWV_LLM_Fallback_Analisador`), e avaliar itens `sf` subjetivos
       marcados `avaliacao_ia: true` (ex.: "palavras-chave na URL" com amostra de URLs).
@@ -78,4 +78,5 @@ Geração em massa de titles/metas (ferramenta própria futura) · avaliação v
 | Data | Mudança | Commit |
 |---|---|---|
 | 2026-07-17 | Spec inicial | — |
-| 2026-07-24 | Implementação parcial (núcleo end-to-end): analisador + recomendador + nós de workflow + persistência; KB com 4 categorias seed | — |
+| 2026-07-24 | Implementação parcial (núcleo end-to-end): analisador + recomendador + nós de workflow + persistência; KB com 4 categorias seed | 8fd5980 |
+| 2026-07-24 | KB cobertura 100% itens sf (98/98) — 16 YAMLs de categoria + variações plataforma | 3f63635 |
