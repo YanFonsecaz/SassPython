@@ -116,6 +116,15 @@ class Settings(BaseSettings):
     cwv_admin_reload_token: str = ""
     cwv_alerta_webhook_url: str = ""
 
+    # SEOTEC Onda 3 — agentes IA (diagnóstico + recomendação por item).
+    seotec_analisador_llm_model: str = "gpt-4o-mini"
+    seotec_analisador_llm_temperature: float = 0.1
+    seotec_recomendador_llm_model: str = "gpt-4o-mini"
+    seotec_recomendador_llm_temperature: float = 0.2
+    seotec_ia_habilitada: bool = True         # kill-switch: off => nós de IA passam direto
+    seotec_ia_lote: int = 8                    # itens por prompt (SPEC_SEOTEC_Agentes_IA §4)
+    seotec_ia_amostra_max: int = 20            # URLs de amostra p/ itens recomendada_ia
+
     embedding_model: str = "embedding-3"
     embedding_dimensions: int = 1024
     # Cache durável de embeddings (SPEC_Inlinks_Cache_Duravel_Embeddings):

@@ -1,8 +1,8 @@
 # SPEC — Agentes IA: diagnóstico e recomendação por item
 
-**Status:** 📋 planejado
+**Status:** 🚧 parcial
 **Capacidade:** `auditoria-seo-tecnico`
-**Escopo:** backend — `backend/app/agents/seotec/analisador.py`, `recomendador.py`, `backend/app/kb/seotec_solucoes/*.yaml`, `backend/app/services/seotec_kb.py`
+**Escopo:** backend — `backend/app/agents/seotec/analisador.py`, `recomendador.py`, `backend/app/data/seotec_solucoes/*.yaml`, `backend/app/services/seotec_kb.py`
 **Créditos:** incluído no custo da auditoria (sem cobrança extra por item)
 **Depende de:** [SPEC_SEOTEC_Checklist_Motor_Regras](SPEC_SEOTEC_Checklist_Motor_Regras.md)
 
@@ -17,21 +17,23 @@ custo controlado por lote.
 
 ## 2. Requisitos / Critérios de aceite
 
-- [ ] Todo item `Reprovado`/`Atenção` recebe `diagnostico` (o que está errado NESTE site, com
+- [x] Todo item `Reprovado`/`Atenção` recebe `diagnostico` (o que está errado NESTE site, com
       números reais: "X de Y páginas sem title…") e `recomendacao` (como corrigir, acionável).
-- [ ] Itens `Aprovado` recebem texto curto padrão da KB (sem LLM).
+- [x] Itens `Aprovado` recebem texto curto padrão da KB (sem LLM).
 - [ ] KB por item (`seotec_solucoes/*.yaml`): recomendação canônica (base = textos das abas da
       planilha) + variações por plataforma quando fizer sentido (WordPress/Yoast, VTEX, Shopify,
       Next.js — reusa detecção de plataforma do CWV quando disponível).
-- [ ] LLM entra para: contextualizar diagnóstico com as evidências (lote), cobrir item sem entrada
+      _Cobertura parcial: 4 categorias seedadas (headings, title, meta-description, imagens-seo);
+      miss cai no fallback LLM do recomendador (fail-open, padrão CWV)._
+- [x] LLM entra para: contextualizar diagnóstico com as evidências (lote), cobrir item sem entrada
       na KB (fallback, padrão `SPEC_CWV_LLM_Fallback_Analisador`), e avaliar itens `sf` subjetivos
       marcados `avaliacao_ia: true` (ex.: "palavras-chave na URL" com amostra de URLs).
-- [ ] `recomendada_ia: true` na evidência (ex.: Title Recomendado) gera sugestões para **no máximo
+- [x] `recomendada_ia: true` na evidência (ex.: Title Recomendado) gera sugestões para **no máximo
       N=20 URLs de amostra** por item — nunca o site inteiro.
-- [ ] Chamadas em lote (vários itens por prompt), com `llm_guard` (retry/semáforo/backoff) e modelos
+- [x] Chamadas em lote (vários itens por prompt), com `llm_guard` (retry/semáforo/backoff) e modelos
       dedicados (padrão `SPEC_CWV_Modelos_LLM_Dedicados`).
-- [ ] LLM indisponível → item fica `diagnostico_pendente=true` com retry posterior; auditoria não
-      falha.
+- [x] LLM indisponível → item fica sem diagnóstico/recomendação (pendente) com retry posterior;
+      auditoria não falha (fail-open em todos os nós de IA).
 
 ## 3. Design (mapeado ao código)
 
@@ -76,3 +78,4 @@ Geração em massa de titles/metas (ferramenta própria futura) · avaliação v
 | Data | Mudança | Commit |
 |---|---|---|
 | 2026-07-17 | Spec inicial | — |
+| 2026-07-24 | Implementação parcial (núcleo end-to-end): analisador + recomendador + nós de workflow + persistência; KB com 4 categorias seed | — |

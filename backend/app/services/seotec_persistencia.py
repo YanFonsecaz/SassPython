@@ -19,8 +19,14 @@ async def persistir_resultados(
     resultados: dict[str, ResultadoItem],
     score: ScoreResultado,
     faltantes: list[str],
+    diagnosticos: dict[str, str] | None = None,
+    recomendacoes: dict[str, str] | None = None,
+    sugestoes_ia: dict[str, list[dict]] | None = None,
 ) -> None:
     ck = carregar_checklist()
+    diagnosticos = diagnosticos or {}
+    recomendacoes = recomendacoes or {}
+    sugestoes_ia = sugestoes_ia or {}
     existentes = {
         i.item_slug: i
         for i in (await db.execute(
@@ -47,6 +53,17 @@ async def persistir_resultados(
                 "amostra": resultado.amostra,
                 "truncada": resultado.truncada,
             }
+        # Onda 3 — IA: só sobrescreve quando houver texto (não apaga revisão
+        # manual do consultor em reruns nem zera campos quando IA desligada).
+        if item.slug in diagnosticos:
+            linha.diagnostico = diagnosticos[item.slug]
+        if item.slug in recomendacoes:
+            linha.recomendacao = recomendacoes[item.slug]
+        if item.slug in sugestoes_ia:
+            # Mescla dentro do evidencias_json (contrato JSONB tipado).
+            ev = dict(linha.evidencias_json or {})
+            ev["sugestoes_ia"] = sugestoes_ia[item.slug]
+            linha.evidencias_json = ev
 
     if crawl.fase_destino == "before":
         auditoria.score_antes = score.score

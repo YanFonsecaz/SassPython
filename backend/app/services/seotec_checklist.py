@@ -87,6 +87,11 @@ class ItemChecklist(BaseModel):
     importancia: str | None = None
     regra: RegraItem | None = None
     evidencia: EvidenciaDef | None = None
+    # SPEC_SEOTEC_Agentes_IA §2 — flags opcionais (default False p/ retrocompat).
+    # avaliacao_ia: item subjetivo cujo diagnóstico depende de LLM sobre amostra.
+    # recomendada_ia: gera sugestões por URL (≤20 amostras) no recomendador.
+    avaliacao_ia: bool = False
+    recomendada_ia: bool = False
     categoria: str = ""  # preenchido no load
 
 

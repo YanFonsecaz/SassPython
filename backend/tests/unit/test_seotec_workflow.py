@@ -5,10 +5,20 @@ import pytest
 
 from app.agents.seotec import workflow as wf
 from app.agents.seotec.workflow import construir_workflow
+from app.config import settings
 from app.services import credito_service
 from tests.unit.helpers_seotec import montar_pacote_zip
 
 TITLES = [{"address": "https://a/", "title": "", "title_length": 0, "ocorrencias": 1}]
+
+
+@pytest.fixture(autouse=True)
+def _desabilitar_ia(monkeypatch):
+    """Testes do grafo rodam determinísticos por padrão (sem chamada LLM).
+
+    O fluxo com IA habilitada é coberto em ``test_grafo_com_ia_habilitada``.
+    """
+    monkeypatch.setattr(settings, "seotec_ia_habilitada", False)
 
 
 @pytest.mark.asyncio
@@ -26,6 +36,10 @@ async def test_grafo_processa_pacote():
     assert estado["resultados"]["title-tag-ausente-ou-vazia"].status == "reprovado"
     assert estado["score"].score < 100
     assert "response_codes" in estado["faltantes"]
+    # Kill-switch: IA desligada => mapas vazios.
+    assert estado["diagnosticos"] == {}
+    assert estado["recomendacoes"] == {}
+    assert estado["sugestoes_ia"] == {}
 
 
 @pytest.mark.asyncio
@@ -140,3 +154,48 @@ async def test_executar_auditoria_reembolsa_quando_so_execucao_existe(monkeypatc
     assert execucao.erro_msg
     assert chamadas_liberar == [(str(execucao.usuario_id), 15)]  # after -> custo 15
     assert sessao.commits == 1
+
+
+@pytest.mark.asyncio
+async def test_grafo_com_ia_habilitada(monkeypatch):
+    """IA ligada: agentes mockados populam diagnosticos/recomendacoes que fluem
+    pelo estado. Sobrescreve a autouse fixture (último setattr vence)."""
+    monkeypatch.setattr(settings, "seotec_ia_habilitada", True)
+
+    diag_fixo = {"title-tag-ausente-ou-vazia": "3 de 10 páginas sem title."}
+    rec_fixo = {"title-tag-ausente-ou-vazia": "Escreva titles únicos por página."}
+
+    class FakeAnalisador:
+        def __init__(self, usuario_id):
+            pass
+
+        async def diagnosticar(self, itens_ctx, site):
+            return diag_fixo, []
+
+    class FakeRecomendador:
+        def __init__(self, usuario_id):
+            pass
+
+        async def recomendar(self, itens_ctx, plataforma):
+            return rec_fixo, []
+
+        async def sugerir_amostra(self, itens_ri, plataforma):
+            return {}
+
+    from app.agents.seotec import analisador, recomendador
+    monkeypatch.setattr(analisador, "SeotecAnalisadorAgent", FakeAnalisador)
+    monkeypatch.setattr(recomendador, "SeotecRecomendadorAgent", FakeRecomendador)
+
+    zip_bytes = montar_pacote_zip({"page_titles": TITLES, "h1": [], "internal": []})
+    grafo = construir_workflow()
+    estado = await grafo.ainvoke({
+        "zip_bytes": zip_bytes,
+        "auditoria_id": "aud-1",
+        "crawl_id": "crawl-1",
+        "fase_destino": "before",
+        "persistir": False,
+    })
+    assert estado["erro"] is None
+    assert estado["diagnosticos"] == diag_fixo
+    assert estado["recomendacoes"] == rec_fixo
+    assert estado["sugestoes_ia"] == {}

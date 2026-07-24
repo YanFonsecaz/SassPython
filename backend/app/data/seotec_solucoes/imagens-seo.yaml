@@ -1,0 +1,25 @@
+categoria: Imagens e SEO
+itens:
+- slug: nome-de-arquivo-com-palavras-chave-especificas
+  recomendacao: >-
+    Renomeie os arquivos de imagem com nomes descritivos e separados por hífen
+    (ex.: `tenis-corrida-masculino.jpg` em vez de `IMG_2043.jpg`). Nomes
+    descritivos ajudam o ranqueamento em Google Imagens.
+- slug: tamanho-do-arquivo-de-imagem-100-kb
+  recomendacao: >-
+    Comprima as imagens acima de 100 KB e sirva em formatos modernos (WebP/AVIF),
+    dimensionadas ao tamanho de exibição. Isso reduz peso da página e melhora LCP
+    e Core Web Vitals.
+  solucoes:
+    wordpress: >-
+      Use um plugin de otimização (ShortPixel, Imagify ou EWWW) para converter em
+      WebP e comprimir em lote; ative lazy-load nativo.
+    nextjs: >-
+      Migre para o componente `next/image`, que faz resize, WebP/AVIF e lazy-load
+      automáticos; defina `sizes` corretamente para servir a resolução certa.
+- slug: texto-alt-faltando-revisao-e-otimizado-para-seo
+  recomendacao: >-
+    Preencha o atributo alt de cada imagem de conteúdo descrevendo objetivamente o
+    que ela mostra, com a palavra-chave quando fizer sentido natural. Imagens
+    puramente decorativas devem ter alt vazio (`alt=""`). O alt melhora
+    acessibilidade e SEO de imagens.

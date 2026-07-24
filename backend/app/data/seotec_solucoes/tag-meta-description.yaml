@@ -1,0 +1,31 @@
+categoria: Tag meta description
+itens:
+- slug: tag-meta-description-ausente-ou-vazia
+  recomendacao: >-
+    Escreva uma meta description única de 70–155 caracteres para cada página
+    listada, resumindo o conteúdo com a palavra-chave e um chamado à ação. Ela não
+    é fator de ranqueamento direto, mas melhora o CTR no SERP.
+  solucoes:
+    wordpress: >-
+      Preencha o campo "Meta description" do Yoast/Rank Math em cada página, ou
+      configure um template dinâmico por tipo de conteúdo como fallback.
+    vtex: >-
+      Ajuste o campo Meta Tag Description no CMS por página/categoria/produto;
+      configure o template padrão do tema para produtos sem descrição manual.
+- slug: tags-meta-description-duplicadas
+  recomendacao: >-
+    Reescreva as meta descriptions repetidas para que cada página tenha a sua,
+    destacando o diferencial daquela URL. Em variações que não devem rankear, o
+    canonical resolve.
+- slug: meta-description-longa-demais-mais-de-155-caracteres
+  recomendacao: >-
+    Encurte para até ~155 caracteres para evitar truncamento no SERP, mantendo a
+    palavra-chave e o CTA na primeira metade do texto.
+- slug: meta-description-curta-demais-menos-de-70-caracteres
+  recomendacao: >-
+    Amplie para 70–155 caracteres agregando benefício, prova ou CTA — descrições
+    muito curtas desperdiçam espaço de persuasão no SERP.
+- slug: multiplas-meta-descriptions
+  recomendacao: >-
+    Deixe apenas uma tag meta description por página. Remova duplicatas injetadas
+    por tema/plugins/tag manager e valide no HTML renderizado.

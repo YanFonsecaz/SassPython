@@ -1,0 +1,42 @@
+categoria: Tag <title>
+itens:
+- slug: title-tag-ausente-ou-vazia
+  recomendacao: >-
+    Escreva uma <title> única dentro do <head> de cada página listada, com 30–60
+    caracteres, incluindo a palavra-chave principal no início e a marca no fim
+    (ex.: "Palavra-chave | Marca"). Priorize páginas indexáveis de maior tráfego.
+  solucoes:
+    wordpress: >-
+      Defina o template de título por tipo de conteúdo em Yoast SEO ou Rank Math
+      (SEO → Aparência na Pesquisa) e sobrescreva manualmente as páginas
+      estratégicas na caixa de SEO do editor.
+    vtex: >-
+      Ajuste o campo Title de cada página/categoria/produto no CMS (Store
+      Framework: bloco store.seo / handles) e valide o template padrão do tema.
+    nextjs: >-
+      Use o Metadata API (`export const metadata = { title }`) ou
+      `generateMetadata` por rota; evite depender só de um title global no layout.
+- slug: title-duplicado
+  recomendacao: >-
+    Diferencie as <title> das páginas apontadas — cada página precisa de um título
+    único. Adicione o diferencial da página (categoria, cidade, atributo) ao
+    padrão. Para paginação/variações que não devem rankear, use canonical para a
+    versão principal.
+- slug: multiplas-title-tags
+  recomendacao: >-
+    Deixe apenas UMA <title> no <head>. Remova títulos duplicados injetados por
+    tema, plugins ou tag manager e valide o HTML renderizado (não só o fonte).
+- slug: titulo-longo-demais-mais-de-63-caracteres
+  recomendacao: >-
+    Reduza a <title> para até ~60 caracteres para não truncar no SERP. Mantenha a
+    palavra-chave no início e corte termos redundantes; a marca pode sair se o
+    espaço apertar.
+- slug: titulo-curto-demais-menos-de-30-caracteres
+  recomendacao: >-
+    Amplie a <title> para 30–60 caracteres agregando contexto útil (benefício,
+    categoria, localização) sem virar keyword stuffing.
+- slug: o-mesmo-que-h1
+  recomendacao: >-
+    Faça a <title> e o <h1> se complementarem em vez de serem idênticos: a title é
+    voltada ao clique no SERP, o H1 ao leitor na página. Mantenha a mesma
+    intenção/palavra-chave, com redações distintas.

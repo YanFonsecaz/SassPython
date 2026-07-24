@@ -1,8 +1,11 @@
-"""Workflow SEOTEC Onda 1: validar_pacote -> motor_regras -> health_score -> persistir.
+"""Workflow SEOTEC Onda 1+3: validar_pacote -> motor_regras -> analisar_ia ->
+recomendar_ia -> health_score -> persistir.
 
-Nós de IA (analisar_ia, recomendar_ia) entram na Onda 3 entre motor_regras e
-health_score (SPEC_Ferramenta_Auditoria_SEO_Tecnico §3.3). Padrão do grafo:
-agents/cwv/workflow.py. `persistir=False` permite rodar o grafo puro em teste.
+Os nós de IA (Onda 3, SPEC_SEOTEC_Agentes_IA) rodam entre o motor de regras e
+o health_score. Kill-switch: ``settings.seotec_ia_habilitada=False`` os nós
+viram no-op (diagnóstico/recomendação vazios). Falha de LLM NÃO derruba a
+auditoria (fail-open). Padrão do grafo: agents/cwv/workflow.py.
+``persistir=False`` permite rodar o grafo puro em teste.
 """
 import logging
 from pathlib import Path
@@ -10,6 +13,7 @@ from typing import Any, TypedDict
 
 from langgraph.graph import END, StateGraph
 
+from app.config import settings
 from app.services.seotec_checklist import carregar_checklist
 from app.services.seotec_ingestao import validar_pacote
 from app.services.seotec_motor import avaliar_pacote
@@ -22,12 +26,18 @@ class EstadoSeotec(TypedDict, total=False):
     zip_bytes: bytes
     auditoria_id: str
     crawl_id: str
+    usuario_id: str
     fase_destino: str
     persistir: bool
     pacote: Any            # PacoteIngestao
     faltantes: list[str]
     resultados: Any        # dict[str, ResultadoItem]
-    score: Any              # ScoreResultado
+    diagnosticos: dict[str, str]
+    pendentes_diagnostico: list[str]
+    recomendacoes: dict[str, str]
+    pendentes_recomendacao: list[str]
+    sugestoes_ia: dict[str, list[dict]]
+    score: Any             # ScoreResultado
     erro: str | None
 
 
@@ -51,6 +61,83 @@ async def node_motor_regras(estado: EstadoSeotec) -> EstadoSeotec:
     return {**estado, "resultados": resultados}
 
 
+def _derivar_site(estado: EstadoSeotec) -> dict:
+    """Contexto do site para os agentes de IA (dominio + plataforma)."""
+    pacote = estado.get("pacote")
+    dominio = getattr(pacote, "dominio", "") or ""
+    # Plataforma real viria da detecção do CWV quando houver (SPEC §2). Por ora,
+    # "geral" significa "sem variação específica" na KB.
+    return {"dominio": dominio, "plataforma": "geral"}
+
+
+async def node_analisar_ia(estado: EstadoSeotec) -> EstadoSeotec:
+    """SPEC_SEOTEC_Agentes_IA nó `analisar_ia`: diagnóstico LLM em lote."""
+    if estado.get("erro"):
+        return estado
+    if not settings.seotec_ia_habilitada:
+        return {**estado, "diagnosticos": {}, "pendentes_diagnostico": []}
+    from app.agents.seotec.analisador import (
+        SeotecAnalisadorAgent,
+        montar_contexto_itens,
+    )
+
+    ck = carregar_checklist()
+    itens_ctx = montar_contexto_itens(ck, estado["resultados"])
+    if not itens_ctx:
+        return {**estado, "diagnosticos": {}, "pendentes_diagnostico": []}
+    site = _derivar_site(estado)
+    agente = SeotecAnalisadorAgent(estado.get("usuario_id", ""))
+    try:
+        diagnosticos, pendentes = await agente.diagnosticar(itens_ctx, site)
+    except Exception:
+        logger.warning("SEOTEC analisar_ia falhou (fail-open)", exc_info=True)
+        diagnosticos, pendentes = {}, [i["slug"] for i in itens_ctx]
+    return {**estado, "diagnosticos": diagnosticos, "pendentes_diagnostico": pendentes}
+
+
+async def node_recomendar_ia(estado: EstadoSeotec) -> EstadoSeotec:
+    """SPEC_SEOTEC_Agentes_IA nó `recomendar_ia`: KB→LLM + sugestões amostra."""
+    if estado.get("erro"):
+        return estado
+    if not settings.seotec_ia_habilitada:
+        return {**estado, "recomendacoes": {}, "pendentes_recomendacao": [], "sugestoes_ia": {}}
+    from app.agents.seotec.recomendador import (
+        SeotecRecomendadorAgent,
+        montar_contexto_recomendacao,
+    )
+
+    ck = carregar_checklist()
+    resultados = estado["resultados"]
+    itens_ctx = montar_contexto_recomendacao(ck, resultados)
+    if not itens_ctx:
+        return {**estado, "recomendacoes": {}, "pendentes_recomendacao": [], "sugestoes_ia": {}}
+    site = _derivar_site(estado)
+    agente = SeotecRecomendadorAgent(estado.get("usuario_id", ""))
+    try:
+        recomendacoes, pendentes = await agente.recomendar(itens_ctx, site["plataforma"])
+    except Exception:
+        logger.warning("SEOTEC recomendar_ia falhou (fail-open)", exc_info=True)
+        recomendacoes, pendentes = {}, [i["slug"] for i in itens_ctx]
+
+    sugestoes: dict[str, list[dict]] = {}
+    itens_ri = [
+        i for i in itens_ctx
+        if i.get("recomendada_ia") and resultados[i["slug"]].status in ("reprovado", "atencao")
+    ]
+    if itens_ri:
+        try:
+            sugestoes = await agente.sugerir_amostra(itens_ri, site["plataforma"])
+        except Exception:
+            logger.warning("SEOTEC sugerir_amostra falhou (fail-open)", exc_info=True)
+            sugestoes = {}
+    return {
+        **estado,
+        "recomendacoes": recomendacoes,
+        "pendentes_recomendacao": pendentes,
+        "sugestoes_ia": sugestoes,
+    }
+
+
 async def node_health_score(estado: EstadoSeotec) -> EstadoSeotec:
     if estado.get("erro"):
         return estado
@@ -71,7 +158,10 @@ async def node_persistir(estado: EstadoSeotec) -> EstadoSeotec:
         auditoria = await db.get(SeoAuditoria, estado["auditoria_id"])
         crawl = await db.get(SeoCrawl, estado["crawl_id"])
         await persistir_resultados(
-            db, auditoria, crawl, estado["resultados"], estado["score"], estado["faltantes"]
+            db, auditoria, crawl, estado["resultados"], estado["score"], estado["faltantes"],
+            diagnosticos=estado.get("diagnosticos"),
+            recomendacoes=estado.get("recomendacoes"),
+            sugestoes_ia=estado.get("sugestoes_ia"),
         )
         await db.commit()
     return estado
@@ -81,11 +171,15 @@ def construir_workflow():
     g = StateGraph(EstadoSeotec)
     g.add_node("validar_pacote", node_validar_pacote)
     g.add_node("motor_regras", node_motor_regras)
+    g.add_node("analisar_ia", node_analisar_ia)
+    g.add_node("recomendar_ia", node_recomendar_ia)
     g.add_node("health_score", node_health_score)
     g.add_node("persistir", node_persistir)
     g.set_entry_point("validar_pacote")
     g.add_edge("validar_pacote", "motor_regras")
-    g.add_edge("motor_regras", "health_score")
+    g.add_edge("motor_regras", "analisar_ia")
+    g.add_edge("analisar_ia", "recomendar_ia")
+    g.add_edge("recomendar_ia", "health_score")
     g.add_edge("health_score", "persistir")
     g.add_edge("persistir", END)
     return g.compile()
@@ -154,6 +248,7 @@ async def executar_auditoria_seotec(execucao_id: str, crawl_id: str) -> None:
             "zip_bytes": zip_bytes,
             "auditoria_id": auditoria_id,
             "crawl_id": crawl_id,
+            "usuario_id": usuario_id,
             "fase_destino": fase_destino,
             "persistir": True,
         })

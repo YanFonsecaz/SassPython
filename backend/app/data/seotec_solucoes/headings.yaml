@@ -1,0 +1,30 @@
+categoria: Headings
+itens:
+- slug: tag-h1-ausente-ou-vazia
+  recomendacao: >-
+    Adicione um <h1> único e descritivo em cada página listada, com a palavra-chave
+    principal, refletindo o tema central do conteúdo. Toda página deve ter
+    exatamente um H1 preenchido.
+  solucoes:
+    wordpress: >-
+      Confirme que o tema renderiza o título do post/página como H1; se o
+      construtor (Elementor/Divi) usa H2 no cabeçalho, corrija o nível do widget
+      de título.
+- slug: tags-h1-duplicadas-em-varias-paginas
+  recomendacao: >-
+    Torne cada <h1> único por página. H1s repetidos geralmente vêm de um template
+    que usa o nome do site; troque pelo título específico do conteúdo daquela URL.
+- slug: multiplas-tags-h1-no-codigo
+  recomendacao: >-
+    Reduza para um único <h1> por página; rebaixe os demais para <h2>/<h3>
+    conforme a hierarquia. Verifique o HTML renderizado (temas às vezes injetam H1
+    extra no logo/cabeçalho).
+- slug: heading-h1-acima-da-dobra
+  recomendacao: >-
+    Posicione o <h1> acima da dobra, visível já no primeiro carregamento, para
+    reforçar o tema da página ao usuário e aos crawlers.
+- slug: hierarquia-de-heading-tags
+  recomendacao: >-
+    Organize os headings em ordem lógica (H1 → H2 → H3, sem pular níveis). Use os
+    níveis pela estrutura semântica do conteúdo, não pelo tamanho visual — estilo é
+    trabalho do CSS.
