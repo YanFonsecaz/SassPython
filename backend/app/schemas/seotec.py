@@ -47,6 +47,10 @@ class ItemResposta(BaseModel):
     modo: str
     status_antes: StatusItem | None
     status_depois: StatusItem | None
+    # Onda 3 — IA: diagnóstico e recomendação gerados pelos agentes (ou editados
+    # manualmente pelo consultor). None quando a IA ainda não rodou/item sem regra.
+    diagnostico: str | None = None
+    recomendacao: str | None = None
     evidencias_json: dict
     status_cliente: str | None
     validacao_seo: str | None
@@ -62,6 +66,9 @@ class AuditoriaDetalhe(AuditoriaResumo):
 class ItemPatch(BaseModel):
     status_antes: StatusItem | None = None
     status_depois: StatusItem | None = None
+    # Permite o consultor sobrescrever o texto gerado pela IA (revisão humana).
+    diagnostico: str | None = Field(default=None, max_length=10000)
+    recomendacao: str | None = Field(default=None, max_length=10000)
     status_cliente: str | None = Field(default=None, max_length=2000)
     validacao_seo: str | None = Field(default=None, max_length=2000)
     observacao_cliente: str | None = Field(default=None, max_length=5000)
