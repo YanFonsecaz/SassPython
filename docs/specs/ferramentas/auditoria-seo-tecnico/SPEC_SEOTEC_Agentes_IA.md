@@ -1,8 +1,8 @@
 # SPEC — Agentes IA: diagnóstico e recomendação por item
 
-**Status:** 🚧 parcial
+**Status:** ✅ implementado
 **Capacidade:** `auditoria-seo-tecnico`
-**Escopo:** backend — `backend/app/agents/seotec/analisador.py`, `recomendador.py`, `backend/app/data/seotec_solucoes/*.yaml`, `backend/app/services/seotec_kb.py`
+**Escopo:** backend — `backend/app/agents/seotec/analisador.py`, `recomendador.py`, `backend/app/data/seotec_solucoes/*.yaml`, `backend/app/services/seotec_kb.py`, `backend/app/services/seotec_plataforma.py` · frontend — `frontend/src/components/seotec/`, `frontend/src/lib/api/seotec.ts`
 **Créditos:** incluído no custo da auditoria (sem cobrança extra por item)
 **Depende de:** [SPEC_SEOTEC_Checklist_Motor_Regras](SPEC_SEOTEC_Checklist_Motor_Regras.md)
 
@@ -80,3 +80,6 @@ Geração em massa de titles/metas (ferramenta própria futura) · avaliação v
 | 2026-07-17 | Spec inicial | — |
 | 2026-07-24 | Implementação parcial (núcleo end-to-end): analisador + recomendador + nós de workflow + persistência; KB com 4 categorias seed | 8fd5980 |
 | 2026-07-24 | KB cobertura 100% itens sf (98/98) — 16 YAMLs de categoria + variações plataforma | 3f63635 |
+| 2026-07-24 | API expõe diagnostico/recomendacao (ItemResposta + ItemPatch editável) | d2d02e8 |
+| 2026-07-24 | Detecção de plataforma reusa URL_SIGNATURES do CWV — variações KB disparam | 47d5960 |
+| 2026-07-24 | Frontend completo: landing (criar + listar), detalhe (upload zip, checklist por categoria, IA diagnostico/recomendacao, edição inline) | 315387b |
