@@ -62,12 +62,18 @@ async def node_motor_regras(estado: EstadoSeotec) -> EstadoSeotec:
 
 
 def _derivar_site(estado: EstadoSeotec) -> dict:
-    """Contexto do site para os agentes de IA (dominio + plataforma)."""
+    """Contexto do site para os agentes de IA (dominio + plataforma).
+
+    Plataforma detectada via marcadores de URL do export `internal` (reusa
+    `URL_SIGNATURES` do CWV). Fail-open: ``"geral"`` quando não detectável
+    (a KB cai na recomendação canônica).
+    """
+    from app.services.seotec_plataforma import detectar_plataforma
+
     pacote = estado.get("pacote")
     dominio = getattr(pacote, "dominio", "") or ""
-    # Plataforma real viria da detecção do CWV quando houver (SPEC §2). Por ora,
-    # "geral" significa "sem variação específica" na KB.
-    return {"dominio": dominio, "plataforma": "geral"}
+    plataforma = detectar_plataforma(pacote) if pacote is not None else "geral"
+    return {"dominio": dominio, "plataforma": plataforma}
 
 
 async def node_analisar_ia(estado: EstadoSeotec) -> EstadoSeotec:
