@@ -141,3 +141,17 @@ export async function uploadPacoteSeotec(
 
   return resposta.json() as Promise<UploadResponseSeotec>;
 }
+
+export async function atualizarAuditoriaSeotec(
+  auditoriaId: string,
+  dados: { fase?: string },
+): Promise<AuditoriaResumoSeotec> {
+  return api.patch<AuditoriaResumoSeotec>(
+    `/ferramentas/auditoria-seo-tecnico/auditorias/${auditoriaId}`,
+    dados,
+  );
+}
+
+export async function exportarAuditoriaDocxSeotec(auditoriaId: string): Promise<Blob> {
+  return api.blob(`/ferramentas/auditoria-seo-tecnico/auditorias/${auditoriaId}/docx`);
+}

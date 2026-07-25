@@ -1,4 +1,4 @@
-"""Schemas da Auditoria de SEO Técnico (Onda 1)."""
+"""Schemas da Auditoria de SEO Técnico."""
 from datetime import datetime
 from typing import Literal
 from uuid import UUID
@@ -6,11 +6,16 @@ from uuid import UUID
 from pydantic import BaseModel, Field, HttpUrl
 
 StatusItem = Literal["aprovado", "atencao", "reprovado", "na", "sem_dados"]
+FaseAuditoria = Literal["before", "implementacao", "after", "concluida"]
 
 
 class AuditoriaCriar(BaseModel):
     cliente_id: UUID
     dominio: HttpUrl
+
+
+class AuditoriaPatch(BaseModel):
+    fase: FaseAuditoria | None = None
 
 
 class AuditoriaResumo(BaseModel):

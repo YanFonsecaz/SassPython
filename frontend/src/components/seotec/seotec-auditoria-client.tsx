@@ -17,8 +17,10 @@ import {
   XCircleIcon,
   MinusCircleIcon,
   HelpCircleIcon,
+  DownloadIcon,
+  CheckIcon,
 } from "lucide-react";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants, Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
@@ -27,11 +29,14 @@ import {
   buscarAuditoriaSeotec,
   editarItemSeotec,
   uploadPacoteSeotec,
+  atualizarAuditoriaSeotec,
+  exportarAuditoriaDocxSeotec,
   type AuditoriaDetalheSeotec,
   type ItemRespostaSeotec,
   type ItemPatchSeotec,
   type StatusItem,
 } from "@/lib/api/seotec";
+import { createSSEConnection } from "@/lib/sse-client";
 
 const FASE_LABELS: Record<string, string> = {
   before: "Before (auditoria inicial)",
@@ -67,8 +72,12 @@ export function SeotecAuditoriaClient() {
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [salvandoSlug, setSalvandoSlug] = useState<string | null>(null);
+  const [baixandoDocx, setBaixandoDocx] = useState(false);
+  const [avancandoFase, setAvancandoFase] = useState(false);
+  const [etapaSSE, setEtapaSSE] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sseRef = useRef<{ close: () => void } | null>(null);
 
   const carregar = useCallback(async () => {
     try {
@@ -90,6 +99,7 @@ export function SeotecAuditoriaClient() {
     return () => {
       cancelled = true;
       if (pollRef.current) clearInterval(pollRef.current);
+      sseRef.current?.close();
     };
   }, [id]);
 
@@ -111,12 +121,65 @@ export function SeotecAuditoriaClient() {
     try {
       const resp = await uploadPacoteSeotec(id, file);
       toast.success(`Upload enviado (${resp.custo} créditos · ${resp.fase_destino})`);
-      await carregar();
+      setEtapaSSE("Processando pacote...");
+      // SSE para progresso em tempo real (reusa endpoint genérico do worker).
+      sseRef.current?.close();
+      sseRef.current = createSSEConnection(
+        `/ferramentas/historico/${resp.execucao_id}/progresso`,
+        (data: unknown) => {
+          const evt = data as Record<string, unknown>;
+          if (evt.type === "status" && evt.etapa) setEtapaSSE(evt.etapa as string);
+          else if (evt.type === "node_progress" && evt.detail) setEtapaSSE(evt.detail as string);
+          else if (evt.type === "concluida") {
+            setEtapaSSE(null);
+            carregar();
+          } else if (evt.type === "falhou") {
+            setEtapaSSE(null);
+            toast.error("Processamento falhou");
+            carregar();
+          }
+        },
+      );
     } catch (e) {
       toast.error(mensagemErroAmigavel(e));
     } finally {
       setEnviando(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleAvancarFase(novaFase: string) {
+    if (avancandoFase) return;
+    setAvancandoFase(true);
+    try {
+      await atualizarAuditoriaSeotec(id, { fase: novaFase });
+      const att = await buscarAuditoriaSeotec(id);
+      setAuditoria(att);
+      toast.success(`Fase avançada para "${novaFase}"`);
+    } catch (e) {
+      toast.error(mensagemErroAmigavel(e));
+    } finally {
+      setAvancandoFase(false);
+    }
+  }
+
+  async function handleBaixarDocx() {
+    if (baixandoDocx) return;
+    setBaixandoDocx(true);
+    try {
+      const blob = await exportarAuditoriaDocxSeotec(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `seotec-auditoria-${id.slice(0, 8)}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(mensagemErroAmigavel(e));
+    } finally {
+      setBaixandoDocx(false);
     }
   }
 
@@ -210,6 +273,51 @@ export function SeotecAuditoriaClient() {
           </div>
         </div>
 
+        {/* Barra de progresso SSE (tempo real) */}
+        {etapaSSE && (
+          <div className="rounded-xl border border-brand/30 bg-brand/5 px-4 py-3 flex items-center gap-2 text-sm text-brand-dark">
+            <Loader2Icon className="size-4 animate-spin" />
+            <span>{etapaSSE}</span>
+          </div>
+        )}
+
+        {/* Ações: fase + DOCX */}
+        <div className="flex flex-wrap items-center gap-2">
+          {auditoria.fase === "before" && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={avancandoFase}
+              onClick={() => handleAvancarFase("implementacao")}
+            >
+              {avancandoFase ? <Loader2Icon className="size-4 mr-1 animate-spin" /> : <CheckIcon className="size-4 mr-1" />}
+              Avançar para &ldquo;Implementação&rdquo;
+            </Button>
+          )}
+          {auditoria.fase === "after" && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={avancandoFase}
+              onClick={() => handleAvancarFase("concluida")}
+            >
+              {avancandoFase ? <Loader2Icon className="size-4 mr-1 animate-spin" /> : <CheckIcon className="size-4 mr-1" />}
+              Concluir auditoria
+            </Button>
+          )}
+          {(auditoria.score_antes !== null || auditoria.score_depois !== null) && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={baixandoDocx}
+              onClick={handleBaixarDocx}
+            >
+              {baixandoDocx ? <Loader2Icon className="size-4 mr-1 animate-spin" /> : <DownloadIcon className="size-4 mr-1" />}
+              Exportar DOCX
+            </Button>
+          )}
+        </div>
+
         {/* Status do crawl */}
         {crawl && (
           <div className={cn(
@@ -257,7 +365,11 @@ export function SeotecAuditoriaClient() {
             ) : (
               <div className="flex flex-col items-center gap-2">
                 <UploadCloudIcon className="size-8 text-muted-foreground" />
-                <p className="text-sm font-medium">Enviar pacote do Screaming Frog (.zip)</p>
+                <p className="text-sm font-medium">
+                  {auditoria.fase === "before"
+                    ? "Enviar pacote do Screaming Frog (.zip)"
+                    : "Re-auditoria — enviar novo pacote (.zip)"}
+                </p>
                 <p className="text-xs text-muted-foreground">Clique ou arraste o arquivo aqui</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Fase destino: <span className="font-medium">{auditoria.fase === "before" ? "before" : "after"}</span>
@@ -268,6 +380,13 @@ export function SeotecAuditoriaClient() {
         )}
 
         {/* Checklist por categoria */}
+        {categorias.length === 0 && !crawl && (
+          <div className="rounded-2xl border border-dashed p-8 text-center">
+            <UploadCloudIcon className="size-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm font-medium">Nenhuma auditoria processada ainda</p>
+            <p className="text-xs text-muted-foreground mt-1">Faça upload do pacote do Screaming Frog acima para iniciar.</p>
+          </div>
+        )}
         {categorias.map((categoria) => (
           <div key={categoria} className="glass-card rounded-2xl p-5 space-y-3">
             <div className="flex items-center justify-between">

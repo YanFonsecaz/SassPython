@@ -1,12 +1,10 @@
 """Router da Auditoria de SEO Técnico (SPEC_Ferramenta_Auditoria_SEO_Tecnico §3.2).
 
-Onda 1: CRUD de auditoria + upload manual do pacote (fallback B) + edição manual
-de itens. Conector/pareamento (Onda 2), IA (Onda 3) e SSE (Onda 4) ficam fora.
+CRUD de auditoria + upload manual do pacote + edição manual de itens + gestão de
+fases + export DOCX. Conector SF automático (Onda 2) fica fora.
 
-Nota sobre registro de rotas: o router é criado sem prefixo próprio (como
-`ferramentas_cwv_auditoria`) — o prefixo de API (`/api/ferramentas`) é aplicado
-no `include_router` em `app/main.py`, e cada rota aqui já embute o segmento
-`/auditoria-seo-tecnico`, resultando em `/api/ferramentas/auditoria-seo-tecnico/...`.
+Nota sobre registro de rotas: o router é criado sem prefixo próprio — o prefixo
+de API (`/api/ferramentas`) é aplicado no `include_router` em `app/main.py`.
 """
 from __future__ import annotations
 
@@ -16,6 +14,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,6 +28,7 @@ from app.models.usuario import Usuario
 from app.schemas.seotec import (
     AuditoriaCriar,
     AuditoriaDetalhe,
+    AuditoriaPatch,
     AuditoriaResumo,
     CrawlResumo,
     ItemPatch,
@@ -246,3 +246,102 @@ async def upload_pacote(
 
     return {"crawl_id": str(crawl.id), "execucao_id": str(execucao.id), "custo": custo,
             "fase_destino": fase_destino, "status": crawl.status}
+
+
+# --- Gestão de fases ---------------------------------------------------------
+
+_TRANSICOES_MANUAIS = {("before", "implementacao"), ("after", "concluida")}
+
+
+@router.patch(
+    "/auditoria-seo-tecnico/auditorias/{auditoria_id}",
+    response_model=AuditoriaResumo,
+)
+async def atualizar_auditoria(
+    auditoria_id: UUID,
+    body: AuditoriaPatch,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+) -> Any:
+    """Avança a fase da auditoria.
+
+    Transições manuais permitidas:
+    - before → implementacao (após auditoria inicial, antes da re-auditoria)
+    - after → concluida (fechamento)
+
+    implementacao → after acontece via re-upload (upload com fase != before).
+    """
+    auditoria = await _auditoria_do_usuario(db, auditoria_id, usuario)
+    if body.fase is not None:
+        if (auditoria.fase, body.fase) not in _TRANSICOES_MANUAIS:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Transição manual '{auditoria.fase}' → '{body.fase}' não permitida. "
+                    "Use o re-upload para chegar à fase 'after'."
+                ),
+            )
+        auditoria.fase = body.fase
+    await db.flush()
+    await db.refresh(auditoria)
+    return auditoria
+
+
+# --- Export DOCX -------------------------------------------------------------
+
+@router.get("/auditoria-seo-tecnico/auditorias/{auditoria_id}/docx")
+async def exportar_auditoria_docx(
+    auditoria_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    usuario: Usuario = Depends(get_current_user),
+    _: None = Depends(rate_limit_autenticado("seotec_export", max_requests=30, window_seconds=300)),
+) -> StreamingResponse:
+    """Exporta a auditoria completa em DOCX (checklist + diagnósticos + recomendações)."""
+    import asyncio
+    import io
+
+    from app.services.parecer_service import html_para_docx_bytes
+    from app.services.seotec_export import auditoria_para_html
+
+    auditoria = await _auditoria_do_usuario(db, auditoria_id, usuario)
+
+    cliente = await db.get(Cliente, auditoria.cliente_id)
+    cliente_nome = cliente.nome if cliente else ""
+
+    linhas = {
+        r.item_slug: r
+        for r in (await db.execute(
+            select(SeoItemResultado).where(SeoItemResultado.auditoria_id == auditoria.id)
+        )).scalars()
+    }
+    ck = carregar_checklist()
+    itens_data = []
+    for item in ck.itens():
+        linha = linhas.get(item.slug)
+        itens_data.append({
+            "slug": item.slug, "nome": item.nome, "categoria": item.categoria,
+            "peso": item.peso, "prioridade": item.prioridade,
+            "status_antes": linha.status_antes if linha else None,
+            "status_depois": linha.status_depois if linha else None,
+            "diagnostico": linha.diagnostico if linha else None,
+            "recomendacao": linha.recomendacao if linha else None,
+            "observacao_cliente": linha.observacao_cliente if linha else None,
+            "observacao_seo": linha.observacao_seo if linha else None,
+        })
+
+    html = auditoria_para_html(
+        dominio=auditoria.dominio,
+        fase=auditoria.fase,
+        score_antes=float(auditoria.score_antes) if auditoria.score_antes is not None else None,
+        score_depois=float(auditoria.score_depois) if auditoria.score_depois is not None else None,
+        cliente_nome=cliente_nome,
+        criado_em=auditoria.criado_em.isoformat() if auditoria.criado_em else "",
+        itens=itens_data,
+    )
+    docx = await asyncio.to_thread(html_para_docx_bytes, html)
+    nome = f"seotec-auditoria-{auditoria.dominio.replace('https://', '').replace('http://', '').split('/')[0]}"
+    return StreamingResponse(
+        io.BytesIO(docx),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{nome}.docx"'},
+    )
