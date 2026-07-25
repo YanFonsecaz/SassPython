@@ -1,8 +1,8 @@
 # SPEC — Ferramenta Auditoria de SEO Técnico (spec-mãe)
 
-**Status:** 🚧 parcial
+**Status:** 🚧 parcial (Ondas 1+3+4 prontas; Onda 2 — conector SF — planejada)
 **Capacidade:** `auditoria-seo-tecnico`
-**Escopo:** ambos — backend (workflow, rotas, modelos, worker) + frontend (páginas da ferramenta) + conector local
+**Escopo:** ambos — backend (workflow, rotas, modelos, worker) + frontend (páginas da ferramenta) + conector local (Onda 2 — não iniciada)
 **Código:** `backend/app/agents/seotec/*`, `backend/app/routers/ferramentas_seo_tecnico.py`, `backend/app/services/seotec_*`, `backend/app/models/seo_*.py`, `frontend/src/app/(dashboard)/ferramentas/auditoria-seo-tecnico/*`, `frontend/src/components/seotec/*`
 **Créditos:** `30` (auditoria before) · `15` (re-crawl after) — proposta, confirmar em `calcular_custo_seo_tecnico()`
 **Depende de:** [SPEC_SEOTEC_Conector_Local_SF](SPEC_SEOTEC_Conector_Local_SF.md) · [SPEC_SEOTEC_Checklist_Motor_Regras](SPEC_SEOTEC_Checklist_Motor_Regras.md) · [SPEC_SEOTEC_Agentes_IA](SPEC_SEOTEC_Agentes_IA.md) · [SPEC_SEOTEC_Ciclo_Auditoria_Health_Score](SPEC_SEOTEC_Ciclo_Auditoria_Health_Score.md)
@@ -138,4 +138,7 @@ clientes diferentes · edição da receita de exports pela UI.
 | Data | Mudança | Commit |
 |---|---|---|
 | 2026-07-18 | Onda 1 implementada (fundação de dados: seed, modelos 0030, ingestão, motor 31 regras, score, workflow, rotas, e2e); decisão: checklist YAML vive em `backend/app/data/seotec_checklist/`, não `app/kb/` | b70c771 |
+| 2026-07-25 | Onda 3 implementada (IA: analisador + recomendador + KB 100% cobertura 98/98 itens + detecção plataforma) | 8fd5980 |
+| 2026-07-25 | Onda 4 implementada (frontend completo: landing + detalhe + upload + IA + gestão de fases + DOCX export + SSE progresso tempo real) | ee65ce0 |
+| 2026-07-25 | Onda 2 — conector SF local: **não iniciada**. Fallback B (upload manual .zip) atende o fluxo completo. SPEC_SEOTEC_Conector_Local_SF permanece 📋 planejado. | — |
 | 2026-07-17 | Spec inicial (design aprovado em brainstorming) | — |
