@@ -169,6 +169,8 @@ async def node_persistir(estado: EstadoSeotec) -> EstadoSeotec:
             recomendacoes=estado.get("recomendacoes"),
             sugestoes_ia=estado.get("sugestoes_ia"),
         )
+        if crawl.fase_destino == "after" and auditoria.fase != "concluida":
+            auditoria.fase = "after"
         await db.commit()
     return estado
 
