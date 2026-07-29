@@ -29,6 +29,7 @@ dependencies = [
     "zhipuai>=2.0.0",
     "pgvector>=0.3.0",
     "google-search-results>=2.4.0",
+    "google-auth>=2.30.0",
     "pytrends>=4.9.0",
     "arq>=0.26.0",
     "redis>=5.0.0",

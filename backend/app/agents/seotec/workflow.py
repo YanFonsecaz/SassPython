@@ -114,6 +114,21 @@ async def node_auto_avaliar(estado: EstadoSeotec) -> EstadoSeotec:
     except Exception:
         logger.warning("SEOTEC auto_avaliar externo falhou (fail-open)", exc_info=True)
 
+    # 3. Google Search Console API (7 itens GSC)
+    try:
+        from app.services.seotec_gsc import avaliar_gsc
+
+        auto_gsc = await avaliar_gsc(dominio)
+        for slug, res in auto_gsc.items():
+            if slug in resultados and resultados[slug].status == "sem_dados":
+                resultados[slug] = type(resultados[slug])(
+                    status=res.status,
+                    evidencias=res.evidencias,
+                    fonte="auto_gsc",
+                )
+    except Exception:
+        logger.warning("SEOTEC auto_avaliar GSC falhou (fail-open)", exc_info=True)
+
     return {**estado, "resultados": resultados}
 
 
