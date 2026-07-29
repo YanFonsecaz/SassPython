@@ -61,6 +61,62 @@ async def node_motor_regras(estado: EstadoSeotec) -> EstadoSeotec:
     return {**estado, "resultados": resultados}
 
 
+async def node_auto_avaliar(estado: EstadoSeotec) -> EstadoSeotec:
+    """Avalia itens manuais via HTML fetch + APIs externas (PSI, Safe Browsing).
+
+    Roda após o motor de regras. Busca páginas do domínio, avalia itens `manual`
+    que não vêm do SF, e chama APIs externas para velocidade/segurança.
+
+    Fail-open: se fetch falhar ou API indisponível, item fica "sem_dados".
+    """
+    if estado.get("erro"):
+        return estado
+
+    from app.services.seotec_auto_avaliador import avaliar_manual_site
+    from app.services.seotec_externo import avaliar_externo
+    from app.services.seotec_page_fetcher import baixar_paginas_chave
+
+    pacote = estado["pacote"]
+    dominio = getattr(pacote, "dominio", "") or ""
+
+    export_internal = pacote.exports.get("internal") if pacote else None
+    urls_internas = export_internal.linhas if export_internal else []
+
+    if not dominio or not urls_internas:
+        return estado
+
+    resultados = dict(estado["resultados"])
+
+    # 1. HTML fetch + parse (12 itens manuais)
+    try:
+        site = await baixar_paginas_chave(dominio, urls_internas)
+        auto_html = avaliar_manual_site(site, urls_internas)
+        for slug, res in auto_html.items():
+            if slug in resultados and resultados[slug].status == "sem_dados":
+                resultados[slug] = type(resultados[slug])(
+                    status=res.status,
+                    evidencias=res.evidencias,
+                    fonte="auto_html",
+                )
+    except Exception:
+        logger.warning("SEOTEC auto_avaliar HTML falhou (fail-open)", exc_info=True)
+
+    # 2. APIs externas (PSI velocidade/experiência + Safe Browsing)
+    try:
+        auto_ext = await avaliar_externo(dominio)
+        for slug, res in auto_ext.items():
+            if slug in resultados and resultados[slug].status == "sem_dados":
+                resultados[slug] = type(resultados[slug])(
+                    status=res.status,
+                    evidencias=res.evidencias,
+                    fonte="auto_externo",
+                )
+    except Exception:
+        logger.warning("SEOTEC auto_avaliar externo falhou (fail-open)", exc_info=True)
+
+    return {**estado, "resultados": resultados}
+
+
 def _derivar_site(estado: EstadoSeotec) -> dict:
     """Contexto do site para os agentes de IA (dominio + plataforma).
 
@@ -179,13 +235,15 @@ def construir_workflow():
     g = StateGraph(EstadoSeotec)
     g.add_node("validar_pacote", node_validar_pacote)
     g.add_node("motor_regras", node_motor_regras)
+    g.add_node("auto_avaliar", node_auto_avaliar)
     g.add_node("analisar_ia", node_analisar_ia)
     g.add_node("recomendar_ia", node_recomendar_ia)
     g.add_node("health_score", node_health_score)
     g.add_node("persistir", node_persistir)
     g.set_entry_point("validar_pacote")
     g.add_edge("validar_pacote", "motor_regras")
-    g.add_edge("motor_regras", "analisar_ia")
+    g.add_edge("motor_regras", "auto_avaliar")
+    g.add_edge("auto_avaliar", "analisar_ia")
     g.add_edge("analisar_ia", "recomendar_ia")
     g.add_edge("recomendar_ia", "health_score")
     g.add_edge("health_score", "persistir")
