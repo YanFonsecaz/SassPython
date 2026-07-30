@@ -128,10 +128,11 @@ clientes diferentes · edição da receita de exports pela UI.
 ## 7. Ordem de implementação sugerida (ondas)
 
 1. **Onda 1 — fundação de dados:** seed YAML do checklist + modelos/migração + contrato de ingestão
-   + upload manual (fallback B) + motor de regras. *Valor: auditoria funciona via upload, sem IA.*
-2. **Onda 2 — conector:** `sf-connector` (pair/run, MCP stdio + fallback CLI) + rotas de dispositivo.
-3. **Onda 3 — IA:** analisador + recomendador + KB por item.
-4. **Onda 4 — ciclo e UI final:** fases before/after + comparativo + polish do front.
+   + upload manual (fallback B) + motor de regras. *Valor: auditoria funciona via upload, sem IA.* ✅
+2. **Onda 2 — conector:** `sf-connector` (pair/run, MCP stdio + fallback CLI) + rotas de dispositivo. ⏳ planejada
+3. **Onda 3 — IA:** analisador + recomendador + KB por item. ✅
+4. **Onda 4 — ciclo e UI final:** fases before/after + comparativo + polish do front. ✅
+5. **Onda 5 — auto-avaliação:** HTML fetch + APIs externas (PSI, Safe Browsing, GSC). 120/124 itens automatizados. ✅
 
 ## 8. Histórico
 
@@ -140,5 +141,6 @@ clientes diferentes · edição da receita de exports pela UI.
 | 2026-07-18 | Onda 1 implementada (fundação de dados: seed, modelos 0030, ingestão, motor 31 regras, score, workflow, rotas, e2e); decisão: checklist YAML vive em `backend/app/data/seotec_checklist/`, não `app/kb/` | b70c771 |
 | 2026-07-25 | Onda 3 implementada (IA: analisador + recomendador + KB 100% cobertura 98/98 itens + detecção plataforma) | 8fd5980 |
 | 2026-07-25 | Onda 4 implementada (frontend completo: landing + detalhe + upload + IA + gestão de fases + DOCX export + SSE progresso tempo real) | ee65ce0 |
+| 2026-07-29 | Onda 5 implementada (auto-avaliação: HTML fetch selectolax 12 itens + PSI 2 itens + Safe Browsing 1 item + GSC API 7 itens = 120/124 itens automatizados) | ada47da |
 | 2026-07-25 | Onda 2 — conector SF local: **não iniciada**. Fallback B (upload manual .zip) atende o fluxo completo. SPEC_SEOTEC_Conector_Local_SF permanece 📋 planejado. | — |
 | 2026-07-17 | Spec inicial (design aprovado em brainstorming) | — |

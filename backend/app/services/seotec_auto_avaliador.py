@@ -90,20 +90,24 @@ def _avaliar_breadcrumbs_clicaveis(site: PaginasSite) -> ResultadoAuto:
     if not paginas:
         return _SEM_DADOS
 
+    avaliadas = 0
     todos_clicaveis = True
     for pag in paginas:
         tree = HTMLParser(pag.html)
         bc = tree.css_first("nav.breadcrumb, .breadcrumb, [itemtype*='BreadcrumbList']")
         if bc is None:
             continue
+        avaliadas += 1
         links = bc.css("a[href]")
         if len(links) < 2:
             todos_clicaveis = False
             break
 
+    if avaliadas == 0:
+        return _SEM_DADOS
     if todos_clicaveis:
-        return ResultadoAuto("aprovado", {"breadcrumb_links_min": 2})
-    return ResultadoAuto("atencao", {"breadcrumb_links_min": 0})
+        return ResultadoAuto("aprovado", {"breadcrumb_links_min": 2, "paginas_avaliadas": avaliadas})
+    return ResultadoAuto("atencao", {"breadcrumb_links_min": 0, "paginas_avaliadas": avaliadas})
 
 
 def _avaliar_barra_navegacao(site: PaginasSite) -> ResultadoAuto:
